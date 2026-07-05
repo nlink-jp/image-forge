@@ -9,9 +9,10 @@ resolution, sampler, prediction type, quantization) inside **model profiles** so
 users never hand-tune them. Series: **util-series**. Local-diffusion counterpart to
 `gem-image` (cloud Gemini).
 
-Status: **Phase 1 in progress.** `gen` txt2img is wired end-to-end (sd.cpp via CGO,
-verified on M2 Max); `models` / `serve`, img2img, LoRA-from-catalog are next. Full
-design: `docs/{ja,en}/image-forge-rfp*`.
+Status: **Phase 1 in progress.** `gen` txt2img (sd.cpp via CGO) and `models`
+(list/import/pull/rm) with profile auto-application are wired and verified E2E on
+M2 Max (`gen -m sd15`). Next: `models quantize`, img2img, serve. Full design:
+`docs/{ja,en}/image-forge-rfp*`.
 
 ## Build & test
 
@@ -31,9 +32,11 @@ make vet           # go vet ./...
 
 ```
 main.go                     entry; injects version; delegates to internal/cli
-internal/cli/               dispatch (cli.go) + gen txt2img flags/streaming (gen.go)
-internal/profile/           model profiles + per-architecture defaults (the gotcha-hiding core)
-internal/catalog/           curated model catalog (content_rating, license, RAM tier, source)
+internal/cli/               dispatch (cli.go); gen w/ profile wiring (gen.go); models cmds (models.go)
+internal/profile/           model profiles, per-arch defaults, arch Detect (the gotcha-hiding core)
+internal/catalog/           curated model catalog (content_rating, license, RAM tier, source) + Profile()
+internal/store/             installed-model registry (JSON) at $IMAGE_FORGE_HOME/registry.json
+internal/download/          HF (hf:owner/repo/file) / URL fetch with progress; token from caller
 internal/engine/            Engine interface; output.go (pure, tested); engine_stub.go (no runtime);
                             engine_sdcpp.go (CGO sd.cpp binding + txt2img, under `cgo_sdcpp`)
 docs/{ja,en}/               RFP; docs/adr/ architecture decisions

@@ -34,12 +34,36 @@ func (e Entry) NeedsOptIn() bool {
 	return e.Rating == profile.RatingQuestionable || e.Rating == profile.RatingExplicit
 }
 
+// Profile builds the generation profile for this entry: architecture defaults
+// with the entry's overrides layered on top.
+func (e Entry) Profile() profile.Profile {
+	p := profile.ArchDefaults(e.Arch)
+	p.Name = e.Name
+	if e.Prediction != "" {
+		p.Prediction = e.Prediction
+	}
+	if e.ClipSkip != 0 {
+		p.ClipSkip = e.ClipSkip
+	}
+	if e.PromptPrefix != "" {
+		p.PromptPrefix = e.PromptPrefix
+	}
+	return p
+}
+
 // Default returns the curated, binary-embedded catalog.
 //
 // NOTE: Source repo ids below are provisional (RFP stage). Each must be verified
 // against the actual HF/Civitai listing before Phase 1 `pull` support ships.
 func Default() []Entry {
 	return []Entry{
+		{
+			Name: "sd15-emaonly", Arch: profile.ArchSD15, Prediction: profile.PredEps,
+			Rating: profile.RatingSafe, License: "CreativeML OpenRAIL-M",
+			MinRAMGB: 8, RecRAMGB: 16,
+			Source: Source{HF: "second-state/stable-diffusion-v1-5-GGUF/stable-diffusion-v1-5-pruned-emaonly-Q8_0.gguf"},
+			Notes:  "Classic SD1.5 (GGUF, baked VAE). Small; a good smoke-test model.",
+		},
 		{
 			Name: "animagine-xl-4", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "Fair AI Public License 1.0-SD",

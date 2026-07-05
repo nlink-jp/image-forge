@@ -3,6 +3,8 @@
 // prediction type, or quantization. Defaults vary per architecture.
 package profile
 
+import "strings"
+
 // Arch is a model architecture family.
 type Arch string
 
@@ -46,6 +48,26 @@ type Profile struct {
 	Height       int
 	PromptPrefix string // e.g. "score_9, score_8_up, ..." for Pony-family
 	NegativeOK   bool   // false for distilled models (e.g. FLUX schnell)
+}
+
+// Detect guesses an architecture from a model name or filename. It defaults to
+// SDXL (the primary target) when nothing matches.
+func Detect(name string) Arch {
+	n := strings.ToLower(name)
+	switch {
+	case strings.Contains(n, "sd15"), strings.Contains(n, "v1-5"), strings.Contains(n, "v1.5"), strings.Contains(n, "sd-1.5"):
+		return ArchSD15
+	case strings.Contains(n, "sd3"), strings.Contains(n, "sd-3"), strings.Contains(n, "3.5"):
+		return ArchSD35
+	case strings.Contains(n, "flux"):
+		return ArchFlux
+	case strings.Contains(n, "z-image"), strings.Contains(n, "zimage"):
+		return ArchZImage
+	case strings.Contains(n, "xl"), strings.Contains(n, "pony"), strings.Contains(n, "illustrious"), strings.Contains(n, "animagine"), strings.Contains(n, "noob"):
+		return ArchSDXL
+	default:
+		return ArchSDXL
+	}
 }
 
 // ArchDefaults returns baseline settings for an architecture; catalog entries

@@ -28,9 +28,22 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `new_sd_ctx` + `generate_image`. Progress streams as JSON lines on stderr; images
   save as PNG. Verified on M2 Max (SD1.5 Q8_0 GGUF → 512×512 in ~54 s incl. Metal
   cold start).
+- **`models` tooling**: `list` (catalog + installed, with rating/license/RAM tier),
+  `import <path>` (register a local model, auto-detect architecture), `pull
+  <name|hf:owner/repo/file|url>` (download to the data dir + register; NSFW opt-in via
+  `--allow-nsfw`), `rm`. New `internal/store` (JSON registry) and `internal/download`
+  (HF/URL fetch with progress) packages.
+- **Profile wiring in `gen`**: `-m <name>` resolves an installed model and
+  auto-applies its profile (clip-skip, VAE, resolution, sampler, steps, cfg, prompt
+  prefix, negative handling); explicit flags override. `--model-path` bypasses the
+  registry. Verified E2E (import sd15 → `gen -m sd15` with only `--steps` set → the
+  SD15 profile filled 512×512 / euler_a / clip-skip 1).
 
 ### Notes / Known limitations
-- `models` / `serve` and img2img / inpaint / ControlNet are not wired yet.
+- `models quantize` is a stub; Civitai token support and automatic VAE download are
+  deferred; catalog entries whose HF source is repo-only (no file) are not yet
+  directly pullable (use `models import`).
+- `serve` and img2img / inpaint / ControlNet are not wired yet.
 - Progress events currently reflect sd.cpp's internal phases (text encoder / sampler /
   VAE), so the `step X/Y` denominator changes between phases — to be normalized to
   sampling steps.

@@ -33,3 +33,23 @@ func TestArchDefaults_Unknown(t *testing.T) {
 		t.Errorf("unknown arch = %q, want %q", got, ArchUnknown)
 	}
 }
+
+func TestDetect(t *testing.T) {
+	cases := map[string]Arch{
+		"animagine-xl-4.0":     ArchSDXL,
+		"ponyDiffusionV6XL":    ArchSDXL,
+		"noobai-XL-Vpred":      ArchSDXL,
+		"illustrious-xl-v1":    ArchSDXL,
+		"sd15-pruned":          ArchSD15,
+		"v1-5-emaonly":         ArchSD15,
+		"FLUX.1-schnell":       ArchFlux,
+		"z-image-turbo":        ArchZImage,
+		"stable-diffusion-3.5": ArchSD35,
+		"mystery-model":        ArchSDXL, // default is SDXL
+	}
+	for name, want := range cases {
+		if got := Detect(name); got != want {
+			t.Errorf("Detect(%q) = %q, want %q", name, got, want)
+		}
+	}
+}

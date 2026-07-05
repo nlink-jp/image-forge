@@ -23,11 +23,15 @@ func TestRun_Unknown(t *testing.T) {
 	}
 }
 
-func TestRun_ScaffoldStubs(t *testing.T) {
-	for _, sub := range []string{"models", "serve"} {
-		if err := Run("dev", []string{sub}); !errors.Is(err, ErrNotImplemented) {
-			t.Errorf("%s: want ErrNotImplemented, got %v", sub, err)
-		}
+func TestRun_ServeStub(t *testing.T) {
+	if err := Run("dev", []string{"serve"}); !errors.Is(err, ErrNotImplemented) {
+		t.Errorf("serve: want ErrNotImplemented, got %v", err)
+	}
+}
+
+func TestRun_ModelsNeedsSubcommand(t *testing.T) {
+	if err := Run("dev", []string{"models"}); err == nil {
+		t.Fatal("models without a subcommand should error")
 	}
 }
 
