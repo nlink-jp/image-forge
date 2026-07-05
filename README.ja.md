@@ -43,7 +43,7 @@ make build-engine
 # 生成（設定はモデルプロファイルから。フラグで上書き可）:
 image-forge gen -p "score_9, 1girl, cherry blossom" -m animagine-xl-4 -o out.png
 
-# img2img:
+# img2img (--strength は 0..1: 低いほど初期画像を保持、高いほどプロンプト追従):
 image-forge gen -p "..." --init in.png --strength 0.6 -o out.png
 
 # LoRA 適用:

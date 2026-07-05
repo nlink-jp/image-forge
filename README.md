@@ -47,7 +47,7 @@ The output is a single binary at `dist/image-forge`.
 # Generate (settings come from the model profile; override with flags):
 image-forge gen -p "score_9, 1girl, cherry blossom" -m animagine-xl-4 -o out.png
 
-# img2img:
+# img2img (--strength is 0..1: lower stays close to the init image, higher follows the prompt):
 image-forge gen -p "..." --init in.png --strength 0.6 -o out.png
 
 # Apply LoRAs:
