@@ -9,8 +9,9 @@ resolution, sampler, prediction type, quantization) inside **model profiles** so
 users never hand-tune them. Series: **util-series**. Local-diffusion counterpart to
 `gem-image` (cloud Gemini).
 
-Status: **early scaffold (Phase 2).** Command surface + catalog + profiles exist;
-the diffusion runtime is not wired. Full design: `docs/{ja,en}/image-forge-rfp*`.
+Status: **Phase 1 in progress.** `gen` txt2img is wired end-to-end (sd.cpp via CGO,
+verified on M2 Max); `models` / `serve`, img2img, LoRA-from-catalog are next. Full
+design: `docs/{ja,en}/image-forge-rfp*`.
 
 ## Build & test
 
@@ -30,10 +31,11 @@ make vet           # go vet ./...
 
 ```
 main.go                     entry; injects version; delegates to internal/cli
-internal/cli/               subcommand dispatch (gen/models/serve/version) — thin, testable
+internal/cli/               dispatch (cli.go) + gen txt2img flags/streaming (gen.go)
 internal/profile/           model profiles + per-architecture defaults (the gotcha-hiding core)
 internal/catalog/           curated model catalog (content_rating, license, RAM tier, source)
-internal/engine/            Engine interface; stub now, CGO sd.cpp binding under `cgo_sdcpp`
+internal/engine/            Engine interface; output.go (pure, tested); engine_stub.go (no runtime);
+                            engine_sdcpp.go (CGO sd.cpp binding + txt2img, under `cgo_sdcpp`)
 docs/{ja,en}/               RFP; docs/adr/ architecture decisions
 Makefile                    build/build-engine/deps/test/vet/clean/build-all
 ```

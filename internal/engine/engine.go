@@ -28,7 +28,7 @@ type Request struct {
 	LoRAs     []LoRA
 	InitImage string  // img2img source; empty => txt2img
 	Strength  float64 // img2img denoise strength
-	OutputDir string
+	Output    string  // output path; index is inserted before the extension for batches
 }
 
 // Event is a progress event streamed during generation (serialized as one JSON

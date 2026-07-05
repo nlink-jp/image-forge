@@ -20,12 +20,21 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - `third_party/stable-diffusion.cpp` submodule (master-758) + `make deps` to build
   ggml/sd.cpp static libraries with the Metal backend.
 - **Build bring-up spike (ADR-0001) proven**: `make build-engine` statically links
-  sd.cpp + ggml + Metal into a single 4.7 MB binary (system dylibs/frameworks only).
-  `image-forge version` calls `sd_get_system_info()` via CGO and initializes Metal
-  (verified on Apple M2 Max). The project's highest-risk task is de-risked.
+  sd.cpp + ggml + Metal into a single binary (system dylibs/frameworks only; ~57 MB
+  with the full generation path linked in). Verified on Apple M2 Max. The project's
+  highest-risk task is de-risked.
+- **`gen` txt2img wired end-to-end**: prompt / negative / seed / steps / cfg / size /
+  sampler / clip-skip / batch / `--lora <path>:<weight>` / `-o` output, via sd.cpp's
+  `new_sd_ctx` + `generate_image`. Progress streams as JSON lines on stderr; images
+  save as PNG. Verified on M2 Max (SD1.5 Q8_0 GGUF → 512×512 in ~54 s incl. Metal
+  cold start).
 
-### Notes
-- Generation is not wired yet — `gen` / `models` / `serve` are scaffold stubs. Next:
-  wire `new_sd_ctx` / `generate_image` into the engine.
+### Notes / Known limitations
+- `models` / `serve` and img2img / inpaint / ControlNet are not wired yet.
+- Progress events currently reflect sd.cpp's internal phases (text encoder / sampler /
+  VAE), so the `step X/Y` denominator changes between phases — to be normalized to
+  sampling steps.
+- sd.cpp logs to stderr alongside our JSON progress; a log callback to route/quiet it
+  is a follow-up.
 - Metal cold-load is ~8.5 s (one-time), reinforcing the value of the resident
   `serve` mode (load model/device once).
