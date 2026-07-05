@@ -1,9 +1,6 @@
 package cli
 
-import (
-	"errors"
-	"testing"
-)
+import "testing"
 
 func TestRun_Version(t *testing.T) {
 	if err := Run("1.2.3", []string{"version"}); err != nil {
@@ -20,12 +17,6 @@ func TestRun_NoArgs(t *testing.T) {
 func TestRun_Unknown(t *testing.T) {
 	if err := Run("dev", []string{"nope"}); err == nil {
 		t.Fatal("expected error for unknown subcommand")
-	}
-}
-
-func TestRun_ServeStub(t *testing.T) {
-	if err := Run("dev", []string{"serve"}); !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("serve: want ErrNotImplemented, got %v", err)
 	}
 }
 

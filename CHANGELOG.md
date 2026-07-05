@@ -46,13 +46,19 @@ project adheres to [Semantic Versioning](https://semver.org/).
   producing a correct 1024×1024 anime render on M2 Max (~1:47, no black-image NaN).
 - **img2img**: `gen --init <PNG/JPEG> --strength <0..1>` loads the init image and
   matches the output size to it. Verified E2E (sd15, apple.png → guided transform).
+- **Resident `serve` mode**: reads one JSON request per line on stdin and streams
+  events on stdout, keeping the model loaded across requests and reloading only when
+  the requested model changes — avoids the per-request model load + Metal init.
+  Verified E2E: two requests → a single `load` event. The engine is now a **Session**
+  (`Open` loads once; `Render` renders many); `gen` and `serve` share the
+  model-resolution + profile-merge path (`resolve.go`).
 
 ### Notes / Known limitations
 - `models quantize` is a stub; Civitai token support is deferred; catalog entries
   whose HF source is repo-only (no file) are not yet directly pullable (use `models
   import`).
 - LoRA is wired (`--lora <path>:<weight>`) but not yet validated against a real LoRA
-  file. `serve`, inpaint, and ControlNet are not wired yet.
+  file. inpaint and ControlNet are not wired yet.
 - Progress events currently reflect sd.cpp's internal phases (text encoder / sampler /
   VAE), so the `step X/Y` denominator changes between phases — to be normalized to
   sampling steps.

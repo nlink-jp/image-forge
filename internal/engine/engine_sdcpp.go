@@ -39,12 +39,38 @@ func Info() string {
 	return "engine: stable-diffusion.cpp — " + C.GoString(C.sd_get_system_info())
 }
 
-// New returns the sd.cpp-backed engine.
-func New() (Engine, error) { return &sdEngine{}, nil }
+// Open loads a model into a resident context. The heavy cost (model read + Metal
+// init) is paid here once; Render reuses it.
+func Open(modelPath, vaePath string) (Session, error) {
+	if modelPath == "" {
+		return nil, errors.New("sdcpp: a model path is required")
+	}
+	var cp C.sd_ctx_params_t
+	C.sd_ctx_params_init(&cp)
+	cModel := C.CString(modelPath)
+	defer C.free(unsafe.Pointer(cModel))
+	cp.model_path = cModel
+	if vaePath != "" {
+		cVAE := C.CString(vaePath)
+		defer C.free(unsafe.Pointer(cVAE))
+		cp.vae_path = cVAE
+	}
+	ctx := C.new_sd_ctx(&cp)
+	if ctx == nil {
+		return nil, fmt.Errorf("sdcpp: failed to load model %q", modelPath)
+	}
+	return &sdSession{ctx: ctx}, nil
+}
 
-type sdEngine struct{}
+type sdSession struct{ ctx *C.sd_ctx_t }
 
-func (e *sdEngine) Close() error { return nil }
+func (s *sdSession) Close() error {
+	if s.ctx != nil {
+		C.free_sd_ctx(s.ctx)
+		s.ctx = nil
+	}
+	return nil
+}
 
 //export goProgress
 func goProgress(step, steps C.int, t C.float, data unsafe.Pointer) {
@@ -62,31 +88,12 @@ func goProgress(step, steps C.int, t C.float, data unsafe.Pointer) {
 	ch <- Event{Kind: "progress", Progress: p, Message: fmt.Sprintf("step %d/%d", int(step), int(steps))}
 }
 
-// Generate renders a txt2img request. The caller must read from events
-// concurrently (it is used both for load/done and for step progress).
-func (e *sdEngine) Generate(ctx context.Context, req Request, events chan<- Event) error {
-	if req.ModelPath == "" {
-		return errors.New("sdcpp: a model path is required (-model)")
+// Render generates from the loaded model. The caller must read from events
+// concurrently. ModelPath/VAEPath on req are ignored (the model is already open).
+func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event) error {
+	if s.ctx == nil {
+		return errors.New("sdcpp: session is closed")
 	}
-
-	events <- Event{Kind: "load", Message: "loading model"}
-
-	var cp C.sd_ctx_params_t
-	C.sd_ctx_params_init(&cp)
-	cModel := C.CString(req.ModelPath)
-	defer C.free(unsafe.Pointer(cModel))
-	cp.model_path = cModel
-	if req.VAEPath != "" {
-		cVAE := C.CString(req.VAEPath)
-		defer C.free(unsafe.Pointer(cVAE))
-		cp.vae_path = cVAE
-	}
-
-	sdCtx := C.new_sd_ctx(&cp)
-	if sdCtx == nil {
-		return fmt.Errorf("sdcpp: failed to load model %q", req.ModelPath)
-	}
-	defer C.free_sd_ctx(sdCtx)
 
 	var g C.sd_img_gen_params_t
 	C.sd_img_gen_params_init(&g)
@@ -126,8 +133,8 @@ func (e *sdEngine) Generate(ctx context.Context, req Request, events chan<- Even
 	}
 	g.batch_count = C.int(batch)
 
-	// LoRAs: build a C array. The struct fields are C pointers, so passing the
-	// Go backing array to C is allowed; keep the CStrings alive across the call.
+	// LoRAs: the struct fields are C pointers, so passing the Go backing array to
+	// C is allowed; keep the CStrings alive across the call.
 	var cloras []C.sd_lora_t
 	for _, l := range req.LoRAs {
 		cPath := C.CString(l.Path)
@@ -161,7 +168,7 @@ func (e *sdEngine) Generate(ctx context.Context, req Request, events chan<- Even
 
 	var imgs *C.sd_image_t
 	var n C.int
-	if !bool(C.generate_image(sdCtx, &g, &imgs, &n)) || imgs == nil || n == 0 {
+	if !bool(C.generate_image(s.ctx, &g, &imgs, &n)) || imgs == nil || n == 0 {
 		return errors.New("sdcpp: generation failed")
 	}
 	defer C.free(unsafe.Pointer(imgs))
@@ -179,8 +186,8 @@ func (e *sdEngine) Generate(ctx context.Context, req Request, events chan<- Even
 	return nil
 }
 
-// loadInitImage decodes a PNG/JPEG file into an RGB sd_image_t backed by
-// C memory. The returned func frees that memory; call it after generate_image.
+// loadInitImage decodes a PNG/JPEG file into an RGB sd_image_t backed by C
+// memory. The returned func frees that memory; call it after generate_image.
 func loadInitImage(path string) (C.sd_image_t, func(), error) {
 	f, err := os.Open(path)
 	if err != nil {

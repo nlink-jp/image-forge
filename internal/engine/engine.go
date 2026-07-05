@@ -40,9 +40,10 @@ type Event struct {
 	Output   string  `json:"output,omitempty"` // image path on "done"
 }
 
-// Engine renders images. Implementations: the CGO sd.cpp binding (real, Phase 1
-// build spike) and a fake used in tests.
-type Engine interface {
-	Generate(ctx context.Context, req Request, events chan<- Event) error
+// Session is a loaded model, ready to render one or more requests. Open (defined
+// per build tag) creates one. The resident `serve` mode keeps a Session alive
+// across requests to avoid re-loading the model and re-initializing Metal.
+type Session interface {
+	Render(ctx context.Context, req Request, events chan<- Event) error
 	Close() error
 }

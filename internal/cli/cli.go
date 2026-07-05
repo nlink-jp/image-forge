@@ -53,5 +53,4 @@ Run "image-forge <command> --help" for command details.
 `)
 }
 
-// runGen lives in gen.go, runModels in models.go. serve is a Phase 2 stub.
-func runServe(args []string) error { return fmt.Errorf("serve (Phase 2): %w", ErrNotImplemented) }
+// runGen lives in gen.go, runModels in models.go, runServe in serve.go.

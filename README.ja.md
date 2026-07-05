@@ -54,6 +54,9 @@ image-forge models list
 image-forge models pull animagine-xl-4
 image-forge models import ~/Downloads/my-checkpoint.safetensors
 image-forge models quantize animagine-xl-4 --to q4_k
+
+# 常駐モード: モデルを一度ロードして連投（stdin に 1 行 1 JSON リクエスト）:
+echo '{"prompt":"1girl, cherry blossoms","model":"animagine-xl-4","output":"a.png"}' | image-forge serve
 ```
 
 進捗は stderr への JSON 行ストリーム（`load` / `progress` / `done` / `error`）、

@@ -58,6 +58,9 @@ image-forge models list
 image-forge models pull animagine-xl-4
 image-forge models import ~/Downloads/my-checkpoint.safetensors
 image-forge models quantize animagine-xl-4 --to q4_k
+
+# Resident mode: load the model once, render many (one JSON request per line on stdin):
+echo '{"prompt":"1girl, cherry blossoms","model":"animagine-xl-4","output":"a.png"}' | image-forge serve
 ```
 
 Progress is emitted as a JSON-line stream on stderr (`load` / `progress` / `done` /

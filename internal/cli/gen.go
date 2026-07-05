@@ -6,13 +6,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/nlink-jp/image-forge/internal/engine"
-	"github.com/nlink-jp/image-forge/internal/profile"
-	"github.com/nlink-jp/image-forge/internal/store"
 )
 
 // runGen resolves the model (registry name or direct path), layers the model's
@@ -53,73 +50,49 @@ func runGen(args []string) error {
 		return err
 	}
 
-	// Resolve the model and its base profile.
-	var (
-		path   string
-		regVAE string
-		prof   profile.Profile
-	)
-	switch {
-	case *modelName != "":
-		reg, err := store.Load()
-		if err != nil {
-			return err
-		}
-		im, ok := reg.Get(*modelName)
-		if !ok {
-			return fmt.Errorf("gen: model %q is not installed (try: image-forge models pull %s)", *modelName, *modelName)
-		}
-		path, regVAE, prof = im.Path, im.VAEPath, im.Profile
-	case *modelPath != "":
-		path = *modelPath
-		prof = profile.ArchDefaults(profile.Detect(filepath.Base(path)))
-	default:
-		return fmt.Errorf("gen: -m <name> or --model-path <path> is required")
+	path, regVAE, prof, err := resolveModel(*modelName, *modelPath)
+	if err != nil {
+		return fmt.Errorf("gen: %w", err)
 	}
 
-	// Profile provides defaults; explicit flags win.
-	finalPrompt := *prompt
-	if prof.PromptPrefix != "" {
-		finalPrompt = prof.PromptPrefix + ", " + *prompt
+	// Explicitly-set flags override the profile.
+	var ov genOverrides
+	if set["n"] {
+		ov.Negative = negative
 	}
-	neg := *negative
-	if !prof.NegativeOK && !set["n"] {
-		neg = "" // distilled models (e.g. FLUX schnell) ignore negatives
+	if set["steps"] {
+		ov.Steps = steps
 	}
-	vaePath := regVAE
+	if set["cfg"] {
+		ov.CFG = cfg
+	}
+	if set["W"] {
+		ov.Width = width
+	}
+	if set["H"] {
+		ov.Height = height
+	}
+	if set["sampler"] {
+		ov.Sampler = sampler
+	}
+	if set["clip-skip"] {
+		ov.ClipSkip = clipSkip
+	}
 	if set["vae"] {
-		vaePath = *vae
+		ov.VAE = vae
 	}
+	req := applyProfile(path, regVAE, *prompt, *seed, *batch, *initImg, *strength, loras, *out, prof, ov)
 
-	req := engine.Request{
-		Prompt:    finalPrompt,
-		Negative:  neg,
-		Seed:      *seed,
-		Batch:     *batch,
-		ModelPath: path,
-		VAEPath:   vaePath,
-		LoRAs:     loras,
-		Output:    *out,
-		InitImage: *initImg,
-		Strength:  *strength,
-		ClipSkip:  pickInt(set["clip-skip"], *clipSkip, prof.ClipSkip),
-		Steps:     pickInt(set["steps"], *steps, prof.Steps),
-		Width:     pickInt(set["W"], *width, prof.Width),
-		Height:    pickInt(set["H"], *height, prof.Height),
-		CFG:       pickFloat(set["cfg"], *cfg, prof.CFG),
-		Sampler:   pickStr(set["sampler"], *sampler, prof.Sampler),
-	}
-
-	eng, err := engine.New()
+	sess, err := engine.Open(path, req.VAEPath)
 	if err != nil {
 		return err
 	}
-	defer eng.Close()
+	defer sess.Close()
 
 	events := make(chan engine.Event, 8)
 	errc := make(chan error, 1)
 	go func() {
-		errc <- eng.Generate(context.Background(), req, events)
+		errc <- sess.Render(context.Background(), req, events)
 		close(events)
 	}()
 
@@ -131,27 +104,6 @@ func runGen(args []string) error {
 		}
 	}
 	return <-errc
-}
-
-func pickInt(set bool, flag, prof int) int {
-	if set {
-		return flag
-	}
-	return prof
-}
-
-func pickFloat(set bool, flag, prof float64) float64 {
-	if set {
-		return flag
-	}
-	return prof
-}
-
-func pickStr(set bool, flag, prof string) string {
-	if set {
-		return flag
-	}
-	return prof
 }
 
 // multiFlag collects a repeatable string flag.

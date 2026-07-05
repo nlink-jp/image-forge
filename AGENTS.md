@@ -9,10 +9,10 @@ resolution, sampler, prediction type, quantization) inside **model profiles** so
 users never hand-tune them. Series: **util-series**. Local-diffusion counterpart to
 `gem-image` (cloud Gemini).
 
-Status: **Phase 1 in progress.** `gen` txt2img + img2img (sd.cpp via CGO) and
-`models` (list/import/pull/rm) with profile auto-application are wired and verified
-E2E on M2 Max (SD1.5 and Animagine XL 4.0 / SDXL). Next: LoRA real-file validation,
-`models quantize`, serve. Full design: `docs/{ja,en}/image-forge-rfp*`.
+Status: **Phase 1 mostly done.** `gen` txt2img + img2img (sd.cpp via CGO), `models`
+(list/import/pull/rm) with profile auto-application, and the resident `serve` mode
+are wired and verified E2E on M2 Max (SD1.5 + Animagine XL 4.0 / SDXL). Next: LoRA
+real-file validation, `models quantize`. Full design: `docs/{ja,en}/image-forge-rfp*`.
 
 ## Build & test
 
@@ -32,13 +32,15 @@ make vet           # go vet ./...
 
 ```
 main.go                     entry; injects version; delegates to internal/cli
-internal/cli/               dispatch (cli.go); gen w/ profile wiring (gen.go); models cmds (models.go)
+internal/cli/               dispatch (cli.go); gen (gen.go); models (models.go); serve (serve.go);
+                            shared model-resolution + profile merge (resolve.go)
 internal/profile/           model profiles, per-arch defaults, arch Detect (the gotcha-hiding core)
 internal/catalog/           curated model catalog (content_rating, license, RAM tier, source) + Profile()
 internal/store/             installed-model registry (JSON) at $IMAGE_FORGE_HOME/registry.json
 internal/download/          HF (hf:owner/repo/file) / URL fetch with progress; token from caller
-internal/engine/            Engine interface; output.go (pure, tested); engine_stub.go (no runtime);
-                            engine_sdcpp.go (CGO sd.cpp binding + txt2img, under `cgo_sdcpp`)
+internal/engine/            Session interface (Open loads once, Render renders many); output.go
+                            (pure, tested); engine_stub.go (no runtime); engine_sdcpp.go (CGO
+                            sd.cpp binding: Open/Render, txt2img+img2img, under `cgo_sdcpp`)
 docs/{ja,en}/               RFP; docs/adr/ architecture decisions
 Makefile                    build/build-engine/deps/test/vet/clean/build-all
 ```
