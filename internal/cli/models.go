@@ -10,6 +10,7 @@ import (
 
 	"github.com/nlink-jp/image-forge/internal/catalog"
 	"github.com/nlink-jp/image-forge/internal/download"
+	"github.com/nlink-jp/image-forge/internal/engine"
 	"github.com/nlink-jp/image-forge/internal/profile"
 	"github.com/nlink-jp/image-forge/internal/store"
 )
@@ -28,7 +29,7 @@ func runModels(args []string) error {
 	case "rm":
 		return modelsRm(args[1:])
 	case "quantize":
-		return fmt.Errorf("models quantize: %w", ErrNotImplemented)
+		return modelsQuantize(args[1:])
 	default:
 		return fmt.Errorf("models: unknown subcommand %q", args[0])
 	}
@@ -205,6 +206,52 @@ func modelsPull(args []string) error {
 		return err
 	}
 	fmt.Printf("installed %q (%s) -> %s\n", regName, prof.Arch, dest)
+	return nil
+}
+
+func modelsQuantize(args []string) error {
+	if len(args) < 1 || strings.HasPrefix(args[0], "-") {
+		return fmt.Errorf("models quantize: usage: models quantize <name> --to <q8_0|q4_k|...> [--name N]")
+	}
+	name := args[0]
+	fs := flag.NewFlagSet("models quantize", flag.ContinueOnError)
+	to := fs.String("to", "q8_0", "quant type: q8_0, q5_0, q4_0, q4_1, q4_k, q6_k, f16, ...")
+	newName := fs.String("name", "", "registry name for the result (default: <name>-<type>)")
+	if err := fs.Parse(args[1:]); err != nil {
+		return err
+	}
+
+	reg, err := store.Load()
+	if err != nil {
+		return err
+	}
+	src, ok := reg.Get(name)
+	if !ok {
+		return fmt.Errorf("models quantize: %q is not installed", name)
+	}
+
+	outName := *newName
+	if outName == "" {
+		outName = name + "-" + *to
+	}
+	if err := os.MkdirAll(store.ModelsDir(), 0o755); err != nil {
+		return err
+	}
+	outPath := filepath.Join(store.ModelsDir(), outName+".gguf")
+
+	// Bake the model's VAE into the GGUF so the quantized model is self-contained.
+	fmt.Fprintf(os.Stderr, "quantizing %s\n  -> %s (%s)\n", src.Path, outPath, *to)
+	if err := engine.Quantize(src.Path, src.VAEPath, outPath, *to); err != nil {
+		return err
+	}
+
+	prof := src.Profile
+	prof.Name = outName
+	reg.Add(store.InstalledModel{Name: outName, Path: outPath, Profile: prof, Rating: src.Rating, License: src.License})
+	if err := reg.Save(); err != nil {
+		return err
+	}
+	fmt.Printf("quantized %q -> %q (%s) -> %s\n", name, outName, *to, outPath)
 	return nil
 }
 

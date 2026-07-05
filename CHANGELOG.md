@@ -52,11 +52,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   Verified E2E: two requests → a single `load` event. The engine is now a **Session**
   (`Open` loads once; `Render` renders many); `gen` and `serve` share the
   model-resolution + profile-merge path (`resolve.go`).
+- **`models quantize <name> --to <type>`**: converts a registered model to a GGUF at
+  the given quant (q8_0/q4_k/...) via sd.cpp's `convert`, baking in the model's VAE,
+  and registers the result with the same profile. Verified: Animagine XL 4.0 6.5 GB
+  → 4.0 GB q8_0 → correct 1024×1024 render (baked fp16-fix VAE, no black image).
 
 ### Notes / Known limitations
-- `models quantize` is a stub; Civitai token support is deferred; catalog entries
-  whose HF source is repo-only (no file) are not yet directly pullable (use `models
-  import`).
+- Civitai token support is deferred; catalog entries whose HF source is repo-only
+  (no file) are not yet directly pullable (use `models import`).
 - LoRA is wired (`--lora <path>:<weight>`) but not yet validated against a real LoRA
   file. inpaint and ControlNet are not wired yet.
 - Progress events currently reflect sd.cpp's internal phases (text encoder / sampler /

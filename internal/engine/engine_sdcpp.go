@@ -31,8 +31,41 @@ import (
 	"image/png"
 	"os"
 	"runtime/cgo"
+	"strings"
 	"unsafe"
 )
+
+// quantTypes maps CLI quant names to sd.cpp weight types.
+var quantTypes = map[string]C.enum_sd_type_t{
+	"q8_0": C.SD_TYPE_Q8_0, "q5_0": C.SD_TYPE_Q5_0, "q5_1": C.SD_TYPE_Q5_1,
+	"q4_0": C.SD_TYPE_Q4_0, "q4_1": C.SD_TYPE_Q4_1,
+	"q2_k": C.SD_TYPE_Q2_K, "q3_k": C.SD_TYPE_Q3_K, "q4_k": C.SD_TYPE_Q4_K,
+	"q5_k": C.SD_TYPE_Q5_K, "q6_k": C.SD_TYPE_Q6_K,
+	"f16": C.SD_TYPE_F16, "f32": C.SD_TYPE_F32,
+}
+
+// Quantize converts a model to a GGUF of the given quant type (e.g. "q8_0",
+// "q4_k"), optionally baking in a VAE.
+func Quantize(inputPath, vaePath, outputPath, quantType string) error {
+	t, ok := quantTypes[strings.ToLower(quantType)]
+	if !ok {
+		return fmt.Errorf("sdcpp: unknown quant type %q", quantType)
+	}
+	// sd.cpp's convert wraps these in std::string, so they must not be NULL —
+	// pass empty C strings when absent.
+	cIn := C.CString(inputPath)
+	defer C.free(unsafe.Pointer(cIn))
+	cOut := C.CString(outputPath)
+	defer C.free(unsafe.Pointer(cOut))
+	cVae := C.CString(vaePath)
+	defer C.free(unsafe.Pointer(cVae))
+	cRules := C.CString("")
+	defer C.free(unsafe.Pointer(cRules))
+	if !bool(C.convert(cIn, cVae, cOut, t, cRules, C.bool(true))) {
+		return fmt.Errorf("sdcpp: quantization to %s failed", quantType)
+	}
+	return nil
+}
 
 // Info returns build/system info from the linked stable-diffusion.cpp runtime.
 func Info() string {
