@@ -68,7 +68,10 @@ func Default() []Entry {
 			Name: "animagine-xl-4", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "Fair AI Public License 1.0-SD",
 			MinRAMGB: 16, RecRAMGB: 32,
-			Source:   Source{HF: "cagliostrolab/animagine-xl-4.0", VAE: "madebyollin/sdxl-vae-fp16-fix"},
+			Source: Source{
+				HF:  "cagliostrolab/animagine-xl-4.0/animagine-xl-4.0.safetensors",
+				VAE: "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
+			},
 			ClipSkip: 2, Notes: "Anime SDXL, retrained from SDXL 1.0.",
 		},
 		{

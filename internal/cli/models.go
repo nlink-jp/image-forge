@@ -121,6 +121,7 @@ func modelsPull(args []string) error {
 		prof    profile.Profile
 		rating  profile.Rating
 		license string
+		vaeSrc  string
 		regName = *nameOverride
 		known   bool
 	)
@@ -140,7 +141,7 @@ func modelsPull(args []string) error {
 		default:
 			return fmt.Errorf("models pull: catalog entry %q has no downloadable source", e.Name)
 		}
-		prof, rating, license = e.Profile(), e.Rating, e.License
+		prof, rating, license, vaeSrc = e.Profile(), e.Rating, e.License, e.Source.VAE
 		if regName == "" {
 			regName = e.Name
 		}
@@ -179,11 +180,27 @@ func modelsPull(args []string) error {
 		return err
 	}
 
+	// Fetch the dedicated VAE too (e.g. the SDXL fp16-fix), so the gotcha stays
+	// hidden from the user.
+	var vaePath string
+	if vaeSrc != "" {
+		if vURL, vName, verr := download.Resolve("hf:" + vaeSrc); verr == nil {
+			vDest := filepath.Join(store.ModelsDir(), vName)
+			fmt.Fprintf(os.Stderr, "pulling VAE %s\n", vName)
+			if err := download.Fetch(vURL, vDest, os.Getenv("HF_TOKEN"), nil); err != nil {
+				return fmt.Errorf("models pull: VAE download: %w", err)
+			}
+			vaePath = vDest
+		} else {
+			fmt.Fprintf(os.Stderr, "note: VAE source %q not auto-pullable (%v); skipping\n", vaeSrc, verr)
+		}
+	}
+
 	reg, err := store.Load()
 	if err != nil {
 		return err
 	}
-	reg.Add(store.InstalledModel{Name: regName, Path: dest, Profile: prof, Rating: rating, License: license})
+	reg.Add(store.InstalledModel{Name: regName, Path: dest, VAEPath: vaePath, Profile: prof, Rating: rating, License: license})
 	if err := reg.Save(); err != nil {
 		return err
 	}

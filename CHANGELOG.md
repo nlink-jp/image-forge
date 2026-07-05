@@ -38,6 +38,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
   prefix, negative handling); explicit flags override. `--model-path` bypasses the
   registry. Verified E2E (import sd15 → `gen -m sd15` with only `--steps` set → the
   SD15 profile filled 512×512 / euler_a / clip-skip 1).
+- **`models pull` auto-downloads the dedicated VAE** (e.g. the SDXL fp16-fix) and
+  attaches it, hiding that gotcha; catalog entries are file-qualified HF refs.
+- **SDXL flow validated on the real target**: `models pull animagine-xl-4
+  --allow-nsfw` (6.5 GB checkpoint + fp16-fix VAE) → `gen -m animagine-xl-4` with
+  only prompt/negative auto-filled clip-skip 2 / 1024×1024 / euler_a / fp16-fix VAE,
+  producing a correct 1024×1024 anime render on M2 Max (~1:47, no black-image NaN).
 
 ### Notes / Known limitations
 - `models quantize` is a stub; Civitai token support and automatic VAE download are
