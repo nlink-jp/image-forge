@@ -17,7 +17,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - Engine interface (`internal/engine`) with a toolchain-less stub; the real
   stable-diffusion.cpp CGO binding lands under the `cgo_sdcpp` build tag.
 - RFP (`docs/{ja,en}`) and ADR-0001 (engine embedding via CGO static link).
+- `third_party/stable-diffusion.cpp` submodule (master-758) + `make deps` to build
+  ggml/sd.cpp static libraries with the Metal backend.
+- **Build bring-up spike (ADR-0001) proven**: `make build-engine` statically links
+  sd.cpp + ggml + Metal into a single 4.7 MB binary (system dylibs/frameworks only).
+  `image-forge version` calls `sd_get_system_info()` via CGO and initializes Metal
+  (verified on Apple M2 Max). The project's highest-risk task is de-risked.
 
 ### Notes
-- The diffusion runtime is not wired yet — `gen` / `models` / `serve` are scaffold
-  stubs. Next: the build bring-up spike (CGO × Metal × ggml static link).
+- Generation is not wired yet — `gen` / `models` / `serve` are scaffold stubs. Next:
+  wire `new_sd_ctx` / `generate_image` into the engine.
+- Metal cold-load is ~8.5 s (one-time), reinforcing the value of the resident
+  `serve` mode (load model/device once).

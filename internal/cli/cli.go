@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/nlink-jp/image-forge/internal/engine"
 )
 
 // ErrNotImplemented marks scaffold subcommands that are not wired yet.
@@ -27,6 +29,7 @@ func Run(version string, args []string) error {
 		return runServe(args[1:])
 	case "version", "--version", "-v":
 		fmt.Fprintln(os.Stdout, "image-forge", version)
+		fmt.Fprintln(os.Stdout, engine.Info())
 		return nil
 	case "help", "--help", "-h":
 		usage(os.Stdout)

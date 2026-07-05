@@ -13,3 +13,6 @@ var ErrNoRuntime = errors.New("this build has no diffusion runtime: build with -
 func New() (Engine, error) {
 	return nil, ErrNoRuntime
 }
+
+// Info reports that no diffusion runtime is linked into this build.
+func Info() string { return "engine: none (built without cgo_sdcpp)" }

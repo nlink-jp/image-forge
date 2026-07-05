@@ -42,10 +42,15 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
 
 - **Toolchain for the engine build**: `cmake` (`brew install cmake`) and the Xcode
   **Metal Toolchain** (`xcodebuild -downloadComponent MetalToolchain`) are required
-  for `make build-engine`. Neither is needed for scaffold work.
-- **CGO static link is the biggest risk** — Metal shader embedding + ggml static
-  link. The build bring-up spike is the first Phase 1 milestone; de-risk CPU-only
-  first, then add Metal.
+  for `make deps` / `make build-engine`. Neither is needed for scaffold work.
+- **CGO static link is proven** (ADR-0001): `make build-engine` links sd.cpp + ggml
+  + Metal into one 4.7 MB binary (verified on M2 Max, `image-forge version` inits
+  Metal). `make deps` builds the sd.cpp static libs; the CGO flags live in
+  `internal/engine/engine_sdcpp.go` (paths via `${SRCDIR}`).
+- **Metal cold-load ~8.5 s** (one-time) — a reason the resident `serve` mode loads
+  the model/device once.
+- **`go test ./...` must exclude `third_party/`** — the vendored submodule carries
+  stray Go files (libwebp swig). Use `make test` / `make vet` (they filter it out).
 - **Models are never bundled/redistributed.** Users download; the catalog only
   points at sources and surfaces license + content rating.
 - **NSFW is opt-in.** `questionable`/`explicit` entries need `--allow-nsfw` / config.
