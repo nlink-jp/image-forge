@@ -12,8 +12,8 @@ users never hand-tune them. Series: **util-series**. Local-diffusion counterpart
 Status: **Phase 1 done.** `gen` txt2img + img2img (sd.cpp via CGO), `models`
 (list/import/pull/quantize/rm) with profile auto-application, and the resident
 `serve` mode are wired and verified E2E on M2 Max (SD1.5 + Animagine XL 4.0 / SDXL,
-incl. q8_0 quantization). Next: LoRA real-file validation; Phase 3 (release). Full
-design: `docs/{ja,en}/image-forge-rfp*`.
+incl. q8_0 quantization and LCM-LoRA). Next: Phase 3 (release). Full design:
+`docs/{ja,en}/image-forge-rfp*`.
 
 ## Build & test
 
@@ -59,6 +59,10 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   the model/device once.
 - **`go test ./...` must exclude `third_party/`** — the vendored submodule carries
   stray Go files (libwebp swig). Use `make test` / `make vet` (they filter it out).
+- **cgo pointer rule**: any array/struct whose pointer is stored inside a C struct
+  passed to C (e.g. `g.loras`, `g.init_image.data`) must be C-allocated
+  (`C.malloc`), never a Go slice — else cgo panics with "Go pointer to unpinned Go
+  pointer". LoRA validated via LCM-LoRA (coherent 4-step gen only with the LoRA).
 - **Models are never bundled/redistributed.** Users download; the catalog only
   points at sources and surfaces license + content rating.
 - **NSFW is opt-in.** `questionable`/`explicit` entries need `--allow-nsfw` / config.

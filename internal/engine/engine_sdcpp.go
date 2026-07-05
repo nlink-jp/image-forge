@@ -166,17 +166,20 @@ func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event
 	}
 	g.batch_count = C.int(batch)
 
-	// LoRAs: the struct fields are C pointers, so passing the Go backing array to
-	// C is allowed; keep the CStrings alive across the call.
-	var cloras []C.sd_lora_t
-	for _, l := range req.LoRAs {
-		cPath := C.CString(l.Path)
-		defer C.free(unsafe.Pointer(cPath))
-		cloras = append(cloras, C.sd_lora_t{path: cPath, multiplier: C.float(l.Weight)})
-	}
-	if len(cloras) > 0 {
-		g.loras = &cloras[0]
-		g.lora_count = C.uint32_t(len(cloras))
+	// LoRAs: allocate the array in C memory. If it lived in a Go slice, passing
+	// &g (whose g.loras would then be a Go pointer) to C would trip the cgo
+	// pointer checker ("Go pointer to unpinned Go pointer").
+	if n := len(req.LoRAs); n > 0 {
+		arr := (*C.sd_lora_t)(C.malloc(C.size_t(n) * C.size_t(unsafe.Sizeof(C.sd_lora_t{}))))
+		defer C.free(unsafe.Pointer(arr))
+		slot := unsafe.Slice(arr, n)
+		for i, l := range req.LoRAs {
+			cPath := C.CString(l.Path)
+			defer C.free(unsafe.Pointer(cPath))
+			slot[i] = C.sd_lora_t{path: cPath, multiplier: C.float(l.Weight)}
+		}
+		g.loras = arr
+		g.lora_count = C.uint32_t(n)
 	}
 
 	// img2img: load the init image and match the output size to it.

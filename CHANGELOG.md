@@ -57,11 +57,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
   and registers the result with the same profile. Verified: Animagine XL 4.0 6.5 GB
   → 4.0 GB q8_0 → correct 1024×1024 render (baked fp16-fix VAE, no black image).
 
+### Fixed
+- **cgo pointer panic when applying LoRAs** ("Go pointer to unpinned Go pointer"):
+  the LoRA array must live in C memory, not a Go slice, so `&g` passed to
+  `generate_image` holds no Go pointers. LoRA (`--lora <path>:<weight>`) is now
+  validated E2E with LCM-LoRA — at 4 steps / cfg 1 the output is coherent only with
+  the LoRA applied (incoherent without it).
+
 ### Notes / Known limitations
 - Civitai token support is deferred; catalog entries whose HF source is repo-only
   (no file) are not yet directly pullable (use `models import`).
-- LoRA is wired (`--lora <path>:<weight>`) but not yet validated against a real LoRA
-  file. inpaint and ControlNet are not wired yet.
+- inpaint and ControlNet are not wired yet.
 - Progress events currently reflect sd.cpp's internal phases (text encoder / sampler /
   VAE), so the `step X/Y` denominator changes between phases — to be normalized to
   sampling steps.
