@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	_ "image/jpeg" // register JPEG decoder for init images
 	"image/png"
 	"os"
 	"runtime/cgo"
@@ -64,9 +65,6 @@ func goProgress(step, steps C.int, t C.float, data unsafe.Pointer) {
 // Generate renders a txt2img request. The caller must read from events
 // concurrently (it is used both for load/done and for step progress).
 func (e *sdEngine) Generate(ctx context.Context, req Request, events chan<- Event) error {
-	if req.InitImage != "" {
-		return errors.New("sdcpp: img2img not wired yet")
-	}
 	if req.ModelPath == "" {
 		return errors.New("sdcpp: a model path is required (-model)")
 	}
@@ -141,6 +139,21 @@ func (e *sdEngine) Generate(ctx context.Context, req Request, events chan<- Even
 		g.lora_count = C.uint32_t(len(cloras))
 	}
 
+	// img2img: load the init image and match the output size to it.
+	if req.InitImage != "" {
+		ci, freeImg, err := loadInitImage(req.InitImage)
+		if err != nil {
+			return fmt.Errorf("sdcpp: init image: %w", err)
+		}
+		defer freeImg()
+		g.init_image = ci
+		g.width = C.int(ci.width)
+		g.height = C.int(ci.height)
+		if req.Strength > 0 {
+			g.strength = C.float(req.Strength)
+		}
+	}
+
 	h := cgo.NewHandle(events)
 	defer h.Delete()
 	C.ifg_set_progress(unsafe.Pointer(h))
@@ -164,6 +177,42 @@ func (e *sdEngine) Generate(ctx context.Context, req Request, events chan<- Even
 		events <- Event{Kind: "done", Progress: 1, Output: path}
 	}
 	return nil
+}
+
+// loadInitImage decodes a PNG/JPEG file into an RGB sd_image_t backed by
+// C memory. The returned func frees that memory; call it after generate_image.
+func loadInitImage(path string) (C.sd_image_t, func(), error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return C.sd_image_t{}, func() {}, err
+	}
+	defer f.Close()
+	img, _, err := image.Decode(f)
+	if err != nil {
+		return C.sd_image_t{}, func() {}, err
+	}
+	b := img.Bounds()
+	w, hgt := b.Dx(), b.Dy()
+	buf := C.malloc(C.size_t(w * hgt * 3))
+	if buf == nil {
+		return C.sd_image_t{}, func() {}, errors.New("out of memory")
+	}
+	pix := unsafe.Slice((*byte)(buf), w*hgt*3)
+	i := 0
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			r, g, bl, _ := img.At(x, y).RGBA()
+			pix[i], pix[i+1], pix[i+2] = byte(r>>8), byte(g>>8), byte(bl>>8)
+			i += 3
+		}
+	}
+	ci := C.sd_image_t{
+		width:   C.uint32_t(w),
+		height:  C.uint32_t(hgt),
+		channel: 3,
+		data:    (*C.uint8_t)(buf),
+	}
+	return ci, func() { C.free(buf) }, nil
 }
 
 // saveImage encodes an sd_image_t (RGB/RGBA/gray) to a PNG file.

@@ -44,12 +44,15 @@ project adheres to [Semantic Versioning](https://semver.org/).
   --allow-nsfw` (6.5 GB checkpoint + fp16-fix VAE) → `gen -m animagine-xl-4` with
   only prompt/negative auto-filled clip-skip 2 / 1024×1024 / euler_a / fp16-fix VAE,
   producing a correct 1024×1024 anime render on M2 Max (~1:47, no black-image NaN).
+- **img2img**: `gen --init <PNG/JPEG> --strength <0..1>` loads the init image and
+  matches the output size to it. Verified E2E (sd15, apple.png → guided transform).
 
 ### Notes / Known limitations
-- `models quantize` is a stub; Civitai token support and automatic VAE download are
-  deferred; catalog entries whose HF source is repo-only (no file) are not yet
-  directly pullable (use `models import`).
-- `serve` and img2img / inpaint / ControlNet are not wired yet.
+- `models quantize` is a stub; Civitai token support is deferred; catalog entries
+  whose HF source is repo-only (no file) are not yet directly pullable (use `models
+  import`).
+- LoRA is wired (`--lora <path>:<weight>`) but not yet validated against a real LoRA
+  file. `serve`, inpaint, and ControlNet are not wired yet.
 - Progress events currently reflect sd.cpp's internal phases (text encoder / sampler /
   VAE), so the `step X/Y` denominator changes between phases — to be normalized to
   sampling steps.

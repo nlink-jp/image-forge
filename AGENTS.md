@@ -9,10 +9,10 @@ resolution, sampler, prediction type, quantization) inside **model profiles** so
 users never hand-tune them. Series: **util-series**. Local-diffusion counterpart to
 `gem-image` (cloud Gemini).
 
-Status: **Phase 1 in progress.** `gen` txt2img (sd.cpp via CGO) and `models`
-(list/import/pull/rm) with profile auto-application are wired and verified E2E on
-M2 Max (`gen -m sd15`). Next: `models quantize`, img2img, serve. Full design:
-`docs/{ja,en}/image-forge-rfp*`.
+Status: **Phase 1 in progress.** `gen` txt2img + img2img (sd.cpp via CGO) and
+`models` (list/import/pull/rm) with profile auto-application are wired and verified
+E2E on M2 Max (SD1.5 and Animagine XL 4.0 / SDXL). Next: LoRA real-file validation,
+`models quantize`, serve. Full design: `docs/{ja,en}/image-forge-rfp*`.
 
 ## Build & test
 

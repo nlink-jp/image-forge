@@ -34,6 +34,8 @@ func runGen(args []string) error {
 		sampler   = fs.String("sampler", "", "sampler (overrides the profile)")
 		clipSkip  = fs.Int("clip-skip", 0, "CLIP skip (overrides the profile)")
 		batch     = fs.Int("batch", 1, "number of images")
+		initImg   = fs.String("init", "", "init image for img2img (PNG/JPEG)")
+		strength  = fs.Float64("strength", 0.6, "img2img denoise strength, 0..1 (with --init)")
 	)
 	var loraArgs multiFlag
 	fs.Var(&loraArgs, "lora", "LoRA as <path>:<weight> (repeatable)")
@@ -98,6 +100,8 @@ func runGen(args []string) error {
 		VAEPath:   vaePath,
 		LoRAs:     loras,
 		Output:    *out,
+		InitImage: *initImg,
+		Strength:  *strength,
 		ClipSkip:  pickInt(set["clip-skip"], *clipSkip, prof.ClipSkip),
 		Steps:     pickInt(set["steps"], *steps, prof.Steps),
 		Width:     pickInt(set["W"], *width, prof.Width),
