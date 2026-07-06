@@ -34,6 +34,7 @@ func runGen(args []string) error {
 		batch     = fs.Int("batch", 1, "number of images")
 		initImg   = fs.String("init", "", "init image for img2img (PNG/JPEG)")
 		strength  = fs.Float64("strength", 0.6, "img2img denoise strength, 0..1 (with --init)")
+		maskImg   = fs.String("mask", "", "inpaint mask, same size as --init (white=regenerate, black=keep)")
 	)
 	var loraArgs multiFlag
 	fs.Var(&loraArgs, "lora", "LoRA as <path>:<weight> (repeatable)")
@@ -98,6 +99,7 @@ func runGen(args []string) error {
 		ov.VAE = vae
 	}
 	req := applyProfile(path, regVAE, *prompt, *seed, *batch, *initImg, *strength, loras, outPath, prof, ov)
+	req.Mask = *maskImg
 
 	sess, err := engine.Open(path, req.VAEPath)
 	if err != nil {

@@ -182,7 +182,7 @@ func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event
 		g.lora_count = C.uint32_t(n)
 	}
 
-	// img2img: load the init image and match the output size to it.
+	// img2img / inpaint: load the init image and match the output size to it.
 	if req.InitImage != "" {
 		ci, freeImg, err := loadInitImage(req.InitImage)
 		if err != nil {
@@ -195,6 +195,20 @@ func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event
 		if req.Strength > 0 {
 			g.strength = C.float(req.Strength)
 		}
+		if req.Mask != "" {
+			cm, freeMask, err := loadMaskImage(req.Mask)
+			if err != nil {
+				return fmt.Errorf("sdcpp: mask image: %w", err)
+			}
+			defer freeMask()
+			if cm.width != ci.width || cm.height != ci.height {
+				return fmt.Errorf("sdcpp: mask %dx%d must match the init image %dx%d",
+					int(cm.width), int(cm.height), int(ci.width), int(ci.height))
+			}
+			g.mask_image = cm
+		}
+	} else if req.Mask != "" {
+		return errors.New("sdcpp: --mask requires --init (inpaint edits an existing image)")
 	}
 
 	h := cgo.NewHandle(events)
@@ -255,6 +269,37 @@ func loadInitImage(path string) (C.sd_image_t, func(), error) {
 		channel: 3,
 		data:    (*C.uint8_t)(buf),
 	}
+	return ci, func() { C.free(buf) }, nil
+}
+
+// loadMaskImage decodes a PNG/JPEG mask into a 1-channel sd_image_t (white =
+// regenerate, black = keep), backed by C memory freed via the returned func.
+func loadMaskImage(path string) (C.sd_image_t, func(), error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return C.sd_image_t{}, func() {}, err
+	}
+	defer f.Close()
+	img, _, err := image.Decode(f)
+	if err != nil {
+		return C.sd_image_t{}, func() {}, err
+	}
+	b := img.Bounds()
+	w, hgt := b.Dx(), b.Dy()
+	buf := C.malloc(C.size_t(w * hgt))
+	if buf == nil {
+		return C.sd_image_t{}, func() {}, errors.New("out of memory")
+	}
+	pix := unsafe.Slice((*byte)(buf), w*hgt)
+	i := 0
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			r, _, _, _ := img.At(x, y).RGBA()
+			pix[i] = byte(r >> 8)
+			i++
+		}
+	}
+	ci := C.sd_image_t{width: C.uint32_t(w), height: C.uint32_t(hgt), channel: 1, data: (*C.uint8_t)(buf)}
 	return ci, func() { C.free(buf) }, nil
 }
 

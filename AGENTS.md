@@ -9,11 +9,11 @@ resolution, sampler, prediction type, quantization) inside **model profiles** so
 users never hand-tune them. Series: **util-series**. Local-diffusion counterpart to
 `gem-image` (cloud Gemini).
 
-Status: **Phase 1 done.** `gen` txt2img + img2img (sd.cpp via CGO), `models`
-(list/import/pull/quantize/rm) with profile auto-application, and the resident
-`serve` mode are wired and verified E2E on M2 Max (SD1.5 + Animagine XL 4.0 / SDXL,
-incl. q8_0 quantization and LCM-LoRA). Next: Phase 3 (release). Full design:
-`docs/{ja,en}/image-forge-rfp*`.
+Status: **v0.1.0 released** (public, signed + notarized). **Phase 2 in progress:**
+inpaint (`gen --init --mask`) wired + E2E-verified. `gen` txt2img/img2img/inpaint/
+LoRA, `models` list/import/pull/quantize/rm, resident `serve`, config.toml — all E2E
+on M2 Max (SD1.5 + Animagine XL / SDXL, q8_0, LCM-LoRA). Next Phase 2: ControlNet,
+Civitai token, catalog file-qualify, v-pred. Full design: `docs/{ja,en}/image-forge-rfp*`.
 
 ## Build & test
 

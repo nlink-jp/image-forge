@@ -28,6 +28,7 @@ type serveRequest struct {
 	ClipSkip  *int     `json:"clip_skip,omitempty"`
 	Batch     *int     `json:"batch,omitempty"`
 	Init      string   `json:"init,omitempty"`
+	Mask      string   `json:"mask,omitempty"`
 	Strength  *float64 `json:"strength,omitempty"`
 	LoRAs     []string `json:"loras,omitempty"` // "path:weight"
 }
@@ -99,6 +100,7 @@ func runServe(args []string) error {
 			ClipSkip: r.ClipSkip, VAE: r.VAE,
 		}
 		req := applyProfile(path, regVAE, r.Prompt, seed, batch, r.Init, strength, loras, out, prof, ov)
+		req.Mask = r.Mask
 
 		// (Re)load the model only when it (or its VAE) changes.
 		if sess == nil || path != curPath || req.VAEPath != curVAE {

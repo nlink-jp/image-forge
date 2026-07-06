@@ -28,6 +28,7 @@ type Request struct {
 	LoRAs     []LoRA
 	InitImage string  // img2img source; empty => txt2img
 	Strength  float64 // img2img denoise strength
+	Mask      string  // inpaint mask (requires InitImage): white = regenerate, black = keep
 	Output    string  // output path; index is inserted before the extension for batches
 }
 

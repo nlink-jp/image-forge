@@ -4,6 +4,15 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **inpaint**: `gen --init <image> --mask <mask>` regenerates only the masked
+  (white) region and preserves the rest (black); the mask is 1-channel and must
+  match the init image size. Works with regular models (masked img2img) — no
+  dedicated inpainting model required. `serve` accepts a `mask` field. Verified E2E
+  (sky-only storm-cloud edit over a preserved meadow).
+
 ## [0.1.0] - 2026-07-06
 
 Initial release — a local diffusion image-generation engine and model-management

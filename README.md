@@ -70,6 +70,7 @@ fp16-fix VAE.
 | `--vae` | external VAE (overrides the profile) |
 | `--batch` | number of images |
 | `--init` `--strength` | img2img: init image + denoise strength (0..1; lower = closer to the init) |
+| `--mask` | inpaint (with `--init`): regenerate only the white region of the mask (same size as the init) |
 | `--lora <path>:<weight>` | apply a LoRA (repeatable) |
 
 Progress is emitted as a JSON-line stream on stderr (`load` / `progress` / `done` /
@@ -112,8 +113,8 @@ image-forge serve < requests.jsonl
 
 Fields: `prompt` (required); `model` or `model_path`; and optional `negative`,
 `seed`, `steps`, `cfg`, `width`, `height`, `sampler`, `clip_skip`, `batch`, `init`,
-`strength`, `loras` (`["path:weight", ...]`), `output`, `vae`. Absent optional
-fields fall back to the model profile.
+`mask`, `strength`, `loras` (`["path:weight", ...]`), `output`, `vae`. Absent
+optional fields fall back to the model profile.
 
 **Output** — one JSON event per line on stdout:
 `{"kind":"ready"}` at start, `{"kind":"load","message":"<path>"}` on a (re)load,
