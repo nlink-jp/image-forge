@@ -4,7 +4,9 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.5.0] - 2026-07-07
+
+ControlNet, more models (Z-Image, SD3.5), and a config-path move.
 
 ### Added
 - **ControlNet**: `gen --control-net <model> --control <image> [--control-strength]
