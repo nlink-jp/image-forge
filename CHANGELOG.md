@@ -4,7 +4,12 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.1.0] - 2026-07-06
+
+Initial release — a local diffusion image-generation engine and model-management
+CLI for macOS (Apple Silicon), built on stable-diffusion.cpp (CGO/Metal, single
+binary). Runs SDXL anime and general models locally with per-model gotchas hidden
+behind profiles.
 
 ### Added
 - Project scaffold: Go module, `make build` → `dist/`, single-binary subcommand
