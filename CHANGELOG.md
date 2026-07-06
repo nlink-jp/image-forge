@@ -16,9 +16,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
 - **Z-Image Turbo** catalog entry + LLM (Qwen) text-encoder support for
   multi-component models (`OpenParams.LLM` → sd.cpp `llm_path`). Verified E2E (bf16
   Qwen). Note: ComfyUI fp8-scaled/mixed encoder builds are not sd.cpp-compatible.
-- **SD3.5 Medium** catalog entry (GGUF diffusion + CLIP-L/G + T5), marked
-  *experimental*: the SD3.5 VAE is gated (needs `HF_TOKEN`) and it is not yet
-  verified in-house.
+- **SD3.5 Medium** catalog entry (GGUF diffusion + CLIP-L/G + T5 + an ungated VAE
+  mirror), multi-component. Verified E2E (renders a legible in-image "SD3.5" sign).
 
 ### Changed
 - **Config file location** is now `~/.config/image-forge/config.toml` (XDG config

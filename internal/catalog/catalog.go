@@ -120,10 +120,9 @@ func Default() []Entry {
 				ClipL:          "Comfy-Org/stable-diffusion-3.5-fp8/text_encoders/clip_l.safetensors",
 				ClipG:          "Comfy-Org/stable-diffusion-3.5-fp8/text_encoders/clip_g.safetensors",
 				T5XXL:          "Comfy-Org/stable-diffusion-3.5-fp8/text_encoders/t5xxl_fp8_e4m3fn.safetensors",
-				VAE:            "stabilityai/stable-diffusion-3.5-medium/vae/diffusion_pytorch_model.safetensors",
+				VAE:            "adamo1139/stable-diffusion-3.5-large-turbo-ungated/vae/diffusion_pytorch_model.safetensors",
 			},
-			Experimental: true,
-			Notes:        "SD3.5 Medium (GGUF diffusion + CLIP-L/G + T5). The VAE is gated — set HF_TOKEN. (ComfyUI fp8-scaled builds are not sd.cpp-compatible.)",
+			Notes: "SD3.5 Medium (GGUF diffusion + CLIP-L/G + T5 + VAE), multi-component. ~2 GB new download (encoders shared with FLUX).",
 		},
 		{
 			Name: "z-image-turbo", Arch: profile.ArchZImage, Prediction: profile.PredEps,
