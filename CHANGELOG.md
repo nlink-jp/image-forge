@@ -4,6 +4,14 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Civitai downloads**: `models pull civitai:<versionId>` (and catalog entries with
+  a Civitai source) resolve the file via the Civitai API and download it with your
+  token (`CIVITAI_TOKEN` or `civitai_token`, required — Civitai returns 401 without
+  one). Tokens are redacted from logs and error messages.
+
 ## [0.2.0] - 2026-07-06
 
 Image editing and v-prediction support.

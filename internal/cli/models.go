@@ -144,6 +144,8 @@ func modelsPull(args []string) error {
 		switch {
 		case e.Source.HF != "":
 			srcRef = "hf:" + e.Source.HF
+		case e.Source.Civitai != "":
+			srcRef = "civitai:" + e.Source.Civitai
 		case e.Source.URL != "":
 			srcRef = e.Source.URL
 		default:
@@ -155,12 +157,31 @@ func modelsPull(args []string) error {
 		}
 	}
 
-	url, filename, err := download.Resolve(srcRef)
-	if err != nil {
-		if known {
-			return fmt.Errorf("models pull: %q is not directly pullable yet (%w); use `models import` with a local file", ref, err)
+	var (
+		url        string
+		filename   string
+		fetchToken string
+	)
+	if strings.HasPrefix(srcRef, "civitai:") {
+		vid := strings.TrimPrefix(srcRef, "civitai:")
+		ctok := conf.ResolveCivitaiToken()
+		if ctok == "" {
+			return fmt.Errorf("models pull: Civitai downloads require a token — set CIVITAI_TOKEN or civitai_token in config")
 		}
-		return err
+		url, filename, err = download.CivitaiResolve(vid, ctok)
+		if err != nil {
+			return err
+		}
+		// token is embedded in the URL; don't also send a Bearer header
+	} else {
+		url, filename, err = download.Resolve(srcRef)
+		if err != nil {
+			if known {
+				return fmt.Errorf("models pull: %q is not directly pullable yet (%w); use `models import` with a local file", ref, err)
+			}
+			return err
+		}
+		fetchToken = conf.ResolveHFToken()
 	}
 	if regName == "" {
 		regName = strings.TrimSuffix(filename, filepath.Ext(filename))
@@ -175,9 +196,10 @@ func modelsPull(args []string) error {
 		return err
 	}
 	dest := filepath.Join(store.ModelsDir(), filename)
-	fmt.Fprintf(os.Stderr, "pulling %s\n  -> %s\n", url, dest)
+	// Log the filename, not the URL — a Civitai download URL carries the token.
+	fmt.Fprintf(os.Stderr, "pulling %s\n  -> %s\n", filename, dest)
 	lastBucket := -1
-	err = download.Fetch(url, dest, conf.ResolveHFToken(), func(f float64) {
+	err = download.Fetch(url, dest, fetchToken, func(f float64) {
 		if b := int(f * 100); b/5 != lastBucket {
 			lastBucket = b / 5
 			fmt.Fprintf(os.Stderr, "\r  %3d%%", int(f*100))

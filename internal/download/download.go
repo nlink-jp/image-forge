@@ -3,9 +3,12 @@
 package download
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -34,6 +37,95 @@ func Resolve(ref string) (url, filename string, err error) {
 	}
 }
 
+type civitaiFile struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Primary     bool   `json:"primary"`
+	DownloadURL string `json:"downloadUrl"`
+}
+
+type civitaiVersion struct {
+	Files []civitaiFile `json:"files"`
+}
+
+// CivitaiResolve looks up a Civitai model-version by id and returns the primary
+// file's download URL (with the token embedded, since Civitai downloads require
+// auth) and its filename. The token is also sent for the metadata request so
+// gated versions resolve.
+func CivitaiResolve(versionID, token string) (downloadURL, filename string, err error) {
+	if strings.TrimSpace(versionID) == "" {
+		return "", "", errors.New("civitai: a model-version id is required")
+	}
+	api := "https://civitai.com/api/v1/model-versions/" + url.PathEscape(versionID)
+	req, err := http.NewRequest(http.MethodGet, api, nil)
+	if err != nil {
+		return "", "", err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", "", fmt.Errorf("civitai: model-version %s: HTTP %d", versionID, resp.StatusCode)
+	}
+	var v civitaiVersion
+	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
+		return "", "", fmt.Errorf("civitai: decode metadata: %w", err)
+	}
+	f := pickCivitaiFile(v.Files)
+	if f == nil {
+		return "", "", fmt.Errorf("civitai: no downloadable file for version %s", versionID)
+	}
+	return civitaiTokenURL(f.DownloadURL, token), f.Name, nil
+}
+
+// pickCivitaiFile chooses the primary file, else the first Model-type file, else
+// the first file with a download URL.
+func pickCivitaiFile(files []civitaiFile) *civitaiFile {
+	for i := range files {
+		if files[i].Primary && files[i].DownloadURL != "" {
+			return &files[i]
+		}
+	}
+	for i := range files {
+		if files[i].Type == "Model" && files[i].DownloadURL != "" {
+			return &files[i]
+		}
+	}
+	for i := range files {
+		if files[i].DownloadURL != "" {
+			return &files[i]
+		}
+	}
+	return nil
+}
+
+// redactURL drops the query string so tokens (e.g. ?token=) never leak into logs
+// or error messages.
+func redactURL(u string) string {
+	if i := strings.IndexByte(u, '?'); i >= 0 {
+		return u[:i] + "?…"
+	}
+	return u
+}
+
+// civitaiTokenURL appends the API token as a query parameter — Civitai's download
+// auth. (It processes the token before redirecting to a signed CDN URL.)
+func civitaiTokenURL(base, token string) string {
+	if token == "" {
+		return base
+	}
+	sep := "?"
+	if strings.Contains(base, "?") {
+		sep = "&"
+	}
+	return base + sep + "token=" + url.QueryEscape(token)
+}
+
 // Fetch downloads url to dest atomically (via a .part file). If the response
 // carries a content length, progress is called with a 0..1 fraction. token, if
 // non-empty, is sent as a bearer token (Hugging Face / Civitai).
@@ -51,7 +143,7 @@ func Fetch(url, dest, token string, progress func(float64)) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download %s: HTTP %d", url, resp.StatusCode)
+		return fmt.Errorf("download %s: HTTP %d", redactURL(url), resp.StatusCode)
 	}
 
 	tmp := dest + ".part"

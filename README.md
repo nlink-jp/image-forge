@@ -81,15 +81,16 @@ Progress is emitted as a JSON-line stream on stderr (`load` / `progress` / `done
 
 ```sh
 image-forge models list                                  # catalog + installed
-image-forge models pull <name | hf:owner/repo/file | url> [--allow-nsfw] [--name N]
+image-forge models pull <name | hf:owner/repo/file | civitai:<versionId> | url> [--allow-nsfw] [--name N]
 image-forge models import <path> [--name N] [--arch A] [--vae V]
 image-forge models quantize <name> --to <type> [--name N]
 image-forge models rm <name>
 ```
 
-- **pull** resolves a catalog name to its Hugging Face source, downloads the
-  checkpoint and (for catalog entries) the dedicated VAE, and registers a profile.
-  You can also pull a raw `hf:owner/repo/file` reference or a direct URL.
+- **pull** resolves a catalog name to its source, downloads the checkpoint and (for
+  catalog entries) the dedicated VAE, and registers a profile. You can also pull a
+  raw `hf:owner/repo/file` reference, a `civitai:<versionId>` reference (the number
+  in a Civitai model's download URL — requires `CIVITAI_TOKEN`), or a direct URL.
 - **import** registers a model file you already have; the architecture is
   auto-detected from the name (override with `--arch sdxl|sd15|sd35|flux|zimage`).
 - **quantize** converts a registered model to a GGUF at `--to` ∈
