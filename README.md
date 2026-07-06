@@ -82,13 +82,19 @@ Progress is emitted as a JSON-line stream on stderr (`load` / `progress` / `done
 ### `models` — manage models
 
 ```sh
-image-forge models list                                  # catalog + installed
+image-forge models list [--catalog|--all] [--json]      # installed (default), catalog, or both
 image-forge models pull <name | hf:owner/repo/file | civitai:<versionId> | url> [--allow-nsfw] [--name N]
 image-forge models import <path> [--name N] [--arch A] [--vae V]
 image-forge models quantize <name> --to <type> [--name N]
 image-forge models rm <name>
 ```
 
+- **list** shows your **installed** models by default (name, arch, rating,
+  license, path). `--catalog` lists the curated catalog instead (with an
+  `installed` column), and `--all` shows both as separate sections. Add `--json`
+  to any of these for machine-readable output (installed → array; catalog →
+  array with an `installed` flag; `--all` → an object with `installed` and
+  `catalog` arrays).
 - **pull** resolves a catalog name to its source, downloads the checkpoint and (for
   catalog entries) the dedicated VAE, and registers a profile. You can also pull a
   raw `hf:owner/repo/file` reference, a `civitai:<versionId>` reference (the number

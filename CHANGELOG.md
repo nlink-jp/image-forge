@@ -4,6 +4,26 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - 2026-07-07
+
+Separate installed / catalog views for `models list`, plus JSON output.
+
+### Added
+- **`models list --json`** (on every mode): machine-readable output. Installed →
+  a JSON array; `--catalog` → an array with an `installed` flag per entry;
+  `--all` → an object with `installed` and `catalog` arrays. Rendered from stable,
+  purpose-built structs, decoupled from the internal registry/catalog types.
+- **`models list --catalog`** lists only the curated catalog (with an `installed`
+  column), and **`models list --all`** shows installed models and the catalog as
+  two clearly-labelled sections. See ADR-0002.
+
+### Changed
+- **`models list` now shows installed models by default** (name, arch, rating,
+  license, path) instead of the old combined catalog+installed table. Use
+  `--catalog` for the catalog and `--all` for both. This separates the two
+  questions — "what do I have" vs. "what can I get" — that the merged table
+  blurred together.
+
 ## [0.7.0] - 2026-07-07
 
 More curated Civitai anime models, and `pull` reuses files you already have.

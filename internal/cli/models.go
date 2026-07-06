@@ -1,10 +1,12 @@
 package cli
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/tabwriter"
 
@@ -22,7 +24,7 @@ func runModels(args []string) error {
 	}
 	switch args[0] {
 	case "list":
-		return modelsList()
+		return modelsList(args[1:])
 	case "import":
 		return modelsImport(args[1:])
 	case "pull":
@@ -36,31 +38,175 @@ func runModels(args []string) error {
 	}
 }
 
-func modelsList() error {
+// catalogView / installedView are the stable, purpose-built shapes rendered by
+// `models list` (as a table or, with --json, as JSON) — decoupled from the
+// internal catalog.Entry / store.InstalledModel structs.
+type catalogView struct {
+	Name           string `json:"name"`
+	Arch           string `json:"arch"`
+	Prediction     string `json:"prediction"`
+	Rating         string `json:"rating"`
+	License        string `json:"license"`
+	MinRAMGB       int    `json:"min_ram_gb"`
+	RecRAMGB       int    `json:"rec_ram_gb"`
+	MultiComponent bool   `json:"multi_component"`
+	NeedsOptIn     bool   `json:"needs_opt_in"`
+	Experimental   bool   `json:"experimental,omitempty"`
+	Installed      bool   `json:"installed"`
+	Notes          string `json:"notes,omitempty"`
+}
+
+type installedView struct {
+	Name           string `json:"name"`
+	Arch           string `json:"arch"`
+	Rating         string `json:"rating,omitempty"`
+	License        string `json:"license,omitempty"`
+	Path           string `json:"path,omitempty"`
+	VAEPath        string `json:"vae_path,omitempty"`
+	MultiComponent bool   `json:"multi_component"`
+	InCatalog      bool   `json:"in_catalog"`
+}
+
+// resolveListMode maps the (possibly conflicting) list flags to which views to
+// render. Default (no flag) is installed-only; --catalog is catalog-only; --all
+// (or both --catalog and --installed) shows both.
+func resolveListMode(all, catalogOnly, installedOnly bool) (showInstalled, showCatalog bool) {
+	showCatalog = all || catalogOnly
+	showInstalled = all || installedOnly || !catalogOnly
+	return
+}
+
+func catalogViews(reg *store.Registry) []catalogView {
+	entries := catalog.Default()
+	out := make([]catalogView, 0, len(entries))
+	for _, e := range entries {
+		_, installed := reg.Get(e.Name)
+		out = append(out, catalogView{
+			Name: e.Name, Arch: string(e.Arch), Prediction: string(e.Prediction),
+			Rating: string(e.Rating), License: e.License,
+			MinRAMGB: e.MinRAMGB, RecRAMGB: e.RecRAMGB,
+			MultiComponent: e.IsMultiComponent(), NeedsOptIn: e.NeedsOptIn(),
+			Experimental: e.Experimental, Installed: installed, Notes: e.Notes,
+		})
+	}
+	return out
+}
+
+func installedViews(reg *store.Registry) []installedView {
+	names := make([]string, 0, len(reg.Models))
+	for n := range reg.Models {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	out := make([]installedView, 0, len(names))
+	for _, n := range names {
+		m := reg.Models[n]
+		_, inCat := catalog.Find(n)
+		out = append(out, installedView{
+			Name: m.Name, Arch: string(m.Profile.Arch), Rating: string(m.Rating),
+			License: m.License, Path: m.Path, VAEPath: m.VAEPath,
+			MultiComponent: m.Path == "", InCatalog: inCat,
+		})
+	}
+	return out
+}
+
+func printJSON(v any) error {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(v)
+}
+
+func modelsList(args []string) error {
+	fs := flag.NewFlagSet("models list", flag.ContinueOnError)
+	catalogOnly := fs.Bool("catalog", false, "list the curated catalog (models available to pull)")
+	installedOnly := fs.Bool("installed", false, "list installed models (the default)")
+	all := fs.Bool("all", false, "list both installed models and the catalog")
+	asJSON := fs.Bool("json", false, "output JSON instead of a table")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
 	reg, err := store.Load()
 	if err != nil {
 		return err
 	}
-	w := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tARCH\tRATING\tRAM\tLICENSE\tSTATUS")
-	for _, e := range catalog.Default() {
-		status := "available"
-		if _, ok := reg.Get(e.Name); ok {
-			status = "installed"
+	showInstalled, showCatalog := resolveListMode(*all, *catalogOnly, *installedOnly)
+	inst := installedViews(reg)
+	cat := catalogViews(reg)
+
+	if *asJSON {
+		switch {
+		case showInstalled && showCatalog:
+			return printJSON(struct {
+				Installed []installedView `json:"installed"`
+				Catalog   []catalogView   `json:"catalog"`
+			}{inst, cat})
+		case showCatalog:
+			return printJSON(cat)
+		default:
+			return printJSON(inst)
 		}
-		if e.Experimental {
-			status += " (experimental)"
+	}
+
+	both := showInstalled && showCatalog
+	if showInstalled {
+		printInstalledTable(inst, both)
+	}
+	if showCatalog {
+		if showInstalled {
+			fmt.Println()
+		}
+		printCatalogTable(cat, both)
+	}
+	return nil
+}
+
+func printInstalledTable(views []installedView, titled bool) {
+	if titled {
+		fmt.Println("INSTALLED")
+	}
+	if len(views) == 0 {
+		fmt.Println("(no models installed — browse the catalog with `models list --catalog`)")
+		return
+	}
+	w := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
+	fmt.Fprintln(w, "NAME\tARCH\tRATING\tLICENSE\tPATH")
+	for _, v := range views {
+		rating := v.Rating
+		if rating == "" {
+			rating = "-"
+		}
+		loc := v.Path
+		if loc == "" {
+			loc = "(multi-component)"
+		}
+		license := v.License
+		if license == "" {
+			license = "-"
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", v.Name, v.Arch, rating, license, loc)
+	}
+	w.Flush()
+}
+
+func printCatalogTable(views []catalogView, titled bool) {
+	if titled {
+		fmt.Println("CATALOG")
+	}
+	w := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
+	fmt.Fprintln(w, "NAME\tARCH\tRATING\tRAM\tLICENSE\tINSTALLED")
+	for _, v := range views {
+		installed := "no"
+		if v.Installed {
+			installed = "yes"
+		}
+		if v.Experimental {
+			installed += " (experimental)"
 		}
 		fmt.Fprintf(w, "%s\t%s\t%s\t%d/%dGB\t%s\t%s\n",
-			e.Name, e.Arch, e.Rating, e.MinRAMGB, e.RecRAMGB, e.License, status)
+			v.Name, v.Arch, v.Rating, v.MinRAMGB, v.RecRAMGB, v.License, installed)
 	}
-	for name, m := range reg.Models {
-		if _, ok := catalog.Find(name); ok {
-			continue // already shown above
-		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t-\t%s\t%s\n", name, m.Profile.Arch, m.Rating, m.License, "installed")
-	}
-	return w.Flush()
+	w.Flush()
 }
 
 func modelsImport(args []string) error {
