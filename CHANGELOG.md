@@ -4,6 +4,16 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **`--scheduler`**: pick the noise schedule (discrete / karras / exponential / ays
+  / …) independently of the sampler; `serve` accepts a `scheduler` field.
+- **`--count N` with random seeds**: generate N images in one loaded session.
+  `--seed -1` draws a fresh random seed per image; files are named
+  `<out>-<seed>.png`, the seed is printed, and it is reported in the `done` event
+  (so `serve` clients get it too).
+
 ## [0.5.0] - 2026-07-07
 
 ControlNet, more models (Z-Image, SD3.5), and a config-path move.

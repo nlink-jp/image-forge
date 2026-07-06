@@ -21,6 +21,7 @@ type Request struct {
 	Width     int
 	Height    int
 	Sampler   string
+	Scheduler string
 	ClipSkip  int
 	Batch     int
 	ModelPath string
@@ -44,6 +45,7 @@ type Event struct {
 	Progress float64 `json:"progress,omitempty"`
 	Message  string  `json:"message,omitempty"`
 	Output   string  `json:"output,omitempty"` // image path on "done"
+	Seed     int64   `json:"seed,omitempty"`   // seed used, on "done"
 }
 
 // OpenParams configures a model load. Set either ModelPath (a single-file

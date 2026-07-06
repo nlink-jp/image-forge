@@ -24,14 +24,16 @@ func runGen(args []string) error {
 		modelPath = fs.String("model-path", "", "path to a model file (bypasses the registry)")
 		vae       = fs.String("vae", "", "external VAE path (overrides the profile)")
 		out       = fs.String("o", "out.png", "output image path")
-		seed      = fs.Int64("seed", 42, "seed")
+		seed      = fs.Int64("seed", 42, "seed (-1 = random)")
+		count     = fs.Int("count", 1, "number of images (with --seed -1, each gets a fresh random seed)")
 		steps     = fs.Int("steps", 0, "sampling steps (overrides the profile)")
 		cfg       = fs.Float64("cfg", 0, "CFG scale (overrides the profile)")
 		width     = fs.Int("W", 0, "width (overrides the profile)")
 		height    = fs.Int("H", 0, "height (overrides the profile)")
 		sampler   = fs.String("sampler", "", "sampler (overrides the profile)")
+		scheduler = fs.String("scheduler", "", "scheduler: discrete|karras|exponential|ays|... (default: sd.cpp default)")
 		clipSkip  = fs.Int("clip-skip", 0, "CLIP skip (overrides the profile)")
-		batch     = fs.Int("batch", 1, "number of images")
+		batch     = fs.Int("batch", 1, "images per run (sd.cpp batch, sequential seeds)")
 		initImg   = fs.String("init", "", "init image for img2img (PNG/JPEG)")
 		strength  = fs.Float64("strength", 0.6, "img2img denoise strength, 0..1 (with --init)")
 		maskImg   = fs.String("mask", "", "inpaint mask, same size as --init (white=regenerate, black=keep)")
@@ -108,6 +110,7 @@ func runGen(args []string) error {
 	req.ControlImage = *ctrlImg
 	req.ControlStrength = *ctrlStr
 	req.Canny = *canny
+	req.Scheduler = *scheduler
 
 	pred := predArg(res.Profile.Prediction)
 	if set["prediction"] {
@@ -129,21 +132,37 @@ func runGen(args []string) error {
 	}
 	defer sess.Close()
 
-	events := make(chan engine.Event, 8)
-	errc := make(chan error, 1)
-	go func() {
-		errc <- sess.Render(context.Background(), req, events)
-		close(events)
-	}()
-
+	n := *count
+	if n < 1 {
+		n = 1
+	}
 	enc := json.NewEncoder(os.Stderr)
-	for ev := range events {
-		_ = enc.Encode(ev)
-		if ev.Kind == "done" {
-			fmt.Fprintln(os.Stdout, ev.Output)
+	for i := 0; i < n; i++ {
+		r := req
+		if *seed < 0 {
+			r.Seed = resolveSeed(-1) // a fresh random seed per image
+		} else {
+			r.Seed = *seed + int64(i) // sequential variations for a fixed seed
+		}
+		r.Output = seededOutput(outPath, r.Seed, n)
+
+		events := make(chan engine.Event, 8)
+		errc := make(chan error, 1)
+		go func() {
+			errc <- sess.Render(context.Background(), r, events)
+			close(events)
+		}()
+		for ev := range events {
+			_ = enc.Encode(ev)
+			if ev.Kind == "done" {
+				fmt.Fprintf(os.Stdout, "%s\tseed=%d\n", ev.Output, ev.Seed)
+			}
+		}
+		if e := <-errc; e != nil {
+			return e
 		}
 	}
-	return <-errc
+	return nil
 }
 
 // multiFlag collects a repeatable string flag.

@@ -23,3 +23,28 @@ func TestParseLoras_BadWeight(t *testing.T) {
 		t.Fatal("expected error for non-numeric weight")
 	}
 }
+
+func TestSeededOutput(t *testing.T) {
+	if got := seededOutput("out.png", 42, 1); got != "out.png" {
+		t.Errorf("count 1 should be unchanged: %q", got)
+	}
+	if got := seededOutput("a/b/pic.png", 7, 3); got != "a/b/pic-7.png" {
+		t.Errorf("count>1: %q", got)
+	}
+	if got := seededOutput("noext", 5, 2); got != "noext-5.png" {
+		t.Errorf("missing ext: %q", got)
+	}
+}
+
+func TestResolveSeed(t *testing.T) {
+	if got := resolveSeed(42); got != 42 {
+		t.Errorf("fixed seed changed: %d", got)
+	}
+	a, b := resolveSeed(-1), resolveSeed(-1)
+	if a < 0 || b < 0 {
+		t.Error("random seed must be non-negative")
+	}
+	if a == b {
+		t.Error("two random seeds should differ")
+	}
+}

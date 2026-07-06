@@ -65,11 +65,12 @@ fp16-fix VAE.
 | `-m` | installed model name (see `models list`) |
 | `--model-path` | path to a model file (bypasses the registry) |
 | `-o` | output path (default `out.png`; batches insert an index) |
-| `--seed` | seed (default 42) |
-| `--steps` `--cfg` `-W` `-H` `--sampler` `--clip-skip` | override the profile |
+| `--seed` | seed (default 42; `-1` = random) |
+| `--count` | number of images; with `--seed -1` each gets a fresh random seed (files named `<out>-<seed>.png`, and the seed is printed) |
+| `--steps` `--cfg` `-W` `-H` `--sampler` `--scheduler` `--clip-skip` | override the profile (`--scheduler`: discrete / karras / exponential / ays / …) |
 | `--vae` | external VAE (overrides the profile) |
 | `--prediction` | force `eps` / `v` (v-prediction) / `auto`; default: from the model profile |
-| `--batch` | number of images |
+| `--batch` | images per run (sd.cpp batch, sequential seeds) |
 | `--init` `--strength` | img2img: init image + denoise strength (0..1; lower = closer to the init) |
 | `--mask` | inpaint (with `--init`): regenerate only the white region of the mask (same size as the init) |
 | `--lora <path>:<weight>` | apply a LoRA (repeatable) |
@@ -118,10 +119,11 @@ image-forge serve < requests.jsonl
 ```
 
 Fields: `prompt` (required); `model` or `model_path`; and optional `negative`,
-`seed`, `steps`, `cfg`, `width`, `height`, `sampler`, `prediction`, `clip_skip`,
-`batch`, `init`, `mask`, `strength`, `loras` (`["path:weight", ...]`),
+`seed`, `steps`, `cfg`, `width`, `height`, `sampler`, `scheduler`, `prediction`,
+`clip_skip`, `batch`, `init`, `mask`, `strength`, `loras` (`["path:weight", ...]`),
 `control_net`, `control`, `control_strength`, `canny`, `output`, `vae`. Absent
-optional fields fall back to the model profile.
+optional fields fall back to the model profile. `seed: -1` draws a random seed
+(reported in the `done` event).
 
 **Output** — one JSON event per line on stdout:
 `{"kind":"ready"}` at start, `{"kind":"load","message":"<path>"}` on a (re)load,

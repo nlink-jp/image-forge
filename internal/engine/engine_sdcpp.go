@@ -190,6 +190,11 @@ func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event
 		g.sample_params.sample_method = C.str_to_sample_method(cs)
 		C.free(unsafe.Pointer(cs))
 	}
+	if req.Scheduler != "" {
+		cs := C.CString(req.Scheduler)
+		g.sample_params.scheduler = C.str_to_scheduler(cs)
+		C.free(unsafe.Pointer(cs))
+	}
 	g.seed = C.int64_t(req.Seed)
 	batch := req.Batch
 	if batch < 1 {
@@ -281,7 +286,7 @@ func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event
 		if err != nil {
 			return err
 		}
-		events <- Event{Kind: "done", Progress: 1, Output: path}
+		events <- Event{Kind: "done", Progress: 1, Output: path, Seed: req.Seed}
 	}
 	return nil
 }

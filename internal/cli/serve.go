@@ -26,6 +26,7 @@ type serveRequest struct {
 	Width      *int     `json:"width,omitempty"`
 	Height     *int     `json:"height,omitempty"`
 	Sampler    *string  `json:"sampler,omitempty"`
+	Scheduler  *string  `json:"scheduler,omitempty"`
 	Prediction *string  `json:"prediction,omitempty"`
 	ClipSkip   *int     `json:"clip_skip,omitempty"`
 	Batch      *int     `json:"batch,omitempty"`
@@ -88,6 +89,7 @@ func runServe(args []string) error {
 		if r.Seed != nil {
 			seed = *r.Seed
 		}
+		seed = resolveSeed(seed) // -1 => a concrete random seed (reported in "done")
 		batch := 1
 		if r.Batch != nil {
 			batch = *r.Batch
@@ -106,6 +108,9 @@ func runServe(args []string) error {
 			ClipSkip: r.ClipSkip, VAE: r.VAE,
 		}
 		req := applyProfile(res.Path, res.VAEPath, r.Prompt, seed, batch, r.Init, strength, loras, out, res.Profile, ov)
+		if r.Scheduler != nil {
+			req.Scheduler = *r.Scheduler
+		}
 		req.Mask = r.Mask
 		req.ControlImage = r.Control
 		req.Canny = r.Canny

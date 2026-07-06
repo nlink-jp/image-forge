@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -9,6 +11,34 @@ import (
 	"github.com/nlink-jp/image-forge/internal/profile"
 	"github.com/nlink-jp/image-forge/internal/store"
 )
+
+// resolveSeed returns a concrete seed: for seed < 0 it draws a random
+// non-negative int64 (so a "random" run is still reported and reproducible);
+// otherwise it returns seed unchanged.
+func resolveSeed(seed int64) int64 {
+	if seed >= 0 {
+		return seed
+	}
+	var b [8]byte
+	_, _ = rand.Read(b[:])
+	return int64(binary.BigEndian.Uint64(b[:]) >> 1)
+}
+
+// seededOutput inserts the seed before the extension when producing more than one
+// image, so each file is traceable to its seed.
+func seededOutput(base string, seed int64, count int) string {
+	if count <= 1 {
+		return base
+	}
+	if base == "" {
+		base = "out.png"
+	}
+	ext := filepath.Ext(base)
+	if ext == "" {
+		ext = ".png"
+	}
+	return fmt.Sprintf("%s-%d%s", strings.TrimSuffix(base, ext), seed, ext)
+}
 
 // predArg maps a profile prediction type to the sd.cpp prediction string that
 // engine.Open expects ("" = auto-detect from the model, "v" = force v-prediction).
