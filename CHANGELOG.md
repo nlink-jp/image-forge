@@ -4,7 +4,9 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.3.0] - 2026-07-07
+
+Civitai downloads and catalog updates.
 
 ### Added
 - **Civitai downloads**: `models pull civitai:<versionId>` (and catalog entries with
