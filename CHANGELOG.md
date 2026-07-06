@@ -56,6 +56,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
   the given quant (q8_0/q4_k/...) via sd.cpp's `convert`, baking in the model's VAE,
   and registers the result with the same profile. Verified: Animagine XL 4.0 6.5 GB
   → 4.0 GB q8_0 → correct 1024×1024 render (baked fp16-fix VAE, no black image).
+- **Config file** (`config.toml`): optional `default_model`, `output`, `allow_nsfw`,
+  and fallback `hf_token` / `civitai_token` (env vars take precedence). Loaded from
+  `$IMAGE_FORGE_HOME/config.toml` (or `$IMAGE_FORGE_CONFIG`); ships a
+  [`config.example.toml`](config.example.toml). `gen` uses `default_model` / `output`
+  when omitted; `models pull` honors `allow_nsfw`. New dep: `github.com/BurntSushi/toml`.
 
 ### Fixed
 - **cgo pointer panic when applying LoRAs** ("Go pointer to unpinned Go pointer"):

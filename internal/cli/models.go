@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/nlink-jp/image-forge/internal/catalog"
+	"github.com/nlink-jp/image-forge/internal/config"
 	"github.com/nlink-jp/image-forge/internal/download"
 	"github.com/nlink-jp/image-forge/internal/engine"
 	"github.com/nlink-jp/image-forge/internal/profile"
@@ -111,11 +112,17 @@ func modelsPull(args []string) error {
 	}
 	ref := args[0]
 	fs := flag.NewFlagSet("models pull", flag.ContinueOnError)
-	allowNSFW := fs.Bool("allow-nsfw", false, "allow pulling questionable/explicit models")
+	allowNSFWFlag := fs.Bool("allow-nsfw", false, "allow pulling questionable/explicit models")
 	nameOverride := fs.String("name", "", "override the registry name")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
+
+	conf, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("models pull: config: %w", err)
+	}
+	allowNSFW := *allowNSFWFlag || conf.AllowNSFW
 
 	srcRef := ref
 	var (
@@ -128,8 +135,8 @@ func modelsPull(args []string) error {
 	)
 	if e, ok := catalog.Find(ref); ok {
 		known = true
-		if e.NeedsOptIn() && !*allowNSFW {
-			return fmt.Errorf("models pull: %q is rated %q; re-run with --allow-nsfw", e.Name, e.Rating)
+		if e.NeedsOptIn() && !allowNSFW {
+			return fmt.Errorf("models pull: %q is rated %q; re-run with --allow-nsfw or set allow_nsfw in config", e.Name, e.Rating)
 		}
 		if e.Experimental {
 			fmt.Fprintf(os.Stderr, "warning: %q is experimental: %s\n", e.Name, e.Notes)
@@ -170,7 +177,7 @@ func modelsPull(args []string) error {
 	dest := filepath.Join(store.ModelsDir(), filename)
 	fmt.Fprintf(os.Stderr, "pulling %s\n  -> %s\n", url, dest)
 	lastBucket := -1
-	err = download.Fetch(url, dest, os.Getenv("HF_TOKEN"), func(f float64) {
+	err = download.Fetch(url, dest, conf.ResolveHFToken(), func(f float64) {
 		if b := int(f * 100); b/5 != lastBucket {
 			lastBucket = b / 5
 			fmt.Fprintf(os.Stderr, "\r  %3d%%", int(f*100))
@@ -188,7 +195,7 @@ func modelsPull(args []string) error {
 		if vURL, vName, verr := download.Resolve("hf:" + vaeSrc); verr == nil {
 			vDest := filepath.Join(store.ModelsDir(), vName)
 			fmt.Fprintf(os.Stderr, "pulling VAE %s\n", vName)
-			if err := download.Fetch(vURL, vDest, os.Getenv("HF_TOKEN"), nil); err != nil {
+			if err := download.Fetch(vURL, vDest, conf.ResolveHFToken(), nil); err != nil {
 				return fmt.Errorf("models pull: VAE download: %w", err)
 			}
 			vaePath = vDest

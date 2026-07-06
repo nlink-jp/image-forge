@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nlink-jp/image-forge/internal/config"
 	"github.com/nlink-jp/image-forge/internal/engine"
 )
 
@@ -50,9 +51,24 @@ func runGen(args []string) error {
 		return err
 	}
 
-	path, regVAE, prof, err := resolveModel(*modelName, *modelPath)
+	conf, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("gen: config: %w", err)
+	}
+
+	// Fall back to the configured default model when none is given.
+	mName := *modelName
+	if mName == "" && *modelPath == "" {
+		mName = conf.DefaultModel
+	}
+	path, regVAE, prof, err := resolveModel(mName, *modelPath)
 	if err != nil {
 		return fmt.Errorf("gen: %w", err)
+	}
+
+	outPath := *out
+	if !set["o"] && conf.Output != "" {
+		outPath = conf.Output
 	}
 
 	// Explicitly-set flags override the profile.
@@ -81,7 +97,7 @@ func runGen(args []string) error {
 	if set["vae"] {
 		ov.VAE = vae
 	}
-	req := applyProfile(path, regVAE, *prompt, *seed, *batch, *initImg, *strength, loras, *out, prof, ov)
+	req := applyProfile(path, regVAE, *prompt, *seed, *batch, *initImg, *strength, loras, outPath, prof, ov)
 
 	sess, err := engine.Open(path, req.VAEPath)
 	if err != nil {

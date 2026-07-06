@@ -1,0 +1,21 @@
+# image-forge configuration — every field is optional; delete what you don't need.
+#
+# Location: $IMAGE_FORGE_HOME/config.toml
+#   (default ~/.local/share/image-forge/config.toml),
+#   or set IMAGE_FORGE_CONFIG to point elsewhere.
+# Copy this file to that location and edit.
+
+# Model used by `gen` when -m / --model-path is omitted.
+default_model = "animagine-xl-4"
+
+# Default output path for `gen` when -o is omitted.
+output = "out.png"
+
+# Allow pulling / using questionable- or explicit-rated models without --allow-nsfw.
+allow_nsfw = false
+
+# API tokens for gated / authenticated downloads. PREFER the environment variables
+# HF_TOKEN / CIVITAI_TOKEN — they take precedence; these are only a fallback.
+# Never commit real tokens.
+# hf_token = "hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+# civitai_token = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

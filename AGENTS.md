@@ -38,6 +38,7 @@ internal/cli/               dispatch (cli.go); gen (gen.go); models (models.go);
 internal/profile/           model profiles, per-arch defaults, arch Detect (the gotcha-hiding core)
 internal/catalog/           curated model catalog (content_rating, license, RAM tier, source) + Profile()
 internal/store/             installed-model registry (JSON) at $IMAGE_FORGE_HOME/registry.json
+internal/config/            optional config.toml (default_model/output/allow_nsfw/tokens; BurntSushi/toml)
 internal/download/          HF (hf:owner/repo/file) / URL fetch with progress; token from caller
 internal/engine/            Session interface (Open loads once, Render renders many); output.go
                             (pure, tested); engine_stub.go (no runtime); engine_sdcpp.go (CGO
