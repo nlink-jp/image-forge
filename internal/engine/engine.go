@@ -29,7 +29,12 @@ type Request struct {
 	InitImage string  // img2img source; empty => txt2img
 	Strength  float64 // img2img denoise strength
 	Mask      string  // inpaint mask (requires InitImage): white = regenerate, black = keep
-	Output    string  // output path; index is inserted before the extension for batches
+
+	ControlImage    string  // ControlNet guidance image (with an OpenParams.ControlNet model)
+	ControlStrength float64 // ControlNet strength
+	Canny           bool    // apply canny edge preprocessing to the control image
+
+	Output string // output path; index is inserted before the extension for batches
 }
 
 // Event is a progress event streamed during generation (serialized as one JSON
@@ -51,6 +56,7 @@ type OpenParams struct {
 	ClipG          string
 	T5XXL          string
 	VAEPath        string
+	ControlNet     string // ControlNet model, loaded alongside the base model
 	Prediction     string
 }
 

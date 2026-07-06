@@ -73,6 +73,7 @@ fp16-fix VAE.
 | `--init` `--strength` | img2img: init image + denoise strength (0..1; lower = closer to the init) |
 | `--mask` | inpaint (with `--init`): regenerate only the white region of the mask (same size as the init) |
 | `--lora <path>:<weight>` | apply a LoRA (repeatable) |
+| `--control-net <model>` `--control <image>` | ControlNet: steer generation by a control image (add `--control-strength`, and `--canny` to edge-preprocess) |
 
 Progress is emitted as a JSON-line stream on stderr (`load` / `progress` / `done` /
 `error`), one event per line; the output path is printed to stdout.
@@ -118,8 +119,9 @@ image-forge serve < requests.jsonl
 
 Fields: `prompt` (required); `model` or `model_path`; and optional `negative`,
 `seed`, `steps`, `cfg`, `width`, `height`, `sampler`, `prediction`, `clip_skip`,
-`batch`, `init`, `mask`, `strength`, `loras` (`["path:weight", ...]`), `output`,
-`vae`. Absent optional fields fall back to the model profile.
+`batch`, `init`, `mask`, `strength`, `loras` (`["path:weight", ...]`),
+`control_net`, `control`, `control_strength`, `canny`, `output`, `vae`. Absent
+optional fields fall back to the model profile.
 
 **Output** — one JSON event per line on stdout:
 `{"kind":"ready"}` at start, `{"kind":"load","message":"<path>"}` on a (re)load,

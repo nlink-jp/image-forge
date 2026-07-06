@@ -33,6 +33,11 @@ type serveRequest struct {
 	Mask       string   `json:"mask,omitempty"`
 	Strength   *float64 `json:"strength,omitempty"`
 	LoRAs      []string `json:"loras,omitempty"` // "path:weight"
+
+	ControlNet      string   `json:"control_net,omitempty"` // ControlNet model path (ctx-level)
+	Control         string   `json:"control,omitempty"`     // control image
+	ControlStrength *float64 `json:"control_strength,omitempty"`
+	Canny           bool     `json:"canny,omitempty"`
 }
 
 // runServe is the resident mode: it loads a model once and renders many requests
@@ -102,6 +107,12 @@ func runServe(args []string) error {
 		}
 		req := applyProfile(res.Path, res.VAEPath, r.Prompt, seed, batch, r.Init, strength, loras, out, res.Profile, ov)
 		req.Mask = r.Mask
+		req.ControlImage = r.Control
+		req.Canny = r.Canny
+		req.ControlStrength = 0.9
+		if r.ControlStrength != nil {
+			req.ControlStrength = *r.ControlStrength
+		}
 
 		pred := predArg(res.Profile.Prediction)
 		if r.Prediction != nil {
@@ -115,9 +126,10 @@ func runServe(args []string) error {
 			ClipG:          res.Components.ClipG,
 			T5XXL:          res.Components.T5XXL,
 			VAEPath:        req.VAEPath,
+			ControlNet:     r.ControlNet,
 			Prediction:     pred,
 		}
-		key := strings.Join([]string{op.ModelPath, op.DiffusionModel, op.ClipL, op.ClipG, op.T5XXL, op.VAEPath, op.Prediction}, "\x00")
+		key := strings.Join([]string{op.ModelPath, op.DiffusionModel, op.ClipL, op.ClipG, op.T5XXL, op.VAEPath, op.ControlNet, op.Prediction}, "\x00")
 
 		// (Re)load the model only when its identity changes.
 		if sess == nil || key != curKey {

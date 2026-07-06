@@ -36,6 +36,10 @@ func runGen(args []string) error {
 		strength  = fs.Float64("strength", 0.6, "img2img denoise strength, 0..1 (with --init)")
 		maskImg   = fs.String("mask", "", "inpaint mask, same size as --init (white=regenerate, black=keep)")
 		predict   = fs.String("prediction", "", "prediction override: eps | v | auto (default: from profile)")
+		ctrlNet   = fs.String("control-net", "", "ControlNet model path (loaded with the base model)")
+		ctrlImg   = fs.String("control", "", "control image for ControlNet (with --control-net)")
+		ctrlStr   = fs.Float64("control-strength", 0.9, "ControlNet strength")
+		canny     = fs.Bool("canny", false, "apply canny edge preprocessing to the control image")
 	)
 	var loraArgs multiFlag
 	fs.Var(&loraArgs, "lora", "LoRA as <path>:<weight> (repeatable)")
@@ -101,6 +105,9 @@ func runGen(args []string) error {
 	}
 	req := applyProfile(res.Path, res.VAEPath, *prompt, *seed, *batch, *initImg, *strength, loras, outPath, res.Profile, ov)
 	req.Mask = *maskImg
+	req.ControlImage = *ctrlImg
+	req.ControlStrength = *ctrlStr
+	req.Canny = *canny
 
 	pred := predArg(res.Profile.Prediction)
 	if set["prediction"] {
@@ -113,6 +120,7 @@ func runGen(args []string) error {
 		ClipG:          res.Components.ClipG,
 		T5XXL:          res.Components.T5XXL,
 		VAEPath:        req.VAEPath,
+		ControlNet:     *ctrlNet,
 		Prediction:     pred,
 	})
 	if err != nil {

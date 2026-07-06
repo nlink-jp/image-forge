@@ -4,6 +4,16 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **ControlNet**: `gen --control-net <model> --control <image> [--control-strength]
+  [--canny]` guides generation by a control image. The ControlNet model loads with
+  the base model; `--canny` runs sd.cpp's edge preprocessor on the control image.
+  `serve` accepts `control_net` / `control` / `control_strength` / `canny`. Verified
+  E2E: a canny control from a red-apple photo steers a txt2img "green apple" to the
+  same silhouette.
+
 ## [0.4.0] - 2026-07-07
 
 Multi-component models (FLUX) and resumable downloads.

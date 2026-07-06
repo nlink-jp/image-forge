@@ -104,6 +104,7 @@ func Open(p OpenParams) (Session, error) {
 	cp.clip_g_path = set(p.ClipG)
 	cp.t5xxl_path = set(p.T5XXL)
 	cp.vae_path = set(p.VAEPath)
+	cp.control_net_path = set(p.ControlNet)
 
 	// Empty prediction leaves the init default (PREDICTION_COUNT = auto-detect);
 	// "v" forces v-prediction for models sd.cpp can't auto-detect.
@@ -238,6 +239,25 @@ func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event
 		}
 	} else if req.Mask != "" {
 		return errors.New("sdcpp: --mask requires --init (inpaint edits an existing image)")
+	}
+
+	// ControlNet: load the guidance image, optionally run canny, and size the
+	// output to it. Requires an OpenParams.ControlNet model at load time.
+	if req.ControlImage != "" {
+		cc, freeCtrl, err := loadInitImage(req.ControlImage)
+		if err != nil {
+			return fmt.Errorf("sdcpp: control image: %w", err)
+		}
+		defer freeCtrl()
+		if req.Canny {
+			C.preprocess_canny(cc, C.float(0.08), C.float(0.08), C.float(0.8), C.float(1.0), C.bool(false))
+		}
+		g.control_image = cc
+		g.width = C.int(cc.width)
+		g.height = C.int(cc.height)
+		if req.ControlStrength > 0 {
+			g.control_strength = C.float(req.ControlStrength)
+		}
 	}
 
 	h := cgo.NewHandle(events)
