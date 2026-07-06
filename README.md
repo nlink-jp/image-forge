@@ -91,6 +91,9 @@ image-forge models rm <name>
   catalog entries) the dedicated VAE, and registers a profile. You can also pull a
   raw `hf:owner/repo/file` reference, a `civitai:<versionId>` reference (the number
   in a Civitai model's download URL — requires `CIVITAI_TOKEN`), or a direct URL.
+  **Multi-component models** (e.g. FLUX) download all their weight files — diffusion
+  model + text encoders + VAE — automatically. Downloads resume and retry, so a
+  dropped connection during a large model doesn't start over.
 - **import** registers a model file you already have; the architecture is
   auto-detected from the name (override with `--arch sdxl|sd15|sd35|flux|zimage`).
 - **quantize** converts a registered model to a GGUF at `--to` ∈

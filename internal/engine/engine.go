@@ -41,6 +41,19 @@ type Event struct {
 	Output   string  `json:"output,omitempty"` // image path on "done"
 }
 
+// OpenParams configures a model load. Set either ModelPath (a single-file
+// checkpoint) or DiffusionModel + the encoders (a multi-component model such as
+// FLUX). VAEPath and Prediction ("" = auto-detect, "eps", "v") are optional.
+type OpenParams struct {
+	ModelPath      string
+	DiffusionModel string
+	ClipL          string
+	ClipG          string
+	T5XXL          string
+	VAEPath        string
+	Prediction     string
+}
+
 // Session is a loaded model, ready to render one or more requests. Open (defined
 // per build tag) creates one. The resident `serve` mode keeps a Session alive
 // across requests to avoid re-loading the model and re-initializing Metal.

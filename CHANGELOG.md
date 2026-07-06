@@ -4,6 +4,20 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Multi-component models**: models assembled from separate weight files
+  (diffusion model + CLIP-L / CLIP-G / T5-XXL encoders + VAE) — e.g. FLUX — are now
+  supported. `models pull flux1-schnell` downloads all components (skipping any
+  already present) and registers them; `gen`/`serve` load them together.
+  `catalog.Source` gains component refs and `engine.Open` takes an `OpenParams`
+  struct with per-component paths. Verified E2E: FLUX schnell renders a
+  photorealistic image with legible in-image text.
+- **Resumable downloads**: `Fetch` resumes a partial `.part` via an HTTP Range
+  request and retries transient failures (with backoff) — large model downloads
+  routinely hit dropped connections.
+
 ## [0.3.0] - 2026-07-07
 
 Civitai downloads and catalog updates.

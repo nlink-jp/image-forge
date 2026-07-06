@@ -141,6 +141,12 @@ func modelsPull(args []string) error {
 		if e.Experimental {
 			fmt.Fprintf(os.Stderr, "warning: %q is experimental: %s\n", e.Name, e.Notes)
 		}
+		if regName == "" {
+			regName = e.Name
+		}
+		if e.IsMultiComponent() {
+			return pullMultiComponent(e, regName, conf)
+		}
 		switch {
 		case e.Source.HF != "":
 			srcRef = "hf:" + e.Source.HF
@@ -235,6 +241,79 @@ func modelsPull(args []string) error {
 		return err
 	}
 	fmt.Printf("installed %q (%s) -> %s\n", regName, prof.Arch, dest)
+	return nil
+}
+
+// pullMultiComponent downloads each weight file of a multi-component model
+// (diffusion + encoders + VAE) and registers it with those component paths.
+func pullMultiComponent(e catalog.Entry, regName string, conf config.Config) error {
+	if err := os.MkdirAll(store.ModelsDir(), 0o755); err != nil {
+		return err
+	}
+	token := conf.ResolveHFToken()
+	get := func(hfRef string) (string, error) {
+		if hfRef == "" {
+			return "", nil
+		}
+		url, name, err := download.Resolve("hf:" + hfRef)
+		if err != nil {
+			return "", err
+		}
+		dest := filepath.Join(store.ModelsDir(), name)
+		if fi, serr := os.Stat(dest); serr == nil && fi.Size() > 0 {
+			fmt.Fprintf(os.Stderr, "have %s (skipping)\n", name)
+			return dest, nil
+		}
+		fmt.Fprintf(os.Stderr, "pulling %s\n", name)
+		last := -1
+		err = download.Fetch(url, dest, token, func(f float64) {
+			if b := int(f * 100); b/5 != last {
+				last = b / 5
+				fmt.Fprintf(os.Stderr, "\r  %3d%%", int(f*100))
+			}
+		})
+		fmt.Fprintln(os.Stderr)
+		return dest, err
+	}
+
+	s := e.Source
+	diff, err := get(s.DiffusionModel)
+	if err != nil {
+		return err
+	}
+	clipL, err := get(s.ClipL)
+	if err != nil {
+		return err
+	}
+	clipG, err := get(s.ClipG)
+	if err != nil {
+		return err
+	}
+	t5, err := get(s.T5XXL)
+	if err != nil {
+		return err
+	}
+	vae, err := get(s.VAE)
+	if err != nil {
+		return err
+	}
+
+	reg, err := store.Load()
+	if err != nil {
+		return err
+	}
+	reg.Add(store.InstalledModel{
+		Name:       regName,
+		VAEPath:    vae,
+		Components: store.Components{DiffusionModel: diff, ClipL: clipL, ClipG: clipG, T5XXL: t5},
+		Profile:    e.Profile(),
+		Rating:     e.Rating,
+		License:    e.License,
+	})
+	if err := reg.Save(); err != nil {
+		return err
+	}
+	fmt.Printf("installed %q (%s, multi-component) -> %s\n", regName, e.Profile().Arch, store.ModelsDir())
 	return nil
 }
 

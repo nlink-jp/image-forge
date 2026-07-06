@@ -11,14 +11,26 @@ import (
 	"github.com/nlink-jp/image-forge/internal/profile"
 )
 
-// InstalledModel is a registered, ready-to-use model.
+// Components are the separate weight files for multi-component models (FLUX,
+// SD3.5, Z-Image), where there is no single all-in-one checkpoint. Paths are
+// absolute local files.
+type Components struct {
+	DiffusionModel string `json:"diffusion_model,omitempty"`
+	ClipL          string `json:"clip_l,omitempty"`
+	ClipG          string `json:"clip_g,omitempty"`
+	T5XXL          string `json:"t5xxl,omitempty"`
+}
+
+// InstalledModel is a registered, ready-to-use model. Either Path (a single-file
+// checkpoint) or Components (multi-component) is set.
 type InstalledModel struct {
-	Name    string          `json:"name"`
-	Path    string          `json:"path"`
-	VAEPath string          `json:"vae_path,omitempty"`
-	Profile profile.Profile `json:"profile"`
-	Rating  profile.Rating  `json:"rating,omitempty"`
-	License string          `json:"license,omitempty"`
+	Name       string          `json:"name"`
+	Path       string          `json:"path"`
+	VAEPath    string          `json:"vae_path,omitempty"`
+	Components Components      `json:"components,omitempty"`
+	Profile    profile.Profile `json:"profile"`
+	Rating     profile.Rating  `json:"rating,omitempty"`
+	License    string          `json:"license,omitempty"`
 }
 
 // Registry is the set of installed models, keyed by name.

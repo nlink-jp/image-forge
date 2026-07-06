@@ -63,7 +63,7 @@ func runGen(args []string) error {
 	if mName == "" && *modelPath == "" {
 		mName = conf.DefaultModel
 	}
-	path, regVAE, prof, err := resolveModel(mName, *modelPath)
+	res, err := resolveModel(mName, *modelPath)
 	if err != nil {
 		return fmt.Errorf("gen: %w", err)
 	}
@@ -99,14 +99,22 @@ func runGen(args []string) error {
 	if set["vae"] {
 		ov.VAE = vae
 	}
-	req := applyProfile(path, regVAE, *prompt, *seed, *batch, *initImg, *strength, loras, outPath, prof, ov)
+	req := applyProfile(res.Path, res.VAEPath, *prompt, *seed, *batch, *initImg, *strength, loras, outPath, res.Profile, ov)
 	req.Mask = *maskImg
 
-	pred := predArg(prof.Prediction)
+	pred := predArg(res.Profile.Prediction)
 	if set["prediction"] {
 		pred = normPrediction(*predict)
 	}
-	sess, err := engine.Open(path, req.VAEPath, pred)
+	sess, err := engine.Open(engine.OpenParams{
+		ModelPath:      res.Path,
+		DiffusionModel: res.Components.DiffusionModel,
+		ClipL:          res.Components.ClipL,
+		ClipG:          res.Components.ClipG,
+		T5XXL:          res.Components.T5XXL,
+		VAEPath:        req.VAEPath,
+		Prediction:     pred,
+	})
 	if err != nil {
 		return err
 	}

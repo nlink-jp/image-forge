@@ -74,30 +74,52 @@ func Info() string {
 
 // Open loads a model into a resident context. The heavy cost (model read + Metal
 // init) is paid here once; Render reuses it.
-func Open(modelPath, vaePath, prediction string) (Session, error) {
-	if modelPath == "" {
-		return nil, errors.New("sdcpp: a model path is required")
+func Open(p OpenParams) (Session, error) {
+	if p.ModelPath == "" && p.DiffusionModel == "" {
+		return nil, errors.New("sdcpp: a model path or diffusion model is required")
 	}
 	var cp C.sd_ctx_params_t
 	C.sd_ctx_params_init(&cp)
-	cModel := C.CString(modelPath)
-	defer C.free(unsafe.Pointer(cModel))
-	cp.model_path = cModel
-	if vaePath != "" {
-		cVAE := C.CString(vaePath)
-		defer C.free(unsafe.Pointer(cVAE))
-		cp.vae_path = cVAE
+
+	// Set each non-empty path; the CStrings must outlive new_sd_ctx, so free them
+	// only after it returns.
+	var frees []unsafe.Pointer
+	set := func(s string) *C.char {
+		if s == "" {
+			return nil
+		}
+		c := C.CString(s)
+		frees = append(frees, unsafe.Pointer(c))
+		return c
 	}
-	// Empty leaves the init default (PREDICTION_COUNT = auto-detect from the model);
+	defer func() {
+		for _, f := range frees {
+			C.free(f)
+		}
+	}()
+
+	cp.model_path = set(p.ModelPath)
+	cp.diffusion_model_path = set(p.DiffusionModel)
+	cp.clip_l_path = set(p.ClipL)
+	cp.clip_g_path = set(p.ClipG)
+	cp.t5xxl_path = set(p.T5XXL)
+	cp.vae_path = set(p.VAEPath)
+
+	// Empty prediction leaves the init default (PREDICTION_COUNT = auto-detect);
 	// "v" forces v-prediction for models sd.cpp can't auto-detect.
-	if prediction != "" {
-		cPred := C.CString(prediction)
+	if p.Prediction != "" {
+		cPred := C.CString(p.Prediction)
 		cp.prediction = C.str_to_prediction(cPred)
 		C.free(unsafe.Pointer(cPred))
 	}
+
 	ctx := C.new_sd_ctx(&cp)
 	if ctx == nil {
-		return nil, fmt.Errorf("sdcpp: failed to load model %q", modelPath)
+		name := p.ModelPath
+		if name == "" {
+			name = p.DiffusionModel
+		}
+		return nil, fmt.Errorf("sdcpp: failed to load model %q", name)
 	}
 	return &sdSession{ctx: ctx}, nil
 }

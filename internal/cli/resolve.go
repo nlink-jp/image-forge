@@ -32,24 +32,32 @@ func normPrediction(s string) string {
 	}
 }
 
-// resolveModel maps a registry name or a direct file path to the model path, its
-// VAE, and the base generation profile.
-func resolveModel(modelName, modelPath string) (path, vae string, prof profile.Profile, err error) {
+// resolved is a model ready to open: a single-file Path or multi-component
+// Components, plus its VAE and base profile.
+type resolved struct {
+	Path       string
+	VAEPath    string
+	Components store.Components
+	Profile    profile.Profile
+}
+
+// resolveModel maps a registry name or a direct file path to a resolved model.
+func resolveModel(modelName, modelPath string) (resolved, error) {
 	switch {
 	case modelName != "":
 		reg, e := store.Load()
 		if e != nil {
-			return "", "", profile.Profile{}, e
+			return resolved{}, e
 		}
 		im, ok := reg.Get(modelName)
 		if !ok {
-			return "", "", profile.Profile{}, fmt.Errorf("model %q is not installed (try: image-forge models pull %s)", modelName, modelName)
+			return resolved{}, fmt.Errorf("model %q is not installed (try: image-forge models pull %s)", modelName, modelName)
 		}
-		return im.Path, im.VAEPath, im.Profile, nil
+		return resolved{Path: im.Path, VAEPath: im.VAEPath, Components: im.Components, Profile: im.Profile}, nil
 	case modelPath != "":
-		return modelPath, "", profile.ArchDefaults(profile.Detect(filepath.Base(modelPath))), nil
+		return resolved{Path: modelPath, Profile: profile.ArchDefaults(profile.Detect(filepath.Base(modelPath)))}, nil
 	default:
-		return "", "", profile.Profile{}, fmt.Errorf("a model is required (-m <name> or --model-path <path>)")
+		return resolved{}, fmt.Errorf("a model is required (-m <name> or --model-path <path>)")
 	}
 }
 

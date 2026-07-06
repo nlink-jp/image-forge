@@ -14,8 +14,9 @@ inpaint (`gen --init --mask`) wired + E2E-verified. `gen` txt2img/img2img/inpain
 LoRA, `models` list/import/pull/quantize/rm, resident `serve`, config.toml — all E2E
 on M2 Max (SD1.5 + Animagine XL / SDXL, q8_0, LCM-LoRA, NoobAI v-pred). v-prediction
 is wired via the profile (`--prediction eps|v|auto` overrides). Civitai downloads
-(`models pull civitai:<versionId>`, `CIVITAI_TOKEN`) are wired. Next Phase 2:
-ControlNet, catalog file-qualify. Full design: `docs/{ja,en}/image-forge-rfp*`.
+and **multi-component models** (FLUX: diffusion + encoders + VAE via `engine.OpenParams`;
+resumable/retrying downloads) are wired and verified E2E. Next Phase 2: ControlNet.
+Full design: `docs/{ja,en}/image-forge-rfp*`.
 
 ## Build & test
 

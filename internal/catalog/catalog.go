@@ -6,11 +6,19 @@ package catalog
 import "github.com/nlink-jp/image-forge/internal/profile"
 
 // Source identifies where a model (and its dedicated VAE) is fetched from.
+// A single-file model sets HF / Civitai / URL; a multi-component model (FLUX,
+// SD3.5, Z-Image) leaves those empty and sets DiffusionModel + the encoders.
 type Source struct {
 	HF      string // "org/repo" or "org/repo/file.safetensors"
 	Civitai string // model or version id
 	URL     string // direct URL
 	VAE     string // dedicated VAE source (e.g. madebyollin/sdxl-vae-fp16-fix)
+
+	// Multi-component: each is an hf owner/repo/file reference.
+	DiffusionModel string
+	ClipL          string
+	ClipG          string
+	T5XXL          string
 }
 
 // Entry is a catalog record.
@@ -32,6 +40,12 @@ type Entry struct {
 // NeedsOptIn reports whether pulling this entry requires an explicit NSFW opt-in.
 func (e Entry) NeedsOptIn() bool {
 	return e.Rating == profile.RatingQuestionable || e.Rating == profile.RatingExplicit
+}
+
+// IsMultiComponent reports whether this model is assembled from separate weight
+// files (diffusion model + encoders + VAE) rather than a single checkpoint.
+func (e Entry) IsMultiComponent() bool {
+	return e.Source.DiffusionModel != ""
 }
 
 // Profile builds the generation profile for this entry: architecture defaults
@@ -88,8 +102,13 @@ func Default() []Entry {
 			Name: "flux1-schnell", Arch: profile.ArchFlux, Prediction: profile.PredEps,
 			Rating: profile.RatingSafe, License: "Apache-2.0",
 			MinRAMGB: 16, RecRAMGB: 32,
-			Source: Source{HF: "black-forest-labs/FLUX.1-schnell"},
-			Notes:  "Apache-2.0, fast. Multi-component (diffusion + CLIP-L + T5 + VAE) — not single-file pullable yet; assemble and `models import --arch flux`.",
+			Source: Source{
+				DiffusionModel: "leejet/FLUX.1-schnell-gguf/flux1-schnell-q4_k.gguf",
+				ClipL:          "comfyanonymous/flux_text_encoders/clip_l.safetensors",
+				T5XXL:          "comfyanonymous/flux_text_encoders/t5xxl_fp8_e4m3fn.safetensors",
+				VAE:            "camenduru/FLUX.1-dev/ae.safetensors", // ungated mirror (bfl repo is gated)
+			},
+			Notes: "Apache-2.0, fast. Multi-component (GGUF diffusion + CLIP-L + T5 + VAE), ~12 GB.",
 		},
 		{
 			Name: "z-image-turbo", Arch: profile.ArchZImage, Prediction: profile.PredEps,

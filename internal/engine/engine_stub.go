@@ -10,7 +10,7 @@ var ErrNoRuntime = errors.New("this build has no diffusion runtime: build with -
 
 // Open reports ErrNoRuntime in toolchain-less builds so scaffold work and CI stay
 // green without cmake/Metal.
-func Open(modelPath, vaePath, prediction string) (Session, error) {
+func Open(p OpenParams) (Session, error) {
 	return nil, ErrNoRuntime
 }
 

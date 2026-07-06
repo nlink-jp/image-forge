@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/nlink-jp/image-forge/internal/engine"
 )
@@ -43,10 +44,8 @@ func runServe(args []string) error {
 	emit := func(ev engine.Event) { _ = enc.Encode(ev) }
 
 	var (
-		sess    engine.Session
-		curPath string
-		curVAE  string
-		curPred string
+		sess   engine.Session
+		curKey string // identity of the loaded model (path/components + vae + prediction)
 	)
 	defer func() {
 		if sess != nil {
@@ -69,7 +68,7 @@ func runServe(args []string) error {
 			continue
 		}
 
-		path, regVAE, prof, err := resolveModel(r.Model, r.ModelPath)
+		res, err := resolveModel(r.Model, r.ModelPath)
 		if err != nil {
 			emit(engine.Event{Kind: "error", Message: err.Error()})
 			continue
@@ -101,27 +100,42 @@ func runServe(args []string) error {
 			Width: r.Width, Height: r.Height, Sampler: r.Sampler,
 			ClipSkip: r.ClipSkip, VAE: r.VAE,
 		}
-		req := applyProfile(path, regVAE, r.Prompt, seed, batch, r.Init, strength, loras, out, prof, ov)
+		req := applyProfile(res.Path, res.VAEPath, r.Prompt, seed, batch, r.Init, strength, loras, out, res.Profile, ov)
 		req.Mask = r.Mask
 
-		pred := predArg(prof.Prediction)
+		pred := predArg(res.Profile.Prediction)
 		if r.Prediction != nil {
 			pred = normPrediction(*r.Prediction)
 		}
 
-		// (Re)load the model only when it (or its VAE / prediction) changes.
-		if sess == nil || path != curPath || req.VAEPath != curVAE || pred != curPred {
+		op := engine.OpenParams{
+			ModelPath:      res.Path,
+			DiffusionModel: res.Components.DiffusionModel,
+			ClipL:          res.Components.ClipL,
+			ClipG:          res.Components.ClipG,
+			T5XXL:          res.Components.T5XXL,
+			VAEPath:        req.VAEPath,
+			Prediction:     pred,
+		}
+		key := strings.Join([]string{op.ModelPath, op.DiffusionModel, op.ClipL, op.ClipG, op.T5XXL, op.VAEPath, op.Prediction}, "\x00")
+
+		// (Re)load the model only when its identity changes.
+		if sess == nil || key != curKey {
 			if sess != nil {
 				sess.Close()
 				sess = nil
 			}
-			emit(engine.Event{Kind: "load", Message: path})
-			s, oerr := engine.Open(path, req.VAEPath, pred)
+			label := op.ModelPath
+			if label == "" {
+				label = op.DiffusionModel
+			}
+			emit(engine.Event{Kind: "load", Message: label})
+			s, oerr := engine.Open(op)
 			if oerr != nil {
 				emit(engine.Event{Kind: "error", Message: oerr.Error()})
 				continue
 			}
-			sess, curPath, curVAE, curPred = s, path, req.VAEPath, pred
+			sess, curKey = s, key
 		}
 
 		events := make(chan engine.Event, 8)
