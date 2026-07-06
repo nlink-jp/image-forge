@@ -20,20 +20,49 @@ type Config struct {
 	CivitaiToken string `toml:"civitai_token"`
 }
 
-// Path is the config file location: $IMAGE_FORGE_CONFIG if set, else
-// <data dir>/config.toml.
+// Path is the config file location, matching the other util-series tools:
+// $IMAGE_FORGE_CONFIG if set, else $XDG_CONFIG_HOME/image-forge/config.toml, else
+// ~/.config/image-forge/config.toml. (The data directory — registry and models —
+// is separate; see store.Home.)
 func Path() string {
 	if p := os.Getenv("IMAGE_FORGE_CONFIG"); p != "" {
 		return p
 	}
+	if x := os.Getenv("XDG_CONFIG_HOME"); x != "" {
+		return filepath.Join(x, "image-forge", "config.toml")
+	}
+	h, _ := os.UserHomeDir()
+	return filepath.Join(h, ".config", "image-forge", "config.toml")
+}
+
+// legacyPath is the pre-v0.5 location ($IMAGE_FORGE_HOME/config.toml, in the data
+// dir), read as a fallback so existing configs keep working.
+func legacyPath() string {
 	return filepath.Join(store.Home(), "config.toml")
 }
 
-// Load reads the config file, returning defaults when it is absent.
+func fileExists(p string) bool { _, err := os.Stat(p); return err == nil }
+
+// resolvePath returns the config file to read: Path() if present; otherwise the
+// legacy location (unless IMAGE_FORGE_CONFIG explicitly pointed elsewhere); else "".
+func resolvePath() string {
+	if p := Path(); fileExists(p) {
+		return p
+	}
+	if os.Getenv("IMAGE_FORGE_CONFIG") != "" {
+		return "" // explicit override that doesn't exist — don't fall back
+	}
+	if lp := legacyPath(); lp != Path() && fileExists(lp) {
+		return lp
+	}
+	return ""
+}
+
+// Load reads the config file, returning defaults when none exists.
 func Load() (Config, error) {
 	c := Config{Output: "out.png"}
-	p := Path()
-	if _, err := os.Stat(p); os.IsNotExist(err) {
+	p := resolvePath()
+	if p == "" {
 		return c, nil
 	}
 	if _, err := toml.DecodeFile(p, &c); err != nil {

@@ -1,8 +1,7 @@
 # image-forge configuration — every field is optional; delete what you don't need.
 #
-# Location: $IMAGE_FORGE_HOME/config.toml
-#   (default ~/.local/share/image-forge/config.toml),
-#   or set IMAGE_FORGE_CONFIG to point elsewhere.
+# Location: ~/.config/image-forge/config.toml
+#   (honors $XDG_CONFIG_HOME and $IMAGE_FORGE_CONFIG).
 # Copy this file to that location and edit.
 
 # Model used by `gen` when -m / --model-path is omitted.
