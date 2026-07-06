@@ -57,3 +57,48 @@ func TestFind(t *testing.T) {
 		t.Error("did not expect to find a bogus entry")
 	}
 }
+
+func TestPonyEntriesCarryScorePrefix(t *testing.T) {
+	// Pony-family SDXL models need the "score_*" quality tags to produce good
+	// output; that gotcha is hidden in the catalog's PromptPrefix and must flow
+	// into the built profile.
+	for _, name := range []string{"t-ponynai3-v7", "t-ponynai3-v5.5", "momoiro-pony"} {
+		e, ok := Find(name)
+		if !ok {
+			t.Fatalf("expected to find %q", name)
+		}
+		if e.PromptPrefix == "" {
+			t.Errorf("%s: expected a Pony score-tag PromptPrefix", name)
+		}
+		if e.Profile().PromptPrefix != e.PromptPrefix {
+			t.Errorf("%s: PromptPrefix did not propagate into the profile", name)
+		}
+	}
+}
+
+func TestCivitaiEntriesUsePullableVersionIDs(t *testing.T) {
+	// The Civitai-sourced entries must reference a version id (numeric), not a
+	// model id, so `models pull <name>` resolves the download via the API.
+	want := map[string]string{
+		"illustrious-xl-v1.1": "1411690",
+		"akium-unmotivated":   "3046291",
+		"t-ponynai3-v7":       "1392706",
+		"t-ponynai3-v5.5":     "593760",
+		"momoiro-pony":        "425904",
+	}
+	for name, id := range want {
+		e, ok := Find(name)
+		if !ok {
+			t.Fatalf("expected to find %q", name)
+		}
+		if e.Source.Civitai != id {
+			t.Errorf("%s: Civitai version id = %q, want %q", name, e.Source.Civitai, id)
+		}
+		if e.Arch != profile.ArchSDXL {
+			t.Errorf("%s: arch = %q, want SDXL", name, e.Arch)
+		}
+		if e.Source.VAE == "" {
+			t.Errorf("%s: SDXL entry should attach the fp16-fix VAE", name)
+		}
+	}
+}

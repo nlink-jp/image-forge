@@ -106,6 +106,13 @@ func modelsImport(args []string) error {
 	return nil
 }
 
+// haveFile reports whether path is an already-downloaded, non-empty file we can
+// reuse instead of re-fetching (checkpoints run to several GB).
+func haveFile(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && fi.Size() > 0
+}
+
 func modelsPull(args []string) error {
 	if len(args) < 1 || strings.HasPrefix(args[0], "-") {
 		return fmt.Errorf("models pull: usage: models pull <name|hf:owner/repo/file|url> [--allow-nsfw] [--name N]")
@@ -202,18 +209,24 @@ func modelsPull(args []string) error {
 		return err
 	}
 	dest := filepath.Join(store.ModelsDir(), filename)
-	// Log the filename, not the URL — a Civitai download URL carries the token.
-	fmt.Fprintf(os.Stderr, "pulling %s\n  -> %s\n", filename, dest)
-	lastBucket := -1
-	err = download.Fetch(url, dest, fetchToken, func(f float64) {
-		if b := int(f * 100); b/5 != lastBucket {
-			lastBucket = b / 5
-			fmt.Fprintf(os.Stderr, "\r  %3d%%", int(f*100))
+	if haveFile(dest) {
+		// Already downloaded (possibly under another registered name) — reuse it
+		// instead of re-fetching several GB.
+		fmt.Fprintf(os.Stderr, "have %s (skipping download)\n", filename)
+	} else {
+		// Log the filename, not the URL — a Civitai download URL carries the token.
+		fmt.Fprintf(os.Stderr, "pulling %s\n  -> %s\n", filename, dest)
+		lastBucket := -1
+		err = download.Fetch(url, dest, fetchToken, func(f float64) {
+			if b := int(f * 100); b/5 != lastBucket {
+				lastBucket = b / 5
+				fmt.Fprintf(os.Stderr, "\r  %3d%%", int(f*100))
+			}
+		})
+		fmt.Fprintln(os.Stderr)
+		if err != nil {
+			return err
 		}
-	})
-	fmt.Fprintln(os.Stderr)
-	if err != nil {
-		return err
 	}
 
 	// Fetch the dedicated VAE too (e.g. the SDXL fp16-fix), so the gotcha stays
@@ -222,9 +235,13 @@ func modelsPull(args []string) error {
 	if vaeSrc != "" {
 		if vURL, vName, verr := download.Resolve("hf:" + vaeSrc); verr == nil {
 			vDest := filepath.Join(store.ModelsDir(), vName)
-			fmt.Fprintf(os.Stderr, "pulling VAE %s\n", vName)
-			if err := download.Fetch(vURL, vDest, conf.ResolveHFToken(), nil); err != nil {
-				return fmt.Errorf("models pull: VAE download: %w", err)
+			if haveFile(vDest) {
+				fmt.Fprintf(os.Stderr, "have VAE %s (skipping download)\n", vName)
+			} else {
+				fmt.Fprintf(os.Stderr, "pulling VAE %s\n", vName)
+				if err := download.Fetch(vURL, vDest, conf.ResolveHFToken(), nil); err != nil {
+					return fmt.Errorf("models pull: VAE download: %w", err)
+				}
 			}
 			vaePath = vDest
 		} else {
@@ -260,7 +277,7 @@ func pullMultiComponent(e catalog.Entry, regName string, conf config.Config) err
 			return "", err
 		}
 		dest := filepath.Join(store.ModelsDir(), name)
-		if fi, serr := os.Stat(dest); serr == nil && fi.Size() > 0 {
+		if haveFile(dest) {
 			fmt.Fprintf(os.Stderr, "have %s (skipping)\n", name)
 			return dest, nil
 		}

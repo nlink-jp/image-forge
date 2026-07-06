@@ -100,6 +100,62 @@ func Default() []Entry {
 			ClipSkip: 2, Notes: "Anime SDXL base with a large LoRA ecosystem.",
 		},
 		{
+			Name: "illustrious-xl-v1.1", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
+			Rating: profile.RatingQuestionable, License: "OnomaAI Illustrious license (verify)",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source: Source{
+				Civitai: "1411690", // https://civitai.com/models/1252206 (v1.1)
+				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
+			},
+			ClipSkip: 2, Notes: "Illustrious XL v1.1 (Civitai): refined v1 anime base. Needs CIVITAI_TOKEN.",
+		},
+		{
+			Name: "akium-unmotivated", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
+			Rating: profile.RatingQuestionable, License: "Illustrious-derived; see Civitai listing",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source: Source{
+				Civitai: "3046291", // https://civitai.com/models/2711644 (v1.0)
+				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
+			},
+			ClipSkip: 2, Notes: "Illustrious-based anime merge (Civitai). Needs CIVITAI_TOKEN.",
+		},
+		{
+			Name: "t-ponynai3-v7", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
+			Rating: profile.RatingQuestionable, License: "Pony-derived; see Civitai listing",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source: Source{
+				Civitai: "1392706", // https://civitai.com/models/317902 (v7)
+				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
+			},
+			ClipSkip:     2,
+			PromptPrefix: "score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up",
+			Notes:        "Pony-based anime merge (Civitai), latest tPonynai3. Score tags auto-prefixed. Needs CIVITAI_TOKEN.",
+		},
+		{
+			Name: "t-ponynai3-v5.5", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
+			Rating: profile.RatingQuestionable, License: "Pony-derived; see Civitai listing",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source: Source{
+				Civitai: "593760", // https://civitai.com/models/317902 (v5.5)
+				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
+			},
+			ClipSkip:     2,
+			PromptPrefix: "score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up",
+			Notes:        "Pony-based anime merge (Civitai), earlier tPonynai3 revision. Score tags auto-prefixed. Needs CIVITAI_TOKEN.",
+		},
+		{
+			Name: "momoiro-pony", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
+			Rating: profile.RatingExplicit, License: "Pony-derived; see Civitai listing",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source: Source{
+				Civitai: "425904", // https://civitai.com/models/381535 (v1.0)
+				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
+			},
+			ClipSkip:     2,
+			PromptPrefix: "score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up",
+			Notes:        "T-ponynai MomoiroPony (Civitai): Pony-based anime merge, NSFW-leaning. Score tags auto-prefixed. Needs CIVITAI_TOKEN.",
+		},
+		{
 			Name: "flux1-schnell", Arch: profile.ArchFlux, Prediction: profile.PredEps,
 			Rating: profile.RatingSafe, License: "Apache-2.0",
 			MinRAMGB: 16, RecRAMGB: 32,

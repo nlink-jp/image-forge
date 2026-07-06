@@ -95,7 +95,9 @@ image-forge models rm <name>
   in a Civitai model's download URL — requires `CIVITAI_TOKEN`), or a direct URL.
   **Multi-component models** (e.g. FLUX) download all their weight files — diffusion
   model + text encoders + VAE — automatically. Downloads resume and retry, so a
-  dropped connection during a large model doesn't start over.
+  dropped connection during a large model doesn't start over, and a checkpoint or
+  VAE you already have (even under another registered name) is reused rather than
+  re-downloaded.
 - **import** registers a model file you already have; the architecture is
   auto-detected from the name (override with `--arch sdxl|sd15|sd35|flux|zimage`).
 - **quantize** converts a registered model to a GGUF at `--to` ∈

@@ -4,6 +4,25 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] - 2026-07-07
+
+More curated Civitai anime models, and `pull` reuses files you already have.
+
+### Added
+- **Five curated Civitai SDXL anime models** (each needs `CIVITAI_TOKEN`):
+  `illustrious-xl-v1.1` and `akium-unmotivated` (Illustrious family), and the
+  Pony family `t-ponynai3-v7`, `t-ponynai3-v5.5`, `momoiro-pony`. Every entry
+  resolves a Civitai version id, attaches the SDXL fp16-fix VAE, and applies
+  clip-skip 2 / 1024 / euler_a; the Pony entries auto-prefix the `score_*`
+  quality tags (the Pony gotcha, hidden in the profile). Verified E2E
+  (`t-ponynai3-v7` → clean 1024×1024 anime render).
+
+### Changed
+- **`models pull` reuses an already-downloaded file** instead of re-fetching it:
+  if the resolved checkpoint or VAE is already present (even registered under a
+  different name), the multi-GB download is skipped. Previously only
+  multi-component pulls skipped existing files.
+
 ## [0.6.0] - 2026-07-07
 
 Independent scheduler and random-seed batch generation.

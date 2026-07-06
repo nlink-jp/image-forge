@@ -90,7 +90,8 @@ image-forge models rm <name>
   `civitai:<versionId>` 参照（Civitai モデルのダウンロードURLの数字。`CIVITAI_TOKEN` 必須）、
   直 URL も可。**多コンポーネントモデル**（FLUX等）は diffusion + テキストエンコーダ +
   VAE の全ファイルを自動でDL。ダウンロードはレジューム＋リトライ対応（大容量DL中に接続が
-  切れても最初からやり直さない）。
+  切れても最初からやり直さない）。既に手元にある同一ファイル（別名で登録済みでも）は
+  再ダウンロードせず再利用する。
 - **import**: 手元のモデルファイルを登録。アーキは名前から自動判定（`--arch
   sdxl|sd15|sd35|flux|zimage` で上書き）。
 - **quantize**: 登録済みモデルを `--to` ∈
