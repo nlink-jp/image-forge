@@ -78,7 +78,10 @@ func Default() []Entry {
 			Name: "illustrious-xl-v1", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "OnomaAI Illustrious license (verify)",
 			MinRAMGB: 16, RecRAMGB: 32,
-			Source:   Source{HF: "OnomaAIResearch/Illustrious-XL-v1.0", VAE: "madebyollin/sdxl-vae-fp16-fix"},
+			Source: Source{
+				HF:  "OnomaAIResearch/Illustrious-XL-v1.0/Illustrious-XL-v1.0.safetensors",
+				VAE: "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
+			},
 			ClipSkip: 2, Notes: "Anime SDXL base with a large LoRA ecosystem.",
 		},
 		{
@@ -86,14 +89,14 @@ func Default() []Entry {
 			Rating: profile.RatingSafe, License: "Apache-2.0",
 			MinRAMGB: 16, RecRAMGB: 32,
 			Source: Source{HF: "black-forest-labs/FLUX.1-schnell"},
-			Notes:  "General high quality, fast, output is yours. Q4 quant on 16GB.",
+			Notes:  "Apache-2.0, fast. Multi-component (diffusion + CLIP-L + T5 + VAE) — not single-file pullable yet; assemble and `models import --arch flux`.",
 		},
 		{
 			Name: "z-image-turbo", Arch: profile.ArchZImage, Prediction: profile.PredEps,
 			Rating: profile.RatingSafe, License: "permissive (verify)",
 			MinRAMGB: 16, RecRAMGB: 32,
 			Source: Source{HF: "Tongyi-MAI/Z-Image-Turbo"},
-			Notes:  "Efficient, fast general model.",
+			Notes:  "Efficient, fast general model. Multi-component (transformer + text encoder + VAE) — not single-file pullable yet; use `models import`.",
 		},
 		{
 			Name: "noobai-xl-vpred", Arch: profile.ArchSDXL, Prediction: profile.PredVPred,

@@ -12,6 +12,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
   token (`CIVITAI_TOKEN` or `civitai_token`, required — Civitai returns 401 without
   one). Tokens are redacted from logs and error messages.
 
+### Changed
+- **Illustrious XL v1.0** is now directly pullable (`models pull illustrious-xl-v1`),
+  file-qualified like Animagine (single-file SDXL + fp16-fix VAE). The FLUX and
+  Z-Image catalog entries now note that they are multi-component (diffusion +
+  encoders + VAE) and need `models import` — single-file pull isn't supported yet.
+
 ## [0.2.0] - 2026-07-06
 
 Image editing and v-prediction support.
