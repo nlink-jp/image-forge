@@ -76,6 +76,26 @@ func TestPonyEntriesCarryScorePrefix(t *testing.T) {
 	}
 }
 
+func TestPhotorealEntriesUseClipSkip1(t *testing.T) {
+	// Photorealistic SDXL models want clip-skip 1, overriding the anime-leaning
+	// SDXL arch default of 2. Verify the override reaches the built profile.
+	for _, name := range []string{"realvisxl-v5", "juggernaut-xl-v9"} {
+		e, ok := Find(name)
+		if !ok {
+			t.Fatalf("expected to find %q", name)
+		}
+		if e.ClipSkip != 1 {
+			t.Errorf("%s: ClipSkip = %d, want 1", name, e.ClipSkip)
+		}
+		if e.Profile().ClipSkip != 1 {
+			t.Errorf("%s: profile ClipSkip = %d, want 1 (override did not propagate)", name, e.Profile().ClipSkip)
+		}
+		if e.Source.VAE == "" {
+			t.Errorf("%s: SDXL entry should attach the fp16-fix VAE", name)
+		}
+	}
+}
+
 func TestCivitaiEntriesUsePullableVersionIDs(t *testing.T) {
 	// The Civitai-sourced entries must reference a version id (numeric), not a
 	// model id, so `models pull <name>` resolves the download via the API.

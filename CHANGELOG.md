@@ -16,6 +16,11 @@ More curated Civitai anime models, and `pull` reuses files you already have.
   clip-skip 2 / 1024 / euler_a; the Pony entries auto-prefix the `score_*`
   quality tags (the Pony gotcha, hidden in the profile). Verified E2E
   (`t-ponynai3-v7` → clean 1024×1024 anime render).
+- **Two curated photorealistic SDXL models** (Hugging Face, ungated, no token):
+  `realvisxl-v5` (RealVis V5.0) and `juggernaut-xl-v9`. Single-file checkpoints
+  with the fp16-fix VAE attached; they override to **clip-skip 1** (the realism
+  default) instead of the anime-leaning SDXL default of 2. Verified E2E
+  (`realvisxl-v5` → a photorealistic 1024×1024 portrait).
 
 ### Changed
 - **`models pull` reuses an already-downloaded file** instead of re-fetching it:

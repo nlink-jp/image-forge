@@ -156,6 +156,28 @@ func Default() []Entry {
 			Notes:        "T-ponynai MomoiroPony (Civitai): Pony-based anime merge, NSFW-leaning. Score tags auto-prefixed. Needs CIVITAI_TOKEN.",
 		},
 		{
+			Name: "realvisxl-v5", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
+			Rating: profile.RatingQuestionable, License: "OpenRAIL++-M",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source: Source{
+				HF:  "SG161222/RealVisXL_V5.0/RealVisXL_V5.0_fp16.safetensors",
+				VAE: "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
+			},
+			ClipSkip: 1, // photorealistic SDXL: clip-skip 1 (not the anime default of 2)
+			Notes:    "Photorealistic SDXL (RealVis V5.0), the realism go-to. NSFW-capable.",
+		},
+		{
+			Name: "juggernaut-xl-v9", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
+			Rating: profile.RatingQuestionable, License: "CreativeML OpenRAIL-M",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source: Source{
+				HF:  "RunDiffusion/Juggernaut-XL-v9/Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
+				VAE: "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
+			},
+			ClipSkip: 1, // photorealistic SDXL: clip-skip 1 (not the anime default of 2)
+			Notes:    "Photorealistic SDXL (Juggernaut XL v9), versatile realism. NSFW-capable.",
+		},
+		{
 			Name: "flux1-schnell", Arch: profile.ArchFlux, Prediction: profile.PredEps,
 			Rating: profile.RatingSafe, License: "Apache-2.0",
 			MinRAMGB: 16, RecRAMGB: 32,
