@@ -139,9 +139,10 @@ image-forge serve < requests.jsonl
 
 - **データディレクトリ**: `$IMAGE_FORGE_HOME`（既定 `~/.local/share/image-forge`）に
   モデルレジストリ（`registry.json`）と DL 済みモデルファイル（`models/`）を格納。
-- **設定ファイル**（任意）: `$IMAGE_FORGE_HOME/config.toml`（または `$IMAGE_FORGE_CONFIG`
-  で別パス指定）。`default_model` / `output` / `allow_nsfw` / フォールバックトークンを
-  設定。[`config.example.toml`](config.example.toml) をコピーして編集。
+- **設定ファイル**（任意）: `~/.config/image-forge/config.toml`（`$XDG_CONFIG_HOME` /
+  `$IMAGE_FORGE_CONFIG` を尊重）。`default_model` / `output` / `allow_nsfw` /
+  フォールバックトークンを設定。[`config.example.toml`](config.example.toml) をコピーして
+  編集。（v0.5前の場所 `$IMAGE_FORGE_HOME/config.toml` も後方互換で読む。）
 - **トークン**: `HF_TOKEN`（gated HF リポ）、`CIVITAI_TOKEN`（Civitai DL）。環境変数が
   設定ファイルより優先。**トークンは絶対にコミットしない。**
 

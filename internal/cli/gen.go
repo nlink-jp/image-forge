@@ -119,6 +119,7 @@ func runGen(args []string) error {
 		ClipL:          res.Components.ClipL,
 		ClipG:          res.Components.ClipG,
 		T5XXL:          res.Components.T5XXL,
+		LLM:            res.Components.LLM,
 		VAEPath:        req.VAEPath,
 		ControlNet:     *ctrlNet,
 		Prediction:     pred,

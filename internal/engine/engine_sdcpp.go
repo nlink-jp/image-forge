@@ -103,6 +103,7 @@ func Open(p OpenParams) (Session, error) {
 	cp.clip_l_path = set(p.ClipL)
 	cp.clip_g_path = set(p.ClipG)
 	cp.t5xxl_path = set(p.T5XXL)
+	cp.llm_path = set(p.LLM)
 	cp.vae_path = set(p.VAEPath)
 	cp.control_net_path = set(p.ControlNet)
 

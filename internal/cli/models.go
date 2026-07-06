@@ -293,6 +293,10 @@ func pullMultiComponent(e catalog.Entry, regName string, conf config.Config) err
 	if err != nil {
 		return err
 	}
+	llm, err := get(s.LLM)
+	if err != nil {
+		return err
+	}
 	vae, err := get(s.VAE)
 	if err != nil {
 		return err
@@ -305,7 +309,7 @@ func pullMultiComponent(e catalog.Entry, regName string, conf config.Config) err
 	reg.Add(store.InstalledModel{
 		Name:       regName,
 		VAEPath:    vae,
-		Components: store.Components{DiffusionModel: diff, ClipL: clipL, ClipG: clipG, T5XXL: t5},
+		Components: store.Components{DiffusionModel: diff, ClipL: clipL, ClipG: clipG, T5XXL: t5, LLM: llm},
 		Profile:    e.Profile(),
 		Rating:     e.Rating,
 		License:    e.License,

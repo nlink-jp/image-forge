@@ -84,7 +84,8 @@ func ArchDefaults(a Arch) Profile {
 		// Distilled: guidance ~1, no negative prompt, few steps (schnell).
 		return Profile{Arch: a, Prediction: PredEps, Sampler: "euler", Steps: 4, CFG: 1, Width: 1024, Height: 1024, NegativeOK: false}
 	case ArchZImage:
-		return Profile{Arch: a, Prediction: PredEps, Sampler: "euler", Steps: 8, CFG: 3.5, Width: 1024, Height: 1024, NegativeOK: true}
+		// Turbo: distilled, low guidance.
+		return Profile{Arch: a, Prediction: PredEps, Sampler: "euler", Steps: 8, CFG: 1, Width: 1024, Height: 1024, NegativeOK: false}
 	default:
 		return Profile{Arch: ArchUnknown, Prediction: PredEps, Sampler: "euler_a", Steps: 25, CFG: 7, Width: 512, Height: 512, NegativeOK: true}
 	}

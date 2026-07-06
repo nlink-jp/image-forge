@@ -55,6 +55,7 @@ type OpenParams struct {
 	ClipL          string
 	ClipG          string
 	T5XXL          string
+	LLM            string // LLM text encoder (e.g. Qwen for Z-Image)
 	VAEPath        string
 	ControlNet     string // ControlNet model, loaded alongside the base model
 	Prediction     string

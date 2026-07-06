@@ -19,6 +19,7 @@ type Source struct {
 	ClipL          string
 	ClipG          string
 	T5XXL          string
+	LLM            string // LLM text encoder (e.g. Qwen for Z-Image)
 }
 
 // Entry is a catalog record.
@@ -111,11 +112,29 @@ func Default() []Entry {
 			Notes: "Apache-2.0, fast. Multi-component (GGUF diffusion + CLIP-L + T5 + VAE), ~12 GB.",
 		},
 		{
-			Name: "z-image-turbo", Arch: profile.ArchZImage, Prediction: profile.PredEps,
-			Rating: profile.RatingSafe, License: "permissive (verify)",
+			Name: "sd35-medium", Arch: profile.ArchSD35, Prediction: profile.PredEps,
+			Rating: profile.RatingSafe, License: "Stability Community License",
 			MinRAMGB: 16, RecRAMGB: 32,
-			Source: Source{HF: "Tongyi-MAI/Z-Image-Turbo"},
-			Notes:  "Efficient, fast general model. Multi-component (transformer + text encoder + VAE) — not single-file pullable yet; use `models import`.",
+			Source: Source{
+				DiffusionModel: "city96/stable-diffusion-3.5-medium-gguf/sd3.5_medium-Q4_K_M.gguf",
+				ClipL:          "Comfy-Org/stable-diffusion-3.5-fp8/text_encoders/clip_l.safetensors",
+				ClipG:          "Comfy-Org/stable-diffusion-3.5-fp8/text_encoders/clip_g.safetensors",
+				T5XXL:          "Comfy-Org/stable-diffusion-3.5-fp8/text_encoders/t5xxl_fp8_e4m3fn.safetensors",
+				VAE:            "stabilityai/stable-diffusion-3.5-medium/vae/diffusion_pytorch_model.safetensors",
+			},
+			Experimental: true,
+			Notes:        "SD3.5 Medium (GGUF diffusion + CLIP-L/G + T5). The VAE is gated — set HF_TOKEN. (ComfyUI fp8-scaled builds are not sd.cpp-compatible.)",
+		},
+		{
+			Name: "z-image-turbo", Arch: profile.ArchZImage, Prediction: profile.PredEps,
+			Rating: profile.RatingSafe, License: "Apache-2.0 (verify)",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source: Source{
+				DiffusionModel: "Comfy-Org/z_image_turbo/split_files/diffusion_models/z_image_turbo_bf16.safetensors",
+				LLM:            "Comfy-Org/z_image_turbo/split_files/text_encoders/qwen_3_4b.safetensors",
+				VAE:            "Comfy-Org/z_image_turbo/split_files/vae/ae.safetensors",
+			},
+			Notes: "Efficient turbo model. Multi-component (DiT + Qwen-3-4B LLM + VAE), ~20 GB.",
 		},
 		{
 			Name: "noobai-xl-vpred", Arch: profile.ArchSDXL, Prediction: profile.PredVPred,

@@ -145,9 +145,11 @@ Downloads come from Hugging Face / Civitai / direct URLs. Provide tokens via
 
 - **Data directory**: `$IMAGE_FORGE_HOME` (default `~/.local/share/image-forge`)
   holds the model registry (`registry.json`) and pulled model files (`models/`).
-- **Config file** (optional): `$IMAGE_FORGE_HOME/config.toml` (or point
-  `$IMAGE_FORGE_CONFIG` elsewhere). Sets `default_model`, `output`, `allow_nsfw`, and
-  fallback tokens. See [`config.example.toml`](config.example.toml) — copy it and edit.
+- **Config file** (optional): `~/.config/image-forge/config.toml` (honors
+  `$XDG_CONFIG_HOME` and `$IMAGE_FORGE_CONFIG`). Sets `default_model`, `output`,
+  `allow_nsfw`, and fallback tokens. See [`config.example.toml`](config.example.toml)
+  — copy it and edit. (The pre-v0.5 location, `$IMAGE_FORGE_HOME/config.toml`, is
+  still read as a fallback.)
 - **Tokens**: `HF_TOKEN` (gated HF repos), `CIVITAI_TOKEN` (Civitai downloads).
   Environment variables take precedence over the config file. **Never commit tokens.**
 

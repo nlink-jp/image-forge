@@ -19,6 +19,7 @@ type Components struct {
 	ClipL          string `json:"clip_l,omitempty"`
 	ClipG          string `json:"clip_g,omitempty"`
 	T5XXL          string `json:"t5xxl,omitempty"`
+	LLM            string `json:"llm,omitempty"`
 }
 
 // InstalledModel is a registered, ready-to-use model. Either Path (a single-file

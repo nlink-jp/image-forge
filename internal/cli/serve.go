@@ -125,11 +125,12 @@ func runServe(args []string) error {
 			ClipL:          res.Components.ClipL,
 			ClipG:          res.Components.ClipG,
 			T5XXL:          res.Components.T5XXL,
+			LLM:            res.Components.LLM,
 			VAEPath:        req.VAEPath,
 			ControlNet:     r.ControlNet,
 			Prediction:     pred,
 		}
-		key := strings.Join([]string{op.ModelPath, op.DiffusionModel, op.ClipL, op.ClipG, op.T5XXL, op.VAEPath, op.ControlNet, op.Prediction}, "\x00")
+		key := strings.Join([]string{op.ModelPath, op.DiffusionModel, op.ClipL, op.ClipG, op.T5XXL, op.LLM, op.VAEPath, op.ControlNet, op.Prediction}, "\x00")
 
 		// (Re)load the model only when its identity changes.
 		if sess == nil || key != curKey {

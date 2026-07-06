@@ -13,6 +13,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `serve` accepts `control_net` / `control` / `control_strength` / `canny`. Verified
   E2E: a canny control from a red-apple photo steers a txt2img "green apple" to the
   same silhouette.
+- **Z-Image Turbo** catalog entry + LLM (Qwen) text-encoder support for
+  multi-component models (`OpenParams.LLM` → sd.cpp `llm_path`). Verified E2E (bf16
+  Qwen). Note: ComfyUI fp8-scaled/mixed encoder builds are not sd.cpp-compatible.
+- **SD3.5 Medium** catalog entry (GGUF diffusion + CLIP-L/G + T5), marked
+  *experimental*: the SD3.5 VAE is gated (needs `HF_TOKEN`) and it is not yet
+  verified in-house.
+
+### Changed
+- **Config file location** is now `~/.config/image-forge/config.toml` (XDG config
+  dir), matching the other util-series tools. The pre-v0.5 location
+  (`$IMAGE_FORGE_HOME/config.toml`) is still read as a fallback.
 
 ## [0.4.0] - 2026-07-07
 
