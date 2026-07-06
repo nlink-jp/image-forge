@@ -74,7 +74,7 @@ func Info() string {
 
 // Open loads a model into a resident context. The heavy cost (model read + Metal
 // init) is paid here once; Render reuses it.
-func Open(modelPath, vaePath string) (Session, error) {
+func Open(modelPath, vaePath, prediction string) (Session, error) {
 	if modelPath == "" {
 		return nil, errors.New("sdcpp: a model path is required")
 	}
@@ -87,6 +87,13 @@ func Open(modelPath, vaePath string) (Session, error) {
 		cVAE := C.CString(vaePath)
 		defer C.free(unsafe.Pointer(cVAE))
 		cp.vae_path = cVAE
+	}
+	// Empty leaves the init default (PREDICTION_COUNT = auto-detect from the model);
+	// "v" forces v-prediction for models sd.cpp can't auto-detect.
+	if prediction != "" {
+		cPred := C.CString(prediction)
+		cp.prediction = C.str_to_prediction(cPred)
+		C.free(unsafe.Pointer(cPred))
 	}
 	ctx := C.new_sd_ctx(&cp)
 	if ctx == nil {

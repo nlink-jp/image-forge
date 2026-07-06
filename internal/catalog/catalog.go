@@ -99,9 +99,12 @@ func Default() []Entry {
 			Name: "noobai-xl-vpred", Arch: profile.ArchSDXL, Prediction: profile.PredVPred,
 			Rating: profile.RatingExplicit, License: "Fair AI Public License 1.0-SD",
 			MinRAMGB: 16, RecRAMGB: 32,
-			Source:   Source{HF: "Laxhar/noobai-XL-Vpred-1.0", VAE: "madebyollin/sdxl-vae-fp16-fix"},
-			ClipSkip: 2, Experimental: true,
-			Notes: "v-prediction; requires sd.cpp v-pred/ZSNR support (verify before enabling).",
+			Source: Source{
+				HF:  "Laxhar/noobai-XL-Vpred-1.0/NoobAI-XL-Vpred-v1.0.safetensors",
+				VAE: "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
+			},
+			ClipSkip: 2,
+			Notes:    "v-prediction SDXL (verified; the profile sets prediction=v). NSFW-capable.",
 		},
 	}
 }

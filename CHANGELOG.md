@@ -12,6 +12,11 @@ project adheres to [Semantic Versioning](https://semver.org/).
   match the init image size. Works with regular models (masked img2img) — no
   dedicated inpainting model required. `serve` accepts a `mask` field. Verified E2E
   (sky-only storm-cloud edit over a preserved meadow).
+- **v-prediction** wired and verified: the model profile sets the prediction
+  parameterization at model load; `--prediction eps|v|auto` (and the serve
+  `prediction` field) override it. NoobAI XL v-pred is promoted from experimental —
+  verified E2E: the profile (v) renders cleanly while forcing `--prediction eps`
+  produces pure noise, proving v-pred is correctly applied.
 
 ## [0.1.0] - 2026-07-06
 

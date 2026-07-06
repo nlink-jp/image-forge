@@ -12,8 +12,9 @@ users never hand-tune them. Series: **util-series**. Local-diffusion counterpart
 Status: **v0.1.0 released** (public, signed + notarized). **Phase 2 in progress:**
 inpaint (`gen --init --mask`) wired + E2E-verified. `gen` txt2img/img2img/inpaint/
 LoRA, `models` list/import/pull/quantize/rm, resident `serve`, config.toml — all E2E
-on M2 Max (SD1.5 + Animagine XL / SDXL, q8_0, LCM-LoRA). Next Phase 2: ControlNet,
-Civitai token, catalog file-qualify, v-pred. Full design: `docs/{ja,en}/image-forge-rfp*`.
+on M2 Max (SD1.5 + Animagine XL / SDXL, q8_0, LCM-LoRA, NoobAI v-pred). v-prediction
+is wired via the profile (`--prediction eps|v|auto` overrides). Next Phase 2:
+ControlNet, Civitai token, catalog file-qualify. Full design: `docs/{ja,en}/image-forge-rfp*`.
 
 ## Build & test
 

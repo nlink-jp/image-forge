@@ -13,24 +13,25 @@ import (
 // serveRequest is one line of the serve protocol (JSON per line on stdin).
 // Pointer fields are overrides: absent => use the model profile's default.
 type serveRequest struct {
-	Prompt    string   `json:"prompt"`
-	Negative  *string  `json:"negative,omitempty"`
-	Model     string   `json:"model,omitempty"`      // registry name
-	ModelPath string   `json:"model_path,omitempty"` // direct path
-	VAE       *string  `json:"vae,omitempty"`
-	Output    string   `json:"output,omitempty"`
-	Seed      *int64   `json:"seed,omitempty"`
-	Steps     *int     `json:"steps,omitempty"`
-	CFG       *float64 `json:"cfg,omitempty"`
-	Width     *int     `json:"width,omitempty"`
-	Height    *int     `json:"height,omitempty"`
-	Sampler   *string  `json:"sampler,omitempty"`
-	ClipSkip  *int     `json:"clip_skip,omitempty"`
-	Batch     *int     `json:"batch,omitempty"`
-	Init      string   `json:"init,omitempty"`
-	Mask      string   `json:"mask,omitempty"`
-	Strength  *float64 `json:"strength,omitempty"`
-	LoRAs     []string `json:"loras,omitempty"` // "path:weight"
+	Prompt     string   `json:"prompt"`
+	Negative   *string  `json:"negative,omitempty"`
+	Model      string   `json:"model,omitempty"`      // registry name
+	ModelPath  string   `json:"model_path,omitempty"` // direct path
+	VAE        *string  `json:"vae,omitempty"`
+	Output     string   `json:"output,omitempty"`
+	Seed       *int64   `json:"seed,omitempty"`
+	Steps      *int     `json:"steps,omitempty"`
+	CFG        *float64 `json:"cfg,omitempty"`
+	Width      *int     `json:"width,omitempty"`
+	Height     *int     `json:"height,omitempty"`
+	Sampler    *string  `json:"sampler,omitempty"`
+	Prediction *string  `json:"prediction,omitempty"`
+	ClipSkip   *int     `json:"clip_skip,omitempty"`
+	Batch      *int     `json:"batch,omitempty"`
+	Init       string   `json:"init,omitempty"`
+	Mask       string   `json:"mask,omitempty"`
+	Strength   *float64 `json:"strength,omitempty"`
+	LoRAs      []string `json:"loras,omitempty"` // "path:weight"
 }
 
 // runServe is the resident mode: it loads a model once and renders many requests
@@ -45,6 +46,7 @@ func runServe(args []string) error {
 		sess    engine.Session
 		curPath string
 		curVAE  string
+		curPred string
 	)
 	defer func() {
 		if sess != nil {
@@ -102,19 +104,24 @@ func runServe(args []string) error {
 		req := applyProfile(path, regVAE, r.Prompt, seed, batch, r.Init, strength, loras, out, prof, ov)
 		req.Mask = r.Mask
 
-		// (Re)load the model only when it (or its VAE) changes.
-		if sess == nil || path != curPath || req.VAEPath != curVAE {
+		pred := predArg(prof.Prediction)
+		if r.Prediction != nil {
+			pred = normPrediction(*r.Prediction)
+		}
+
+		// (Re)load the model only when it (or its VAE / prediction) changes.
+		if sess == nil || path != curPath || req.VAEPath != curVAE || pred != curPred {
 			if sess != nil {
 				sess.Close()
 				sess = nil
 			}
 			emit(engine.Event{Kind: "load", Message: path})
-			s, oerr := engine.Open(path, req.VAEPath)
+			s, oerr := engine.Open(path, req.VAEPath, pred)
 			if oerr != nil {
 				emit(engine.Event{Kind: "error", Message: oerr.Error()})
 				continue
 			}
-			sess, curPath, curVAE = s, path, req.VAEPath
+			sess, curPath, curVAE, curPred = s, path, req.VAEPath, pred
 		}
 
 		events := make(chan engine.Event, 8)

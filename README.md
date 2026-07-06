@@ -68,6 +68,7 @@ fp16-fix VAE.
 | `--seed` | seed (default 42) |
 | `--steps` `--cfg` `-W` `-H` `--sampler` `--clip-skip` | override the profile |
 | `--vae` | external VAE (overrides the profile) |
+| `--prediction` | force `eps` / `v` (v-prediction) / `auto`; default: from the model profile |
 | `--batch` | number of images |
 | `--init` `--strength` | img2img: init image + denoise strength (0..1; lower = closer to the init) |
 | `--mask` | inpaint (with `--init`): regenerate only the white region of the mask (same size as the init) |
@@ -112,9 +113,9 @@ image-forge serve < requests.jsonl
 ```
 
 Fields: `prompt` (required); `model` or `model_path`; and optional `negative`,
-`seed`, `steps`, `cfg`, `width`, `height`, `sampler`, `clip_skip`, `batch`, `init`,
-`mask`, `strength`, `loras` (`["path:weight", ...]`), `output`, `vae`. Absent
-optional fields fall back to the model profile.
+`seed`, `steps`, `cfg`, `width`, `height`, `sampler`, `prediction`, `clip_skip`,
+`batch`, `init`, `mask`, `strength`, `loras` (`["path:weight", ...]`), `output`,
+`vae`. Absent optional fields fall back to the model profile.
 
 **Output** — one JSON event per line on stdout:
 `{"kind":"ready"}` at start, `{"kind":"load","message":"<path>"}` on a (re)load,
@@ -130,9 +131,9 @@ require an explicit opt-in (`--allow-nsfw`); the final judgment is left to you.
 Downloads come from Hugging Face / Civitai / direct URLs. Provide tokens via
 `HF_TOKEN` / `CIVITAI_TOKEN` (environment) — **never commit them**.
 
-> **v-prediction models** (NoobAI, Illustrious v2) are marked *experimental*:
-> stable-diffusion.cpp's v-pred / ZSNR support is still maturing. Epsilon-prediction
-> models (Animagine XL 4.0, Illustrious v1, Pony) work reliably.
+> **v-prediction models** (NoobAI, Illustrious v2) work: the model's profile sets the
+> v-prediction parameterization automatically (override with `--prediction v|eps|auto`).
+> Epsilon-prediction models (Animagine XL 4.0, Illustrious v1, Pony) also work.
 
 ## Configuration
 

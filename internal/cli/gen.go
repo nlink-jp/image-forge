@@ -35,6 +35,7 @@ func runGen(args []string) error {
 		initImg   = fs.String("init", "", "init image for img2img (PNG/JPEG)")
 		strength  = fs.Float64("strength", 0.6, "img2img denoise strength, 0..1 (with --init)")
 		maskImg   = fs.String("mask", "", "inpaint mask, same size as --init (white=regenerate, black=keep)")
+		predict   = fs.String("prediction", "", "prediction override: eps | v | auto (default: from profile)")
 	)
 	var loraArgs multiFlag
 	fs.Var(&loraArgs, "lora", "LoRA as <path>:<weight> (repeatable)")
@@ -101,7 +102,11 @@ func runGen(args []string) error {
 	req := applyProfile(path, regVAE, *prompt, *seed, *batch, *initImg, *strength, loras, outPath, prof, ov)
 	req.Mask = *maskImg
 
-	sess, err := engine.Open(path, req.VAEPath)
+	pred := predArg(prof.Prediction)
+	if set["prediction"] {
+		pred = normPrediction(*predict)
+	}
+	sess, err := engine.Open(path, req.VAEPath, pred)
 	if err != nil {
 		return err
 	}

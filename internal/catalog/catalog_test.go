@@ -39,10 +39,12 @@ func TestNeedsOptIn(t *testing.T) {
 	}
 }
 
-func TestVPredMarkedExperimental(t *testing.T) {
+func TestProfilePropagatesPrediction(t *testing.T) {
+	// The per-model prediction type must flow into the built profile — this is
+	// what makes v-prediction models (e.g. NoobAI) render correctly.
 	for _, e := range Default() {
-		if e.Prediction == profile.PredVPred && !e.Experimental {
-			t.Errorf("%s is v-pred but not marked experimental", e.Name)
+		if e.Prediction != "" && e.Profile().Prediction != e.Prediction {
+			t.Errorf("%s: profile prediction = %q, want %q", e.Name, e.Profile().Prediction, e.Prediction)
 		}
 	}
 }

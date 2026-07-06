@@ -3,11 +3,34 @@ package cli
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/nlink-jp/image-forge/internal/engine"
 	"github.com/nlink-jp/image-forge/internal/profile"
 	"github.com/nlink-jp/image-forge/internal/store"
 )
+
+// predArg maps a profile prediction type to the sd.cpp prediction string that
+// engine.Open expects ("" = auto-detect from the model, "v" = force v-prediction).
+func predArg(p profile.Prediction) string {
+	if p == profile.PredVPred {
+		return "v"
+	}
+	return ""
+}
+
+// normPrediction maps a user-supplied --prediction value to sd.cpp's string
+// ("" = auto-detect, "eps", or "v").
+func normPrediction(s string) string {
+	switch strings.ToLower(s) {
+	case "v", "vpred", "v-pred", "v_pred":
+		return "v"
+	case "eps", "epsilon":
+		return "eps"
+	default: // "auto" or empty => auto-detect
+		return ""
+	}
+}
 
 // resolveModel maps a registry name or a direct file path to the model path, its
 // VAE, and the base generation profile.
