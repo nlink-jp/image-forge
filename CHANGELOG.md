@@ -4,7 +4,9 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.4.0] - 2026-07-07
+
+Multi-component models (FLUX) and resumable downloads.
 
 ### Added
 - **Multi-component models**: models assembled from separate weight files
