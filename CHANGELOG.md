@@ -4,6 +4,14 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.9.1] - 2026-07-07
+
+### Added
+- **`prefect-pony-xl`** catalog entry — Prefect Pony XL v6 (Civitai version
+  2114187), a high-quality Pony-based SDXL model. Single-file, with the fp16-fix
+  VAE and the Pony `score_*` prefix applied automatically (needs `CIVITAI_TOKEN`).
+  Verified E2E (clean 1024×1024 anime render).
+
 ## [0.9.0] - 2026-07-07
 
 An `image-forge mcp` server so an AI can generate images.

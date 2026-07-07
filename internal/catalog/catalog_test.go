@@ -62,7 +62,7 @@ func TestPonyEntriesCarryScorePrefix(t *testing.T) {
 	// Pony-family SDXL models need the "score_*" quality tags to produce good
 	// output; that gotcha is hidden in the catalog's PromptPrefix and must flow
 	// into the built profile.
-	for _, name := range []string{"t-ponynai3-v7", "t-ponynai3-v5.5", "momoiro-pony"} {
+	for _, name := range []string{"t-ponynai3-v7", "t-ponynai3-v5.5", "momoiro-pony", "prefect-pony-xl"} {
 		e, ok := Find(name)
 		if !ok {
 			t.Fatalf("expected to find %q", name)
@@ -105,6 +105,7 @@ func TestCivitaiEntriesUsePullableVersionIDs(t *testing.T) {
 		"t-ponynai3-v7":       "1392706",
 		"t-ponynai3-v5.5":     "593760",
 		"momoiro-pony":        "425904",
+		"prefect-pony-xl":     "2114187",
 	}
 	for name, id := range want {
 		e, ok := Find(name)

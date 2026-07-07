@@ -156,6 +156,18 @@ func Default() []Entry {
 			Notes:        "T-ponynai MomoiroPony (Civitai): Pony-based anime merge, NSFW-leaning. Score tags auto-prefixed. Needs CIVITAI_TOKEN.",
 		},
 		{
+			Name: "prefect-pony-xl", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
+			Rating: profile.RatingQuestionable, License: "Pony-derived; see Civitai listing",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source: Source{
+				Civitai: "2114187", // https://civitai.com/models/439889 (v6)
+				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
+			},
+			ClipSkip:     2,
+			PromptPrefix: "score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up",
+			Notes:        "Prefect Pony XL v6 (Civitai): high-quality Pony-based anime/general SDXL. Score tags auto-prefixed. Needs CIVITAI_TOKEN.",
+		},
+		{
 			Name: "realvisxl-v5", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "OpenRAIL++-M",
 			MinRAMGB: 16, RecRAMGB: 32,
