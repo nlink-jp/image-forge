@@ -164,3 +164,12 @@ make vet
 
 **util-series** の一員。構造と注意点は [AGENTS.md](AGENTS.md)、設計全体は
 [docs/ja/image-forge-rfp.ja.md](docs/ja/image-forge-rfp.ja.md) を参照。
+
+## ライセンス
+
+MIT — [LICENSE](LICENSE) を参照。
+
+配布バイナリは [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
+（MIT, © 2023 leejet）と [ggml](https://github.com/ggml-org/ggml)（MIT,
+© 2023–2026 The ggml authors）を静的リンクしている。モデルの重みは同梱せず、各モデルは
+それぞれのライセンスに従う（`models list` で表示）。

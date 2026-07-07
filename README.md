@@ -174,3 +174,12 @@ make vet
 
 Part of **util-series**. See [AGENTS.md](AGENTS.md) for structure and gotchas, and
 [docs/en/image-forge-rfp.md](docs/en/image-forge-rfp.md) for the full design.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+The shipped binary statically links [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
+(MIT, © 2023 leejet) and [ggml](https://github.com/ggml-org/ggml) (MIT,
+© 2023–2026 The ggml authors). Model weights are not bundled; each model keeps
+its own license (surfaced by `models list`).

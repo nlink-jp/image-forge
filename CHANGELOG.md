@@ -16,6 +16,8 @@ Separate installed / catalog views for `models list`, plus JSON output.
 - **`models list --catalog`** lists only the curated catalog (with an `installed`
   column), and **`models list --all`** shows installed models and the catalog as
   two clearly-labelled sections. See ADR-0002.
+- **`LICENSE` file** (MIT, © 2026 nlink-jp), matching the util-series convention;
+  README notes the statically-linked stable-diffusion.cpp / ggml (both MIT).
 
 ### Changed
 - **`models list` now shows installed models by default** (name, arch, rating,
