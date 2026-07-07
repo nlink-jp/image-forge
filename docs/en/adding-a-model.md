@@ -80,6 +80,14 @@ Start from the architecture defaults and override only the gotchas.
   (RealVisXL, Juggernaut): override to `ClipSkip: 1`.
 - **Pony score tags** — Pony-family models need the quality prefix, so hide it:
   `PromptPrefix: "score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up"`.
+- **hires.fix** — if the model's upstream notes recommend "always use hires,"
+  ship it on: set `HiresEnabled: true` (the profile also honors `HiresScale` /
+  `HiresDenoise` / `HiresUpscaler`; leave them 0/"" to use the conservative
+  defaults 1.5 / 0.5 / latent). Users still override with `--hires auto|on|off`.
+- **Upscaler (ESRGAN) entries** are a different `Kind: "upscaler"` — a single
+  `.pth`/`.safetensors` ESRGAN with no VAE/prediction/profile (e.g.
+  `realesrgan-x4plus`). They power `image-forge upscale` and hires
+  `--hires-upscaler model`.
 - **Multi-component** (FLUX / SD3.5 / Z-Image) — leave `HF`/`Civitai` empty and set
   `DiffusionModel` + the encoders (`ClipL` / `ClipG` / `T5XXL` / `LLM`) + `VAE`.
   **Use standard fp8 (`t5xxl_fp8_e4m3fn`), bf16, or GGUF only** — ComfyUI's

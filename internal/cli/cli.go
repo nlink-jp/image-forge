@@ -23,6 +23,8 @@ func Run(version string, args []string) error {
 	switch args[0] {
 	case "gen":
 		return runGen(args[1:])
+	case "upscale":
+		return runUpscale(args[1:])
 	case "models":
 		return runModels(args[1:])
 	case "serve":
@@ -47,14 +49,16 @@ func usage(w io.Writer) {
 	fmt.Fprint(w, `image-forge — local diffusion image-generation engine
 
 Usage:
-  image-forge gen    -p "<prompt>" [flags]              generate (txt2img / img2img)
-  image-forge models <list|pull|import|quantize|rm>     manage models
-  image-forge serve  [flags]                            resident JSON-line API (Phase 2)
-  image-forge mcp    [--workspace-root <dir>]           MCP stdio server (AI image generation)
+  image-forge gen     -p "<prompt>" [flags]             generate (txt2img / img2img; --hires auto|on|off)
+  image-forge upscale <in> -o <out> [--model <name>]    ESRGAN super-resolution of an existing image
+  image-forge models  <list|pull|import|quantize|rm>    manage models
+  image-forge serve   [flags]                           resident JSON-line API (Phase 2)
+  image-forge mcp     [--workspace-root <dir>]          MCP stdio server (AI image generation)
   image-forge version                                   print version
 
 Run "image-forge <command> --help" for command details.
 `)
 }
 
-// runGen lives in gen.go, runModels in models.go, runServe in serve.go.
+// runGen lives in gen.go, runUpscale in upscale.go, runModels in models.go,
+// runServe in serve.go.

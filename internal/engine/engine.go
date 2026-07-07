@@ -45,7 +45,27 @@ type Request struct {
 	ControlStrength float64 // ControlNet strength
 	Canny           bool    // apply canny edge preprocessing to the control image
 
+	// hires.fix: a second img2img pass at higher resolution that adds detail.
+	// Disabled unless Hires is true. HiresScale/Denoise/Steps <= 0 leave sd.cpp's
+	// (or the caller's) default; HiresUpscaler "" defaults to "latent".
+	Hires         bool
+	HiresScale    float64
+	HiresDenoise  float64
+	HiresUpscaler string // latent | lanczos | nearest | model
+	HiresSteps    int
+	HiresModel    string // ESRGAN model path, only used when HiresUpscaler == "model"
+
 	Output string // output path; index is inserted before the extension for batches
+}
+
+// UpscaleParams configures a standalone ESRGAN super-resolution pass. Events is
+// optional; when non-nil a "done" event carrying the output path is sent on it.
+type UpscaleParams struct {
+	InputPath  string       // source image (PNG/JPEG)
+	ESRGANPath string       // Real-ESRGAN model file
+	OutputPath string       // where to write the upscaled PNG
+	Factor     int          // requested upscale factor (the model's native factor governs the actual output)
+	Events     chan<- Event // optional progress/done sink; the caller must drain it
 }
 
 // Event is a progress event streamed during generation (serialized as one JSON

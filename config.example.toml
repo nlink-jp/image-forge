@@ -18,3 +18,18 @@ allow_nsfw = false
 # Never commit real tokens.
 # hf_token = "hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 # civitai_token = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# hires.fix defaults. `gen --hires auto` (the default) follows the model profile;
+# `on`/`off` force it. When hires runs, this picks the upscaler:
+#   "latent"  — built-in, no model download (fast, default fallback)
+#   "auto"    — a downloaded ESRGAN upscaler if one is installed, else latent
+#   "lanczos" / "nearest" — other built-ins
+#   "<name>"  — a specific installed upscaler model (see `models list`)
+# CLI --hires-upscaler / --hires-model and the model profile override this.
+[hires]
+upscaler = "auto"
+
+# ESRGAN model used when a model is needed but not named — the `upscale` command
+# without --model, and hires with an ESRGAN upscaler and no explicit model.
+[upscaler]
+# default_model = "realesrgan-x4-anime"

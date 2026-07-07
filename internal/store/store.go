@@ -26,6 +26,7 @@ type Components struct {
 // checkpoint) or Components (multi-component) is set.
 type InstalledModel struct {
 	Name       string          `json:"name"`
+	Kind       string          `json:"kind,omitempty"` // "" (diffusion, default) or "upscaler"
 	Path       string          `json:"path"`
 	VAEPath    string          `json:"vae_path,omitempty"`
 	Components Components      `json:"components,omitempty"`
@@ -33,6 +34,10 @@ type InstalledModel struct {
 	Rating     profile.Rating  `json:"rating,omitempty"`
 	License    string          `json:"license,omitempty"`
 }
+
+// IsUpscaler reports whether this installed model is a standalone ESRGAN
+// upscaler rather than a diffusion model.
+func (m InstalledModel) IsUpscaler() bool { return m.Kind == "upscaler" }
 
 // Registry is the set of installed models, keyed by name.
 type Registry struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/nlink-jp/image-forge/internal/config"
 	"github.com/nlink-jp/image-forge/internal/engine"
 )
 
@@ -37,6 +38,15 @@ type RenderRequest struct {
 	Control         string
 	ControlStrength *float64
 	Canny           bool
+
+	// hires.fix. Hires is the mode: "" / "auto" (follow the profile), "on", "off".
+	// The pointer/Model fields are fine-grained overrides (nil => use the profile
+	// or the opinionated default). HiresModel is a resolved ESRGAN path.
+	Hires         string
+	HiresScale    *float64
+	HiresDenoise  *float64
+	HiresUpscaler *string
+	HiresModel    string
 }
 
 // buildRender resolves the model and merges profile + overrides into an
@@ -86,6 +96,21 @@ func buildRender(r RenderRequest) (engine.Request, engine.OpenParams, string, in
 	if r.ControlStrength != nil {
 		req.ControlStrength = *r.ControlStrength
 	}
+
+	hiresModelPath, herr := resolveHiresModel(r.HiresModel)
+	if herr != nil {
+		return engine.Request{}, engine.OpenParams{}, "", 0, herr
+	}
+	conf, _ := config.Load()
+	hr := resolveHires(r.Hires, res.Profile, hiresOverrides{
+		Scale: r.HiresScale, Denoise: r.HiresDenoise, Upscaler: r.HiresUpscaler, Model: hiresModelPath,
+	}, hiresEnvFromConfig(conf))
+	req.Hires = hr.Enabled
+	req.HiresScale = hr.Scale
+	req.HiresDenoise = hr.Denoise
+	req.HiresUpscaler = hr.Upscaler
+	req.HiresSteps = hr.Steps
+	req.HiresModel = hr.Model
 
 	pred := predArg(res.Profile.Prediction)
 	if r.Prediction != nil {

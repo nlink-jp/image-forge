@@ -48,3 +48,34 @@ func TestRegistryRoundTrip(t *testing.T) {
 		t.Error("second remove should report false")
 	}
 }
+
+func TestUpscalerKindRoundTrip(t *testing.T) {
+	t.Setenv("IMAGE_FORGE_HOME", t.TempDir())
+
+	r, err := Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	up := InstalledModel{Name: "realesrgan-x4plus", Kind: "upscaler", Path: "/models/esrgan.pth"}
+	if !up.IsUpscaler() {
+		t.Fatal("kind=upscaler should report IsUpscaler")
+	}
+	diff := InstalledModel{Name: "sdxl", Path: "/models/sdxl.safetensors"}
+	if diff.IsUpscaler() {
+		t.Fatal("a diffusion model must not report IsUpscaler")
+	}
+	r.Add(up)
+	r.Add(diff)
+	if err := r.Save(); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	r2, err := Load()
+	if err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	got, ok := r2.Get("realesrgan-x4plus")
+	if !ok || !got.IsUpscaler() {
+		t.Errorf("upscaler kind did not round-trip: %+v (ok=%v)", got, ok)
+	}
+}

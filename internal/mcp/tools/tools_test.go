@@ -44,11 +44,30 @@ func (f *fakeRenderer) Render(ctx context.Context, req RenderRequest, report fun
 	return seed, nil
 }
 
+// fakeUpscaler materializes the output file and records the request, so tests
+// need no diffusion engine.
+type fakeUpscaler struct {
+	failWith error
+	lastReq  UpscaleRequest
+}
+
+func (f *fakeUpscaler) Upscale(ctx context.Context, req UpscaleRequest, report func(float64, string)) error {
+	f.lastReq = req
+	if report != nil {
+		report(0.5, "upscaling")
+	}
+	if f.failWith != nil {
+		return f.failWith
+	}
+	return os.WriteFile(req.Output, []byte("PNGDATA"), 0o644)
+}
+
 type harness struct {
 	t    *testing.T
 	srv  *mcpserver.Server
 	def  *workspace.Manager
 	rend *fakeRenderer
+	ups  *fakeUpscaler
 }
 
 func newHarness(t *testing.T, rend *fakeRenderer) *harness {
@@ -56,6 +75,7 @@ func newHarness(t *testing.T, rend *fakeRenderer) *harness {
 	if rend == nil {
 		rend = &fakeRenderer{seed: 12345}
 	}
+	ups := &fakeUpscaler{}
 	def := workspace.NewManager(filepath.Join(t.TempDir(), "default"))
 	srv := mcpserver.New("image-forge-mcp", "test",
 		transport.NewStdioTransport(strings.NewReader(""), io.Discard), nil)
@@ -63,12 +83,13 @@ func newHarness(t *testing.T, rend *fakeRenderer) *harness {
 		DefaultModel: "",
 		WS:           def,
 		Render:       rend,
+		Upscale:      ups,
 		ListModels: func(scope string) (any, error) {
 			return map[string]any{"scope": scope}, nil
 		},
 		Jobs: job.NewManager(context.Background()),
 	})
-	return &harness{t: t, srv: srv, def: def, rend: rend}
+	return &harness{t: t, srv: srv, def: def, rend: rend, ups: ups}
 }
 
 func (h *harness) call(name string, args map[string]any) (any, error) {
@@ -385,7 +406,7 @@ func TestGetUsage(t *testing.T) {
 
 // TestUsageCoherence pins usage.md against the real server surface.
 func TestUsageCoherence(t *testing.T) {
-	for _, tool := range []string{"generate", "check_job", "list_models"} {
+	for _, tool := range []string{"generate", "upscale", "check_job", "list_models"} {
 		if !strings.Contains(usageMarkdown, "`"+tool+"`") {
 			t.Errorf("usage.md does not reference tool %q", tool)
 		}
@@ -403,7 +424,103 @@ func TestUsageCoherence(t *testing.T) {
 	}
 }
 
-// TestToolsListed confirms all four tools register with valid input schemas.
+func TestGenerateThreadsHires(t *testing.T) {
+	rend := &fakeRenderer{seed: 3}
+	h := newHarness(t, rend)
+	root := seedWorkspace(t, "proj")
+	out, err := h.call("generate", map[string]any{
+		"workspace_id": "proj", "workspace_root": root, "prompt": "x", "model": "sdxl",
+		"hires": "on", "hires_scale": 1.75, "hires_upscaler": "lanczos",
+	})
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	h.pollDone(out.(map[string]any)["job_id"].(string))
+	if rend.lastReq.Hires != "on" {
+		t.Errorf("hires = %q, want on", rend.lastReq.Hires)
+	}
+	if rend.lastReq.HiresScale == nil || *rend.lastReq.HiresScale != 1.75 {
+		t.Errorf("hires_scale not threaded: %v", rend.lastReq.HiresScale)
+	}
+	if rend.lastReq.HiresUpscaler == nil || *rend.lastReq.HiresUpscaler != "lanczos" {
+		t.Errorf("hires_upscaler not threaded: %v", rend.lastReq.HiresUpscaler)
+	}
+}
+
+func TestUpscaleThenCheckJob(t *testing.T) {
+	h := newHarness(t, nil)
+	root := seedWorkspace(t, "proj")
+	// Place the source image in the workspace.
+	if err := os.WriteFile(filepath.Join(root, "proj", "in.png"), []byte("img"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := h.call("upscale", map[string]any{
+		"workspace_id": "proj", "workspace_root": root,
+		"input": "in.png", "model": "realesrgan-x4plus", "scale": 4,
+	})
+	if err != nil {
+		t.Fatalf("upscale: %v", err)
+	}
+	sub := out.(map[string]any)
+	if sub["state"] != job.StateQueued {
+		t.Fatalf("submit state: %+v", sub)
+	}
+	st := h.pollDone(sub["job_id"].(string))
+	if st.State != job.StateDone {
+		t.Fatalf("job not done: %+v (err=%v)", st, st.Error)
+	}
+	res := st.Result.(UpscaleResult)
+	if len(res.Outputs) != 1 {
+		t.Fatalf("outputs: %+v", res.Outputs)
+	}
+	o := res.Outputs[0]
+	wantRel := filepath.Join("output", "upscaled.png")
+	if o.Path != wantRel {
+		t.Errorf("path = %q, want %q", o.Path, wantRel)
+	}
+	if o.AbsPath != filepath.Join(root, "proj", wantRel) {
+		t.Errorf("abs_path = %q", o.AbsPath)
+	}
+	if _, err := os.Stat(o.AbsPath); err != nil {
+		t.Errorf("output not written: %v", err)
+	}
+	// The fake received the resolved input path and requested factor.
+	if h.ups.lastReq.Input != filepath.Join(root, "proj", "in.png") {
+		t.Errorf("input passed to upscaler = %q", h.ups.lastReq.Input)
+	}
+	if h.ups.lastReq.Scale != 4 || h.ups.lastReq.Model != "realesrgan-x4plus" {
+		t.Errorf("upscale req = %+v", h.ups.lastReq)
+	}
+	// The temp render file must be cleaned up.
+	if _, err := os.Stat(filepath.Join(root, "proj", "output", "upscaled.tmp.png")); !os.IsNotExist(err) {
+		t.Errorf("temp file left behind: %v", err)
+	}
+}
+
+func TestUpscaleMissingArgs(t *testing.T) {
+	h := newHarness(t, nil)
+	root := seedWorkspace(t, "proj")
+	if _, err := h.call("upscale", map[string]any{"workspace_root": root, "input": "in.png"}); !errors.Is(err, toolerr.New(toolerr.CodeMissingArgument, "")) {
+		t.Fatalf("missing workspace_id: %v", err)
+	}
+	if _, err := h.call("upscale", map[string]any{"workspace_id": "proj", "workspace_root": root}); !errors.Is(err, toolerr.New(toolerr.CodeMissingArgument, "")) {
+		t.Fatalf("missing input: %v", err)
+	}
+}
+
+func TestUpscaleInputNotFound(t *testing.T) {
+	h := newHarness(t, nil)
+	root := seedWorkspace(t, "proj")
+	_, err := h.call("upscale", map[string]any{
+		"workspace_id": "proj", "workspace_root": root, "input": "missing.png", "model": "x",
+	})
+	var te *toolerr.Error
+	if !errors.As(err, &te) || te.Code != toolerr.CodeInputNotFound {
+		t.Fatalf("want input_not_found, got %v", err)
+	}
+}
+
+// TestToolsListed confirms all five tools register with valid input schemas.
 func TestToolsListed(t *testing.T) {
 	h := newHarness(t, nil)
 	raw, err := h.srv.Call(context.Background(), "get_usage", json.RawMessage(`{}`))
@@ -411,7 +528,7 @@ func TestToolsListed(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = raw
-	for _, name := range []string{"get_usage", "generate", "check_job", "list_models"} {
+	for _, name := range []string{"get_usage", "generate", "upscale", "check_job", "list_models"} {
 		if _, err := h.srv.Call(context.Background(), name, json.RawMessage(`{}`)); err != nil {
 			// generate/check_job legitimately error on empty args (missing required);
 			// we only assert the tool is registered (no "unknown tool").

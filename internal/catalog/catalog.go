@@ -22,9 +22,17 @@ type Source struct {
 	LLM            string // LLM text encoder (e.g. Qwen for Z-Image)
 }
 
+// Kind classifies a catalog entry. The empty string means a diffusion model (the
+// default); "upscaler" is a standalone ESRGAN super-resolution model.
+const (
+	KindDiffusion = ""
+	KindUpscaler  = "upscaler"
+)
+
 // Entry is a catalog record.
 type Entry struct {
 	Name         string
+	Kind         string // "" (diffusion, default) or "upscaler"
 	Arch         profile.Arch
 	Prediction   profile.Prediction
 	Rating       profile.Rating
@@ -36,12 +44,24 @@ type Entry struct {
 	PromptPrefix string // e.g. Pony-family score tags
 	Notes        string
 	Experimental bool // e.g. v-pred models pending sd.cpp verification
+
+	// hires.fix defaults surfaced through the profile. Set HiresEnabled on a model
+	// whose upstream notes recommend "always use hires".
+	HiresEnabled  bool
+	HiresScale    float64
+	HiresDenoise  float64
+	HiresUpscaler string
+	HiresSteps    int
 }
 
 // NeedsOptIn reports whether pulling this entry requires an explicit NSFW opt-in.
 func (e Entry) NeedsOptIn() bool {
 	return e.Rating == profile.RatingQuestionable || e.Rating == profile.RatingExplicit
 }
+
+// IsUpscaler reports whether this entry is a standalone ESRGAN upscaler rather
+// than a diffusion model.
+func (e Entry) IsUpscaler() bool { return e.Kind == KindUpscaler }
 
 // IsMultiComponent reports whether this model is assembled from separate weight
 // files (diffusion model + encoders + VAE) rather than a single checkpoint.
@@ -63,6 +83,11 @@ func (e Entry) Profile() profile.Profile {
 	if e.PromptPrefix != "" {
 		p.PromptPrefix = e.PromptPrefix
 	}
+	p.HiresEnabled = e.HiresEnabled
+	p.HiresScale = e.HiresScale
+	p.HiresDenoise = e.HiresDenoise
+	p.HiresUpscaler = e.HiresUpscaler
+	p.HiresSteps = e.HiresSteps
 	return p
 }
 
@@ -165,7 +190,11 @@ func Default() []Entry {
 			},
 			ClipSkip:     2,
 			PromptPrefix: "score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up",
-			Notes:        "Prefect Pony XL v6 (Civitai): high-quality Pony-based anime/general SDXL. Score tags auto-prefixed. Needs CIVITAI_TOKEN.",
+			// Its Civitai page recommends hires.fix; ship it on by default so
+			// `gen -m prefect-pony-xl` is hires-quality with no extra flags. Users
+			// override with --hires off.
+			HiresEnabled: true, HiresScale: 1.5, HiresDenoise: 0.5, HiresUpscaler: "latent",
+			Notes: "Prefect Pony XL v6 (Civitai): high-quality Pony-based anime/general SDXL. Score tags auto-prefixed. hires.fix on by default. Needs CIVITAI_TOKEN.",
 		},
 		{
 			Name: "realvisxl-v5", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
@@ -235,6 +264,20 @@ func Default() []Entry {
 			},
 			ClipSkip: 2,
 			Notes:    "v-prediction SDXL (verified; the profile sets prediction=v). NSFW-capable.",
+		},
+		{
+			Name: "realesrgan-x4plus", Kind: KindUpscaler,
+			Rating: profile.RatingSafe, License: "BSD-3-Clause",
+			MinRAMGB: 4, RecRAMGB: 8,
+			Source: Source{HF: "schwgHao/RealESRGAN_x4plus/RealESRGAN_x4plus.pth"},
+			Notes:  "Real-ESRGAN x4 general-purpose upscaler (ESRGAN). For `image-forge upscale` and `gen --hires-upscaler model --hires-model realesrgan-x4plus`.",
+		},
+		{
+			Name: "realesrgan-x4-anime", Kind: KindUpscaler,
+			Rating: profile.RatingSafe, License: "BSD-3-Clause",
+			MinRAMGB: 4, RecRAMGB: 8,
+			Source: Source{HF: "utnah/esrgan/RealESRGAN_x4plus_anime_6B.pth"},
+			Notes:  "Real-ESRGAN x4 anime-tuned upscaler (ESRGAN, 6B). For `image-forge upscale` and `gen --hires-upscaler model --hires-model realesrgan-x4-anime`.",
 		},
 	}
 }

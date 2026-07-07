@@ -4,6 +4,29 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.10.0] - 2026-07-07
+
+Upscaling: a standalone ESRGAN upscaler and profile-driven hires.fix.
+
+### Added
+- **`image-forge upscale <in> -o <out> [--scale N] [--model <name>|--model-path <p>]`**
+  — standalone Real-ESRGAN super-resolution for any image. Verified E2E
+  (512×512 → 2048×2048). Also an MCP `upscale` tool.
+- **hires.fix at generation time**, driven by the model profile. `gen --hires
+  auto|on|off` — **`auto` (default) follows the profile**, `on`/`off` force it;
+  `--hires-scale` / `--hires-denoise` / `--hires-upscaler latent|lanczos|nearest|model`
+  / `--hires-model` fine-tune. Conservative defaults (latent, scale 1.5, denoise
+  0.5) keep the 16 GB baseline usable. `serve` and the MCP `generate` tool accept
+  the same controls. A model whose upstream notes recommend hires (e.g.
+  `prefect-pony-xl`) ships with it on by default. Verified E2E (512 base → 768
+  hires second pass). See ADR-0004.
+- **ESRGAN upscalers in the catalog** as a new `upscaler` kind: `realesrgan-x4plus`
+  (general) and `realesrgan-x4-anime` (anime), pulled like any model.
+- **Config `[hires] upscaler` and `[upscaler] default_model`**: `[hires] upscaler`
+  defaults to `"auto"`, so once you pull an ESRGAN, hires.fix automatically uses
+  it (instead of the built-in latent upscaler); set it to `"latent"` to pin the
+  built-in. Precedence: CLI flag → model profile → config → built-in latent.
+
 ## [0.9.1] - 2026-07-07
 
 ### Added

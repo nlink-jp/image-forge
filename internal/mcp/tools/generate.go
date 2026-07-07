@@ -35,6 +35,11 @@ type generateArgs struct {
 	Mask          string   `json:"mask"`
 	Strength      *float64 `json:"strength"`
 	OutputName    string   `json:"output_name"`
+	Hires         string   `json:"hires"`
+	HiresScale    *float64 `json:"hires_scale"`
+	HiresDenoise  *float64 `json:"hires_denoise"`
+	HiresUpscaler *string  `json:"hires_upscaler"`
+	HiresModel    string   `json:"hires_model"`
 }
 
 // Output is one produced image, returned on job done.
@@ -82,7 +87,12 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
     "init": {"type": "string", "description": "img2img init image, workspace-relative path (place it in the workspace first)"},
     "mask": {"type": "string", "description": "inpaint mask, workspace-relative path; requires init (white=regenerate, black=keep)"},
     "strength": {"type": "number", "description": "img2img denoise strength 0..1 (with init)"},
-    "output_name": {"type": "string", "description": "Base name for the PNG (default: gen); final file output/<output_name>-<seed>.png"}
+    "output_name": {"type": "string", "description": "Base name for the PNG (default: gen); final file output/<output_name>-<seed>.png"},
+    "hires": {"type": "string", "enum": ["auto", "on", "off"], "description": "hires.fix (a second higher-res pass that adds detail): auto (default; follow the model profile) | on | off"},
+    "hires_scale": {"type": "number", "description": "hires upscale factor (default: profile or 1.5)"},
+    "hires_denoise": {"type": "number", "description": "hires denoise strength 0..1 (default: profile or 0.5)"},
+    "hires_upscaler": {"type": "string", "enum": ["latent", "lanczos", "nearest", "model"], "description": "hires upscaler (default: profile or latent)"},
+    "hires_model": {"type": "string", "description": "installed upscaler name for hires_upscaler=model (see list_models)"}
   },
   "additionalProperties": false
 }`),
@@ -151,6 +161,12 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
 			Init:      initAbs,
 			Mask:      maskAbs,
 			Strength:  in.Strength,
+
+			Hires:         in.Hires,
+			HiresScale:    in.HiresScale,
+			HiresDenoise:  in.HiresDenoise,
+			HiresUpscaler: in.HiresUpscaler,
+			HiresModel:    in.HiresModel,
 		}
 
 		wsID := in.WorkspaceID

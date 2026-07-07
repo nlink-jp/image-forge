@@ -34,9 +34,12 @@ output/              rendered PNGs              (server-written)
 - `get_usage` — this manual.
 - `list_models` — list models as JSON. `scope=installed` (default) are the
   models you can generate with right now; `scope=catalog` are curated models the
-  **user** can pull with the CLI; `scope=all` shows both. Pick a `name` for
-  `generate`'s `model`.
+  **user** can pull with the CLI; `scope=all` shows both. Each entry has a
+  `kind` (`""` = diffusion, `upscaler` = ESRGAN super-resolution). Pick a `name`
+  for `generate`'s `model` (a diffusion one) or `upscale`'s `model` (an upscaler).
 - `generate` — enqueue a render, returns `{job_id, state:"queued"}` immediately.
+- `upscale` — enqueue a standalone ESRGAN super-resolution of an existing image,
+  returns `{job_id, state:"queued"}` immediately.
 - `check_job` — poll a job by `job_id`.
 
 ## Generate parameters
@@ -57,11 +60,31 @@ Required: `workspace_id`, `prompt`.
 - `strength` — img2img denoise strength `0..1` (with `init`).
 - `output_name` — base name for the PNG (default `gen`); the final file is
   `output/<output_name>-<seed>.png`.
+- `hires` — hires.fix, a second higher-res pass that adds detail: `auto`
+  (default; follow the model profile — some models ship with it on), `on`, or
+  `off`. Fine-grained: `hires_scale` (default profile or 1.5), `hires_denoise`
+  (`0..1`, default profile or 0.5), `hires_upscaler`
+  (`latent`|`lanczos`|`nearest`|`model`, default latent), and `hires_model` (an
+  installed upscaler name, required for `hires_upscaler=model`). hires roughly
+  doubles render time and raises peak memory.
+
+## Upscale parameters
+
+Required: `workspace_id`, `input`.
+
+- `input` — the image to upscale, a workspace-relative path (place it first).
+- `model` — an installed **upscaler** name (`list_models` → `kind: upscaler`).
+  Omit it only when exactly one upscaler is installed; otherwise you get
+  `model_required`.
+- `scale` — upscale factor (default: the model's native factor, typically 4).
+- `output_name` — base name for the PNG (default `upscaled`); the final file is
+  `output/<output_name>.png`.
+- `workspace_root` — absolute agent-prepared root (see above).
 
 ## Job lifecycle (async)
 
-1. `generate` → `{job_id, state:"queued"}`. Renders are **serialized** (one at a
-   time) — the engine is not concurrent-safe, so multiple `generate` calls queue.
+1. `generate` / `upscale` → `{job_id, state:"queued"}`. Jobs are **serialized**
+   (one at a time) — the engine is not concurrent-safe, so calls queue.
 2. `check_job {job_id}` → `state` is `queued` | `running` | `done` | `error`,
    with `progress` (`fraction` 0..1, `message`).
 3. On `done`: `result.outputs` is a list of

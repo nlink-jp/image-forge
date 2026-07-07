@@ -13,12 +13,41 @@ import (
 // Config holds user settings. Tokens here are a fallback; the matching
 // environment variables (HF_TOKEN / CIVITAI_TOKEN) take precedence.
 type Config struct {
-	DefaultModel string    `toml:"default_model"`
-	Output       string    `toml:"output"`
-	AllowNSFW    bool      `toml:"allow_nsfw"`
-	HFToken      string    `toml:"hf_token"`
-	CivitaiToken string    `toml:"civitai_token"`
-	MCP          MCPConfig `toml:"mcp"`
+	DefaultModel string         `toml:"default_model"`
+	Output       string         `toml:"output"`
+	AllowNSFW    bool           `toml:"allow_nsfw"`
+	HFToken      string         `toml:"hf_token"`
+	CivitaiToken string         `toml:"civitai_token"`
+	MCP          MCPConfig      `toml:"mcp"`
+	Hires        HiresConfig    `toml:"hires"`
+	Upscaler     UpscalerConfig `toml:"upscaler"`
+}
+
+// HiresConfig holds the default hires.fix upscaler policy.
+type HiresConfig struct {
+	// Upscaler selects which upscaler hires.fix uses by default: "latent"
+	// (built-in, no model), "lanczos"/"nearest" (built-in), "model", "auto"
+	// (a downloaded ESRGAN upscaler if one is installed, else latent), or the
+	// name of an installed upscaler model. The gen flags and the model profile
+	// override this. Empty is treated as "auto".
+	Upscaler string `toml:"upscaler"`
+}
+
+// UpscalerConfig holds defaults for standalone/hires ESRGAN upscaling.
+type UpscalerConfig struct {
+	// DefaultModel is the installed upscaler-model name used when a model is
+	// needed but not named — the `upscale` command without --model, and hires
+	// with an ESRGAN upscaler and no explicit model.
+	DefaultModel string `toml:"default_model"`
+}
+
+// HiresUpscaler returns the configured default hires upscaler policy, defaulting
+// to "auto" (prefer a downloaded ESRGAN, else the built-in latent upscaler).
+func (c Config) HiresUpscaler() string {
+	if c.Hires.Upscaler == "" {
+		return "auto"
+	}
+	return c.Hires.Upscaler
 }
 
 // MCPConfig holds optional settings for the `image-forge mcp` server. Every

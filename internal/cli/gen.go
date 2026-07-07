@@ -42,6 +42,12 @@ func runGen(args []string) error {
 		ctrlImg   = fs.String("control", "", "control image for ControlNet (with --control-net)")
 		ctrlStr   = fs.Float64("control-strength", 0.9, "ControlNet strength")
 		canny     = fs.Bool("canny", false, "apply canny edge preprocessing to the control image")
+
+		hires         = fs.String("hires", "auto", "hires.fix: auto (follow the model profile) | on | off")
+		hiresScale    = fs.Float64("hires-scale", 0, "hires upscale factor (default: profile or 1.5)")
+		hiresDenoise  = fs.Float64("hires-denoise", 0, "hires denoise strength 0..1 (default: profile or 0.5)")
+		hiresUpscaler = fs.String("hires-upscaler", "", "hires upscaler: latent|lanczos|nearest|model (default: profile or latent)")
+		hiresModel    = fs.String("hires-model", "", "ESRGAN model (installed upscaler name or path) for --hires-upscaler model")
 	)
 	var loraArgs multiFlag
 	fs.Var(&loraArgs, "lora", "LoRA as <path>:<weight> (repeatable)")
@@ -72,6 +78,9 @@ func runGen(args []string) error {
 	res, err := resolveModel(mName, *modelPath)
 	if err != nil {
 		return fmt.Errorf("gen: %w", err)
+	}
+	if res.Kind == "upscaler" {
+		return fmt.Errorf("gen: %q is an upscaler, not a diffusion model — use `image-forge upscale`", mName)
 	}
 
 	outPath := *out
@@ -111,6 +120,31 @@ func runGen(args []string) error {
 	req.ControlStrength = *ctrlStr
 	req.Canny = *canny
 	req.Scheduler = *scheduler
+
+	// hires.fix: --hires auto|on|off drives whether it runs; the fine-grained
+	// flags override the profile / opinionated defaults only when set.
+	var hov hiresOverrides
+	if set["hires-scale"] {
+		hov.Scale = hiresScale
+	}
+	if set["hires-denoise"] {
+		hov.Denoise = hiresDenoise
+	}
+	if set["hires-upscaler"] {
+		hov.Upscaler = hiresUpscaler
+	}
+	hiresModelPath, err := resolveHiresModel(*hiresModel)
+	if err != nil {
+		return fmt.Errorf("gen: %w", err)
+	}
+	hov.Model = hiresModelPath
+	hr := resolveHires(*hires, res.Profile, hov, hiresEnvFromConfig(conf))
+	req.Hires = hr.Enabled
+	req.HiresScale = hr.Scale
+	req.HiresDenoise = hr.Denoise
+	req.HiresUpscaler = hr.Upscaler
+	req.HiresSteps = hr.Steps
+	req.HiresModel = hr.Model
 
 	pred := predArg(res.Profile.Prediction)
 	if set["prediction"] {

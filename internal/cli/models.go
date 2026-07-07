@@ -43,6 +43,7 @@ func runModels(args []string) error {
 // internal catalog.Entry / store.InstalledModel structs.
 type catalogView struct {
 	Name           string `json:"name"`
+	Kind           string `json:"kind,omitempty"` // "" (diffusion) or "upscaler"
 	Arch           string `json:"arch"`
 	Prediction     string `json:"prediction"`
 	Rating         string `json:"rating"`
@@ -58,6 +59,7 @@ type catalogView struct {
 
 type installedView struct {
 	Name           string `json:"name"`
+	Kind           string `json:"kind,omitempty"` // "" (diffusion) or "upscaler"
 	Arch           string `json:"arch"`
 	Rating         string `json:"rating,omitempty"`
 	License        string `json:"license,omitempty"`
@@ -65,6 +67,18 @@ type installedView struct {
 	VAEPath        string `json:"vae_path,omitempty"`
 	MultiComponent bool   `json:"multi_component"`
 	InCatalog      bool   `json:"in_catalog"`
+}
+
+// archCell renders the ARCH column: an upscaler has no diffusion architecture,
+// so it shows its kind instead.
+func archCell(arch, kind string) string {
+	if kind == "upscaler" {
+		return "upscaler"
+	}
+	if arch == "" {
+		return "-"
+	}
+	return arch
 }
 
 // resolveListMode maps the (possibly conflicting) list flags to which views to
@@ -82,7 +96,7 @@ func catalogViews(reg *store.Registry) []catalogView {
 	for _, e := range entries {
 		_, installed := reg.Get(e.Name)
 		out = append(out, catalogView{
-			Name: e.Name, Arch: string(e.Arch), Prediction: string(e.Prediction),
+			Name: e.Name, Kind: e.Kind, Arch: string(e.Arch), Prediction: string(e.Prediction),
 			Rating: string(e.Rating), License: e.License,
 			MinRAMGB: e.MinRAMGB, RecRAMGB: e.RecRAMGB,
 			MultiComponent: e.IsMultiComponent(), NeedsOptIn: e.NeedsOptIn(),
@@ -103,9 +117,9 @@ func installedViews(reg *store.Registry) []installedView {
 		m := reg.Models[n]
 		_, inCat := catalog.Find(n)
 		out = append(out, installedView{
-			Name: m.Name, Arch: string(m.Profile.Arch), Rating: string(m.Rating),
+			Name: m.Name, Kind: m.Kind, Arch: string(m.Profile.Arch), Rating: string(m.Rating),
 			License: m.License, Path: m.Path, VAEPath: m.VAEPath,
-			MultiComponent: m.Path == "", InCatalog: inCat,
+			MultiComponent: m.Path == "" && m.Kind != "upscaler", InCatalog: inCat,
 		})
 	}
 	return out
@@ -216,7 +230,7 @@ func printInstalledTable(views []installedView, titled bool) {
 		if license == "" {
 			license = "-"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", v.Name, v.Arch, rating, license, loc)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", v.Name, archCell(v.Arch, v.Kind), rating, license, loc)
 	}
 	w.Flush()
 }
@@ -236,7 +250,7 @@ func printCatalogTable(views []catalogView, titled bool) {
 			installed += " (experimental)"
 		}
 		fmt.Fprintf(w, "%s\t%s\t%s\t%d/%dGB\t%s\t%s\n",
-			v.Name, v.Arch, v.Rating, v.MinRAMGB, v.RecRAMGB, v.License, installed)
+			v.Name, archCell(v.Arch, v.Kind), v.Rating, v.MinRAMGB, v.RecRAMGB, v.License, installed)
 	}
 	w.Flush()
 }
@@ -315,6 +329,7 @@ func modelsPull(args []string) error {
 		rating  profile.Rating
 		license string
 		vaeSrc  string
+		kind    string
 		regName = *nameOverride
 		known   bool
 	)
@@ -342,7 +357,11 @@ func modelsPull(args []string) error {
 		default:
 			return fmt.Errorf("models pull: catalog entry %q has no downloadable source", e.Name)
 		}
-		prof, rating, license, vaeSrc = e.Profile(), e.Rating, e.License, e.Source.VAE
+		prof, rating, license, vaeSrc, kind = e.Profile(), e.Rating, e.License, e.Source.VAE, e.Kind
+		if e.IsUpscaler() {
+			// Upscalers carry no diffusion profile / VAE — register a minimal one.
+			prof, vaeSrc = profile.Profile{Name: e.Name}, ""
+		}
 		if regName == "" {
 			regName = e.Name
 		}
@@ -431,11 +450,15 @@ func modelsPull(args []string) error {
 	if err != nil {
 		return err
 	}
-	reg.Add(store.InstalledModel{Name: regName, Path: dest, VAEPath: vaePath, Profile: prof, Rating: rating, License: license})
+	reg.Add(store.InstalledModel{Name: regName, Kind: kind, Path: dest, VAEPath: vaePath, Profile: prof, Rating: rating, License: license})
 	if err := reg.Save(); err != nil {
 		return err
 	}
-	fmt.Printf("installed %q (%s) -> %s\n", regName, prof.Arch, dest)
+	if kind == "upscaler" {
+		fmt.Printf("installed %q (upscaler) -> %s\n", regName, dest)
+	} else {
+		fmt.Printf("installed %q (%s) -> %s\n", regName, prof.Arch, dest)
+	}
 	return nil
 }
 

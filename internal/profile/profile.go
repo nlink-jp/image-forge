@@ -34,6 +34,16 @@ const (
 	RatingExplicit     Rating = "explicit"
 )
 
+// image-forge's opinionated hires.fix defaults — applied when hires is on but a
+// specific parameter is left unset. More conservative than sd.cpp's own defaults
+// (scale 2.0 / denoise 0.7): 1.5/0.5 keeps the 16 GB baseline usable and stays
+// closer to the base composition. The latent upscaler needs no extra download.
+const (
+	DefaultHiresUpscaler = "latent"
+	DefaultHiresScale    = 1.5
+	DefaultHiresDenoise  = 0.5
+)
+
 // Profile is the resolved generation settings for a model.
 type Profile struct {
 	Name         string
@@ -48,6 +58,16 @@ type Profile struct {
 	Height       int
 	PromptPrefix string // e.g. "score_9, score_8_up, ..." for Pony-family
 	NegativeOK   bool   // false for distilled models (e.g. FLUX schnell)
+
+	// hires.fix defaults for this model. HiresEnabled makes `gen` produce
+	// hires-quality output with no extra flags (the per-model "always use hires"
+	// recommendation, hidden in the profile). The rest are the model's preferred
+	// values; a zero value falls back to the Default* constants above.
+	HiresEnabled  bool
+	HiresScale    float64
+	HiresDenoise  float64
+	HiresUpscaler string // latent | lanczos | nearest | model
+	HiresSteps    int
 }
 
 // Detect guesses an architecture from a model name or filename. It defaults to

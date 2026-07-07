@@ -38,12 +38,12 @@ make vet           # go vet ./...
 ```
 main.go                     entry; injects version; delegates to internal/cli
 internal/cli/               dispatch (cli.go); gen (gen.go); models (models.go); serve (serve.go);
-                            mcp server bootstrap (mcp.go); shared resident engine (render.go);
-                            shared model-resolution + profile merge (resolve.go)
+                            upscale (upscale.go); mcp server bootstrap (mcp.go); shared resident
+                            engine (render.go); model-resolution + profile/hires merge (resolve.go)
 internal/mcp/               `image-forge mcp` MCP stdio server (ADR-0003): jsonrpc, transport,
                             mcpserver (initialize/tools list+call), toolerr ({code,message,details}),
                             job (async FIFO worker), workspace (os.Root containment), tools
-                            (get_usage/generate/check_job/list_models)
+                            (get_usage/generate/check_job/list_models/upscale)
 internal/profile/           model profiles, per-arch defaults, arch Detect (the gotcha-hiding core)
 internal/catalog/           curated model catalog (content_rating, license, RAM tier, source) + Profile()
 internal/store/             installed-model registry (JSON) at $IMAGE_FORGE_HOME/registry.json
@@ -88,6 +88,15 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
 - **Adding a catalog model**: follow [`docs/en/adding-a-model.md`](docs/en/adding-a-model.md)
   (JA: [`docs/ja/adding-a-model.ja.md`](docs/ja/adding-a-model.ja.md)) — the source
   lookup, the per-arch/Pony/realistic gotchas, and the mandatory pull+render E2E.
+- **Upscaling & hires.fix** (ADR-0004): sd.cpp does both. Standalone
+  `image-forge upscale` uses `new_upscaler_ctx`/`upscale` with an ESRGAN model
+  (catalog `Kind: "upscaler"`, e.g. `realesrgan-x4plus`). hires.fix is set in the
+  gen params (`g.hires` via `sd_hires_params_init`) and driven by the model
+  profile; `gen --hires auto|on|off` (auto follows the profile). The hires
+  upscaler resolves CLI → profile → config `[hires] upscaler` → built-in latent;
+  `"auto"`/`[upscaler] default_model` pick a downloaded ESRGAN if present.
+  `str_to_sd_hires_upscaler` is case-sensitive on display names — map lowercase
+  names to the enum directly (see `hiresUpscalerEnum`).
 - **Models are never bundled/redistributed.** Users download; the catalog only
   points at sources and surfaces license + content rating.
 - **NSFW is opt-in.** `questionable`/`explicit` entries need `--allow-nsfw` / config.

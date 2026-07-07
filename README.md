@@ -75,9 +75,24 @@ fp16-fix VAE.
 | `--mask` | inpaint (with `--init`): regenerate only the white region of the mask (same size as the init) |
 | `--lora <path>:<weight>` | apply a LoRA (repeatable) |
 | `--control-net <model>` `--control <image>` | ControlNet: steer generation by a control image (add `--control-strength`, and `--canny` to edge-preprocess) |
+| `--hires auto\|on\|off` | hires.fix (generate → upscale → a 2nd img2img pass for detail). `auto` (default) follows the model profile; `on`/`off` force it |
+| `--hires-scale` `--hires-denoise` `--hires-upscaler latent\|lanczos\|nearest\|model` `--hires-model <name\|path>` | fine-tune hires (defaults: latent, scale 1.5, denoise 0.5) |
 
 Progress is emitted as a JSON-line stream on stderr (`load` / `progress` / `done` /
 `error`), one event per line; the output path is printed to stdout.
+
+### `upscale` — super-resolve an image
+
+```sh
+image-forge upscale <input> -o <output> [--scale N] [--model <name> | --model-path <path>]
+```
+
+Runs a standalone Real-ESRGAN pass (typically 4×) over an existing image. The
+ESRGAN model comes from an installed `upscaler`-kind model (`--model`, e.g.
+`realesrgan-x4plus` / `realesrgan-x4-anime` — `models pull` them) or a direct
+`--model-path`; with neither, it uses the config `[upscaler] default_model` or the
+sole installed upscaler. Progress streams as JSON on stderr; the output path is
+printed to stdout.
 
 ### `models` — manage models
 
@@ -161,7 +176,12 @@ Tools:
 - **`generate`** — enqueue a render: `workspace_id` + `prompt` (required), plus
   optional `model`, `negative`, `seed`, `steps`, `cfg`, `width`, `height`,
   `sampler`, `scheduler`, `clip_skip`, `batch`, `init`/`mask`/`strength`
-  (img2img/inpaint, workspace-relative paths), `output_name`. Returns a `job_id`.
+  (img2img/inpaint, workspace-relative paths), `hires` (auto/on/off) +
+  `hires_scale`/`hires_denoise`/`hires_upscaler`/`hires_model`, `output_name`.
+  Returns a `job_id`.
+- **`upscale`** — enqueue a Real-ESRGAN upscale of a workspace image:
+  `workspace_id` + `input` (required), optional `model`/`scale`/`output_name`.
+  Returns a `job_id`.
 - **`check_job`** — poll a `job_id`: `state` (queued/running/done/error),
   progress, and on done the output PNG path(s) + seed(s).
 - **`list_models`** — installed / catalog models (`scope`), the same views as
@@ -190,7 +210,9 @@ Downloads come from Hugging Face / Civitai / direct URLs. Provide tokens via
   holds the model registry (`registry.json`) and pulled model files (`models/`).
 - **Config file** (optional): `~/.config/image-forge/config.toml` (honors
   `$XDG_CONFIG_HOME` and `$IMAGE_FORGE_CONFIG`). Sets `default_model`, `output`,
-  `allow_nsfw`, and fallback tokens. See [`config.example.toml`](config.example.toml)
+  `allow_nsfw`, fallback tokens, and the hires upscaler policy (`[hires] upscaler`
+  defaults to `"auto"` — a downloaded ESRGAN if installed, else the built-in
+  latent; `[upscaler] default_model`). See [`config.example.toml`](config.example.toml)
   — copy it and edit. (The pre-v0.5 location, `$IMAGE_FORGE_HOME/config.toml`, is
   still read as a fallback.)
 - **Tokens**: `HF_TOKEN` (gated HF repos), `CIVITAI_TOKEN` (Civitai downloads).

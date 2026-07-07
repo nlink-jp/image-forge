@@ -38,6 +38,12 @@ type serveRequest struct {
 	Control         string   `json:"control,omitempty"`     // control image
 	ControlStrength *float64 `json:"control_strength,omitempty"`
 	Canny           bool     `json:"canny,omitempty"`
+
+	Hires         string   `json:"hires,omitempty"` // "auto" | "on" | "off"
+	HiresScale    *float64 `json:"hires_scale,omitempty"`
+	HiresDenoise  *float64 `json:"hires_denoise,omitempty"`
+	HiresUpscaler *string  `json:"hires_upscaler,omitempty"`
+	HiresModel    string   `json:"hires_model,omitempty"` // ESRGAN path (with hires_upscaler=model)
 }
 
 // renderRequest maps this serve line onto the shared cli.RenderRequest.
@@ -49,6 +55,8 @@ func (r serveRequest) renderRequest() RenderRequest {
 		Prediction: r.Prediction, ClipSkip: r.ClipSkip, Batch: r.Batch,
 		Init: r.Init, Mask: r.Mask, Strength: r.Strength, LoRAs: r.LoRAs,
 		ControlNet: r.ControlNet, Control: r.Control, ControlStrength: r.ControlStrength, Canny: r.Canny,
+		Hires: r.Hires, HiresScale: r.HiresScale, HiresDenoise: r.HiresDenoise,
+		HiresUpscaler: r.HiresUpscaler, HiresModel: r.HiresModel,
 	}
 }
 

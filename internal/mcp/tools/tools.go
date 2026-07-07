@@ -52,6 +52,34 @@ type RenderRequest struct {
 	Init      string // absolute path (verified regular) or empty
 	Mask      string // absolute path (verified regular) or empty
 	Strength  *float64
+
+	// hires.fix. Hires is the mode: "" / "auto" (follow the profile), "on", "off".
+	Hires         string
+	HiresScale    *float64
+	HiresDenoise  *float64
+	HiresUpscaler *string
+	HiresModel    string // installed upscaler name (resolved by the impl) or path
+}
+
+// Upscaler runs a standalone ESRGAN super-resolution pass. Like Renderer it is
+// an interface so tests supply a fake and the plumbing tests run under the
+// no-cgo build; the production implementation calls engine.Upscale. It is NOT
+// safe for concurrent use — the job manager serializes calls.
+type Upscaler interface {
+	// Upscale reads req.Input and writes the upscaled image to req.Output (both
+	// absolute paths). report is called with 0..1 progress.
+	Upscale(ctx context.Context, req UpscaleRequest, report func(fraction float64, message string)) error
+}
+
+// UpscaleRequest is the engine-neutral upscale request. Input/Output are
+// absolute paths inside the workspace; Model is an installed upscaler name (the
+// implementation resolves it, or picks a sane default when empty); Scale <= 0
+// means the model's native factor.
+type UpscaleRequest struct {
+	Input  string
+	Output string
+	Model  string
+	Scale  int
 }
 
 // ModelLister returns the installed and/or catalog model views as a
@@ -69,6 +97,8 @@ type Deps struct {
 	WS *workspace.Manager
 	// Render performs the actual generation (real engine or a test fake).
 	Render Renderer
+	// Upscale performs standalone ESRGAN super-resolution (real engine or a fake).
+	Upscale Upscaler
 	// ListModels backs the list_models tool (injected; see ModelLister).
 	ListModels ModelLister
 	// Jobs tracks background (async) renders via a single FIFO worker.
@@ -87,6 +117,7 @@ func Register(srv *mcpserver.Server, d *Deps) {
 	}
 	registerGetUsage(srv, d)
 	registerGenerate(srv, d)
+	registerUpscale(srv, d)
 	registerCheckJob(srv, d)
 	registerListModels(srv, d)
 }

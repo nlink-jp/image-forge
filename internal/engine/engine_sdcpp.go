@@ -218,6 +218,32 @@ func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event
 	}
 	g.batch_count = C.int(batch)
 
+	// hires.fix: start from sd.cpp's documented defaults, then enable + override
+	// only when the request asks for it. sd.cpp derives the target size from
+	// scale when target_width/height are 0, so setting scale is sufficient.
+	C.sd_hires_params_init(&g.hires)
+	if req.Hires {
+		g.hires.enabled = C.bool(true)
+		if req.HiresScale > 0 {
+			g.hires.scale = C.float(req.HiresScale)
+		}
+		if req.HiresDenoise > 0 {
+			g.hires.denoising_strength = C.float(req.HiresDenoise)
+		}
+		if req.HiresSteps > 0 {
+			g.hires.steps = C.int(req.HiresSteps)
+		}
+		// str_to_sd_hires_upscaler matches sd.cpp's display names case-sensitively
+		// ("Latent"/"Lanczos"/...), so map our lowercase names to the enum directly.
+		g.hires.upscaler = hiresUpscalerEnum(req.HiresUpscaler)
+		if strings.EqualFold(req.HiresUpscaler, "model") && req.HiresModel != "" {
+			// model_path must outlive generate_image; the enclosing defer frees it.
+			cHM := C.CString(req.HiresModel)
+			defer C.free(unsafe.Pointer(cHM))
+			g.hires.model_path = cHM
+		}
+	}
+
 	// LoRAs: allocate the array in C memory. If it lived in a Go slice, passing
 	// &g (whose g.loras would then be a Go pointer) to C would trip the cgo
 	// pointer checker ("Go pointer to unpinned Go pointer").
@@ -303,6 +329,93 @@ func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event
 			return err
 		}
 		events <- Event{Kind: "done", Progress: 1, Output: path, Seed: req.Seed}
+	}
+	return nil
+}
+
+// hiresUpscalerEnum maps image-forge's lowercase upscaler names to the sd.cpp
+// enum. sd.cpp's str_to_sd_hires_upscaler only matches its display names
+// ("Latent", "Lanczos", ...) with a case-sensitive strcmp, so it cannot be used
+// for lowercase input — an unrecognized value returns COUNT and sd.cpp disables
+// hires. Anything unknown (or empty) falls back to the no-download latent path.
+func hiresUpscalerEnum(name string) C.enum_sd_hires_upscaler_t {
+	switch strings.ToLower(name) {
+	case "lanczos":
+		return C.SD_HIRES_UPSCALER_LANCZOS
+	case "nearest":
+		return C.SD_HIRES_UPSCALER_NEAREST
+	case "model":
+		return C.SD_HIRES_UPSCALER_MODEL
+	default: // "" or "latent"
+		return C.SD_HIRES_UPSCALER_LATENT
+	}
+}
+
+// Upscale runs a standalone Real-ESRGAN super-resolution pass over a single
+// image. The ESRGAN model's own scale (typically 4x) governs the output size;
+// the upscale_factor argument is accepted by the C API but ignored for the
+// Real-ESRGAN models, so p.Factor is passed through only for API completeness.
+func Upscale(p UpscaleParams) error {
+	if p.ESRGANPath == "" {
+		return errors.New("sdcpp: an ESRGAN model path is required")
+	}
+	cEsrgan := C.CString(p.ESRGANPath)
+	defer C.free(unsafe.Pointer(cEsrgan))
+
+	// Keep sd.cpp's progress printer silenced during the model load (it would
+	// otherwise printf to stdout and corrupt machine consumers such as MCP).
+	C.ifg_silence_progress()
+
+	// direct=false and n_threads=physical-cores match how new_sd_ctx is configured
+	// (sd_ctx_params_init defaults n_threads to sd_get_num_physical_cores) and how
+	// sd.cpp builds its own hires model upscaler. tile_size 512 keeps peak memory
+	// in check on the 16 GB baseline (a 512 tile -> ~2048 px at 4x); NULL backend
+	// selects the default Metal backend.
+	ctx := C.new_upscaler_ctx(cEsrgan, C.bool(false), C.sd_get_num_physical_cores(), C.int(512), nil, nil)
+	if ctx == nil {
+		return fmt.Errorf("sdcpp: failed to load upscaler model %q", p.ESRGANPath)
+	}
+	defer C.free_upscaler_ctx(ctx)
+
+	ci, freeImg, err := loadInitImage(p.InputPath)
+	if err != nil {
+		return fmt.Errorf("sdcpp: upscale input: %w", err)
+	}
+	defer freeImg()
+
+	factor := p.Factor
+	if factor < 1 {
+		factor = int(C.get_upscale_factor(ctx))
+		if factor < 1 {
+			factor = 4
+		}
+	}
+
+	// Route any progress the upscaler reports to Events, then restore silence.
+	if p.Events != nil {
+		h := cgo.NewHandle(p.Events)
+		defer h.Delete()
+		C.ifg_set_progress(unsafe.Pointer(h))
+		defer C.ifg_silence_progress()
+	}
+
+	var out *C.sd_image_t
+	var n C.int
+	if !bool(C.upscale(ctx, ci, C.uint32_t(factor), &out, &n)) || out == nil || n == 0 {
+		return errors.New("sdcpp: upscale failed")
+	}
+	defer C.free(unsafe.Pointer(out))
+
+	list := unsafe.Slice(out, int(n))
+	saveErr := saveImage(list[0], p.OutputPath)
+	for i := 0; i < int(n); i++ {
+		C.free(unsafe.Pointer(list[i].data))
+	}
+	if saveErr != nil {
+		return saveErr
+	}
+	if p.Events != nil {
+		p.Events <- Event{Kind: "done", Progress: 1, Output: p.OutputPath}
 	}
 	return nil
 }

@@ -96,6 +96,61 @@ func TestPhotorealEntriesUseClipSkip1(t *testing.T) {
 	}
 }
 
+func TestUpscalerEntries(t *testing.T) {
+	// The seed ESRGAN upscalers must be present, marked as upscaler kind, carry a
+	// license, and have no diffusion VAE / prediction.
+	want := map[string]string{
+		"realesrgan-x4plus":   "schwgHao/RealESRGAN_x4plus/RealESRGAN_x4plus.pth",
+		"realesrgan-x4-anime": "utnah/esrgan/RealESRGAN_x4plus_anime_6B.pth",
+	}
+	for name, hf := range want {
+		e, ok := Find(name)
+		if !ok {
+			t.Fatalf("expected upscaler %q in the catalog", name)
+		}
+		if !e.IsUpscaler() {
+			t.Errorf("%s: IsUpscaler() should be true (kind=%q)", name, e.Kind)
+		}
+		if e.Source.HF != hf {
+			t.Errorf("%s: HF source = %q, want %q", name, e.Source.HF, hf)
+		}
+		if e.Source.VAE != "" {
+			t.Errorf("%s: an upscaler must not carry a VAE", name)
+		}
+		if e.Prediction != "" {
+			t.Errorf("%s: an upscaler must not carry a prediction type", name)
+		}
+		if e.Rating != profile.RatingSafe {
+			t.Errorf("%s: upscaler should be rated safe", name)
+		}
+		if e.License == "" {
+			t.Errorf("%s: upscaler must surface a license", name)
+		}
+	}
+}
+
+func TestHiresDefaultsPropagate(t *testing.T) {
+	// prefect-pony-xl ships hires on by default (its Civitai page recommends it);
+	// the flag and values must flow into the built profile.
+	e, ok := Find("prefect-pony-xl")
+	if !ok {
+		t.Fatal("expected prefect-pony-xl in the catalog")
+	}
+	if !e.HiresEnabled {
+		t.Error("prefect-pony-xl should ship hires on by default")
+	}
+	p := e.Profile()
+	if !p.HiresEnabled || p.HiresScale != 1.5 || p.HiresDenoise != 0.5 || p.HiresUpscaler != "latent" {
+		t.Errorf("hires defaults did not propagate into the profile: %+v", p)
+	}
+
+	// A model without a hires recommendation must stay off by default.
+	other, _ := Find("animagine-xl-4")
+	if other.Profile().HiresEnabled {
+		t.Error("animagine-xl-4 should not enable hires by default")
+	}
+}
+
 func TestCivitaiEntriesUsePullableVersionIDs(t *testing.T) {
 	// The Civitai-sourced entries must reference a version id (numeric), not a
 	// model id, so `models pull <name>` resolves the download via the API.

@@ -80,6 +80,7 @@ func runMCP(args []string) error {
 		DefaultModel: conf.DefaultModel,
 		WS:           workspace.NewManager(root),
 		Render:       &residentRenderer{re: re},
+		Upscale:      &engineUpscaler{},
 		ListModels:   func(scope string) (any, error) { return ListModels(scope) },
 		// Wire the server's SIGINT/SIGTERM-cancellable ctx so shutdown stops the
 		// worker and drops queued jobs (rather than the Background() default).
@@ -105,12 +106,20 @@ func (a *residentRenderer) Render(ctx context.Context, req tools.RenderRequest, 
 		return 0, err
 	}
 
+	// hires_model may be an installed upscaler name; resolve it to a path.
+	hiresModel, err := resolveHiresModel(req.HiresModel)
+	if err != nil {
+		return 0, toolerr.Newf(toolerr.CodeInvalidArguments, "%v", err)
+	}
+
 	rr := RenderRequest{
 		Prompt: req.Prompt, Negative: req.Negative, Model: req.Model,
 		Output: req.Output, Seed: req.Seed, Steps: req.Steps, CFG: req.CFG,
 		Width: req.Width, Height: req.Height, Sampler: req.Sampler, Scheduler: req.Scheduler,
 		ClipSkip: req.ClipSkip, Batch: req.Batch,
 		Init: req.Init, Mask: req.Mask, Strength: req.Strength,
+		Hires: req.Hires, HiresScale: req.HiresScale, HiresDenoise: req.HiresDenoise,
+		HiresUpscaler: req.HiresUpscaler, HiresModel: hiresModel,
 	}
 
 	events := make(chan engine.Event, 8)
@@ -134,6 +143,78 @@ func (a *residentRenderer) Render(ctx context.Context, req tools.RenderRequest, 
 	close(events)
 	<-done
 	return seed, err
+}
+
+// engineUpscaler adapts engine.Upscale to the tools.Upscaler interface: it
+// resolves the requested upscaler model (an installed upscaler name, or a sane
+// installed default when none is given), then streams progress to the tools
+// report callback.
+type engineUpscaler struct{}
+
+func (u *engineUpscaler) Upscale(ctx context.Context, req tools.UpscaleRequest, report func(fraction float64, message string)) error {
+	esrgan, err := resolveMCPUpscaler(req.Model)
+	if err != nil {
+		return err
+	}
+
+	events := make(chan engine.Event, 8)
+	done := make(chan struct{})
+	go func() {
+		for ev := range events {
+			if ev.Kind == "progress" && report != nil {
+				report(ev.Progress, ev.Message)
+			}
+		}
+		close(done)
+	}()
+	uerr := engine.Upscale(engine.UpscaleParams{
+		InputPath:  req.Input,
+		ESRGANPath: esrgan,
+		OutputPath: req.Output,
+		Factor:     req.Scale,
+		Events:     events,
+	})
+	close(events)
+	<-done
+	return uerr
+}
+
+// resolveMCPUpscaler resolves the upscaler model for an MCP upscale request. A
+// named model must be an installed upscaler; when no name is given it picks the
+// single installed upscaler, erroring (with pull guidance) if there are zero or
+// several to choose from.
+func resolveMCPUpscaler(name string) (string, error) {
+	reg, err := store.Load()
+	if err != nil {
+		return "", toolerr.Newf(toolerr.CodeRenderFailed, "load registry: %v", err)
+	}
+	if name != "" {
+		im, ok := reg.Get(name)
+		if !ok {
+			return "", toolerr.Newf(toolerr.CodeModelNotFound,
+				"upscaler %q is not installed — the user pulls it with `image-forge models pull %s`", name, name)
+		}
+		if !im.IsUpscaler() {
+			return "", toolerr.Newf(toolerr.CodeInvalidArguments, "model %q is a diffusion model, not an upscaler", name)
+		}
+		return im.Path, nil
+	}
+	var found []store.InstalledModel
+	for _, m := range reg.Models {
+		if m.IsUpscaler() {
+			found = append(found, m)
+		}
+	}
+	switch len(found) {
+	case 0:
+		return "", toolerr.New(toolerr.CodeModelRequired,
+			"no upscaler installed — the user pulls one with `image-forge models pull realesrgan-x4plus`, then pass its name as \"model\"")
+	case 1:
+		return found[0].Path, nil
+	default:
+		return "", toolerr.New(toolerr.CodeModelRequired,
+			"multiple upscalers installed — pass one as \"model\" (call list_models scope=installed)")
+	}
 }
 
 // redirectStdoutToStderr duplicates the current stdout into a private *os.File
