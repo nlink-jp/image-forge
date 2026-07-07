@@ -20,6 +20,16 @@ An `image-forge mcp` server so an AI can generate images.
   client (handshake → generate → live progress → a real PNG in the workspace).
   See ADR-0003.
 
+### Fixed
+- **sd.cpp's model-load progress bar no longer leaks to stdout.** With no
+  progress callback registered, sd.cpp printf's a `|####| N/M - X MB/s` bar to
+  stdout during the model read (in `new_sd_ctx`, before the render callback is
+  set). It was invisible in a terminal (a `\r`-updated line that flashes by) but
+  was preserved on a pipe — which corrupted the `mcp` JSON-RPC stream and added
+  noise to `gen`/`serve` stdout. A no-op callback now keeps sd.cpp silent
+  whenever we are not actively rendering; the `mcp` server additionally isolates
+  stdout at the fd level (defense-in-depth).
+
 ## [0.8.0] - 2026-07-07
 
 Separate installed / catalog views for `models list`, plus JSON output.

@@ -18,7 +18,17 @@ package engine
 // pointer of the exact sd_progress_cb_t signature.
 extern void goProgress(int step, int steps, float t, void* data);
 static void ifg_set_progress(void* data) { sd_set_progress_callback(goProgress, data); }
-static void ifg_clear_progress(void)     { sd_set_progress_callback(NULL, NULL); }
+
+// A no-op progress callback keeps sd.cpp's built-in progress printer SILENT.
+// With NO callback registered, sd.cpp printf's a "|####| N/M - X MB/s" bar to
+// stdout — notably during model load in new_sd_ctx (before Render sets the real
+// callback). That is invisible in a TTY (it's a \r-updated line that flashes by)
+// but is preserved verbatim on a pipe, corrupting machine stdout consumers such
+// as the MCP JSON-RPC stream. Registering a no-op makes sd.cpp route progress to
+// the callback (which discards) instead of printing. We keep this installed
+// whenever we are not actively rendering, so sd_progress_cb is never NULL.
+static void ifg_noop_progress(int step, int steps, float t, void* data) { (void)step; (void)steps; (void)t; (void)data; }
+static void ifg_silence_progress(void)   { sd_set_progress_callback(ifg_noop_progress, NULL); }
 */
 import "C"
 
@@ -114,6 +124,12 @@ func Open(p OpenParams) (Session, error) {
 		cp.prediction = C.str_to_prediction(cPred)
 		C.free(unsafe.Pointer(cPred))
 	}
+
+	// Silence sd.cpp's built-in stdout progress bar during the model read: with a
+	// callback registered (here a no-op), sd.cpp routes load progress to it rather
+	// than printf-ing "|####| MB/s" to stdout. Render swaps in the real event
+	// callback for generation, then restores the no-op.
+	C.ifg_silence_progress()
 
 	ctx := C.new_sd_ctx(&cp)
 	if ctx == nil {
@@ -269,7 +285,7 @@ func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event
 	h := cgo.NewHandle(events)
 	defer h.Delete()
 	C.ifg_set_progress(unsafe.Pointer(h))
-	defer C.ifg_clear_progress()
+	defer C.ifg_silence_progress() // detach goProgress (LIFO: before h.Delete) and stay silent
 
 	var imgs *C.sd_image_t
 	var n C.int

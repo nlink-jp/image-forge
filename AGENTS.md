@@ -61,13 +61,18 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
 - **Toolchain for the engine build**: `cmake` (`brew install cmake`) and the Xcode
   **Metal Toolchain** (`xcodebuild -downloadComponent MetalToolchain`) are required
   for `make deps` / `make build-engine`. Neither is needed for scaffold work.
-- **MCP stdout isolation (critical)**: the embedded sd.cpp/ggml C code writes a
-  progress bar to **fd 1 (stdout)**, which corrupts the `image-forge mcp` JSON-RPC
-  stream. `runMCP` therefore dups the real stdout into a private handle for the MCP
-  transport and repoints fd 1 at stderr (`redirectStdoutToStderr` in `mcp.go`). Any
-  new stdout writer in the engine path is fine — it lands on stderr. Verify the MCP
-  server with the dummy stdio client (initialize→generate→check_job→PNG); a blank/
-  garbage line on the response stream means something bypassed this isolation.
+- **sd.cpp prints progress to stdout unless a callback is registered (critical)**:
+  with no `sd_progress_cb` set, sd.cpp printf's a `|####| N/M - X MB/s` bar to
+  **fd 1 (stdout)** — notably during model load in `new_sd_ctx` (before Render sets
+  the real callback). Invisible in a TTY (a `\r`-updated line), but preserved on a
+  pipe, so it corrupts the `mcp` JSON-RPC stream and adds noise to `gen`/`serve`
+  stdout. Fix (two layers): (1) `engine_sdcpp.go` keeps a **no-op callback**
+  installed whenever not rendering (`ifg_silence_progress`, called before
+  `new_sd_ctx` and restored after each render) so sd.cpp never printf's; (2)
+  `runMCP` also dups the real stdout for the transport and repoints fd 1 at stderr
+  (`redirectStdoutToStderr` in `mcp.go`) as defense-in-depth. Verify with the dummy
+  stdio client (initialize→generate→check_job→PNG); a blank/garbage line on the
+  response stream means something reached stdout anyway.
 - **CGO static link is proven** (ADR-0001): `make build-engine` links sd.cpp + ggml
   + Metal into one 4.7 MB binary (verified on M2 Max, `image-forge version` inits
   Metal). `make deps` builds the sd.cpp static libs; the CGO flags live in
