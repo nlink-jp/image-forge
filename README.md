@@ -205,7 +205,8 @@ make test           # go test (third_party excluded)
 make vet
 ```
 
-Part of **util-series**. See [AGENTS.md](AGENTS.md) for structure and gotchas, and
+Part of **util-series**. See [AGENTS.md](AGENTS.md) for structure and gotchas,
+[docs/en/adding-a-model.md](docs/en/adding-a-model.md) to add a catalog model, and
 [docs/en/image-forge-rfp.md](docs/en/image-forge-rfp.md) for the full design.
 
 ## License

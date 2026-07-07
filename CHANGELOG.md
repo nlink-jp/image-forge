@@ -12,6 +12,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
   VAE and the Pony `score_*` prefix applied automatically (needs `CIVITAI_TOKEN`).
   Verified E2E (clean 1024×1024 anime render).
 
+### Docs
+- **`docs/{en,ja}/adding-a-model`** — a contributor guide for adding a catalog
+  model: source lookup (HF single-file / Civitai version id / multi-component),
+  the per-arch / Pony / photorealistic gotchas, tests, and the mandatory
+  pull+render E2E. Linked from the READMEs and AGENTS.md.
+
 ## [0.9.0] - 2026-07-07
 
 An `image-forge mcp` server so an AI can generate images.

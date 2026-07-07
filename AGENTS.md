@@ -52,7 +52,7 @@ internal/download/          HF (hf:owner/repo/file) / URL fetch with progress; t
 internal/engine/            Session interface (Open loads once, Render renders many); output.go
                             (pure, tested); engine_stub.go (no runtime); engine_sdcpp.go (CGO
                             sd.cpp binding: Open/Render, txt2img+img2img, under `cgo_sdcpp`)
-docs/{ja,en}/               RFP; docs/adr/ architecture decisions
+docs/{ja,en}/               RFP; adding-a-model.md (catalog contributor guide); docs/adr/ decisions
 Makefile                    build/build-engine/deps/test/vet/clean/build-all
 ```
 
@@ -85,6 +85,9 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   passed to C (e.g. `g.loras`, `g.init_image.data`) must be C-allocated
   (`C.malloc`), never a Go slice — else cgo panics with "Go pointer to unpinned Go
   pointer". LoRA validated via LCM-LoRA (coherent 4-step gen only with the LoRA).
+- **Adding a catalog model**: follow [`docs/en/adding-a-model.md`](docs/en/adding-a-model.md)
+  (JA: [`docs/ja/adding-a-model.ja.md`](docs/ja/adding-a-model.ja.md)) — the source
+  lookup, the per-arch/Pony/realistic gotchas, and the mandatory pull+render E2E.
 - **Models are never bundled/redistributed.** Users download; the catalog only
   points at sources and surfaces license + content rating.
 - **NSFW is opt-in.** `questionable`/`explicit` entries need `--allow-nsfw` / config.

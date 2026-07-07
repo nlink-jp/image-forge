@@ -1,0 +1,149 @@
+# カタログへのモデル追加
+
+キュレーション済みカタログは [`internal/catalog/catalog.go`](../../internal/catalog/catalog.go)
+の `Default()` が返すリストです。各エントリにより利用者は
+`image-forge models pull <name>` でチェックポイントを取得し、**モデルごとの落とし穴**
+（CLIP-skip・専用VAE・プロンプト前置き 等）がプロファイル経由で自動適用されます。本書は
+その追加手順のチェックリストです。
+
+> カタログの目的は落とし穴の隠蔽です。良い出力に非自明な設定が要るなら、それをエントリに
+> encode してください — 利用者に発見させない。
+
+## 0. 事前準備
+
+- 正式チェックアウト（`util-series/image-forge`）の `main` で作業する。
+- モデルの実ソース参照が必要。Civitai の場合、E2E ダウンロードに `CIVITAI_TOKEN` が要る。
+
+## 1. ソースを特定し、正確な参照を得る
+
+`Source` は Hugging Face / Civitai / 直 URL / 多コンポーネントに対応。
+
+### Hugging Face（単一ファイル）— 可能ならこれが最良
+
+**ファイル修飾**参照を使う: `owner/repo/file.safetensors`。
+
+```sh
+# repo ルートの .safetensors と gated 状態を確認:
+curl -s "https://huggingface.co/api/models/SG161222/RealVisXL_V5.0" \
+  | python3 -c 'import sys,json; d=json.load(sys.stdin); print("gated:",d.get("gated"),"license:",(d.get("cardData") or {}).get("license")); [print(s["rfilename"]) for s in d["siblings"] if s["rfilename"].endswith(".safetensors") and "/" not in s["rfilename"]]'
+```
+
+- **Gated repo**: `401`＝トークン無し/不正、`403`＝トークンは有効だがWebでライセンス未承諾。
+  `403` は利用者にライセンス承諾を強いる代わりに **ungated ミラー** を探す
+  （例 `camenduru/FLUX.1-dev/ae.safetensors`、`adamo1139/…-ungated/…`）。
+- **diffusers 形式の repo は単一ファイルpull不可。** `.safetensors` が `unet/` /
+  `text_encoder/` / `vae/` 配下のみでルートに単一チェックポイントが無い場合、単一 `HF`
+  参照は使えない → Civitai 版ID か多コンポーネントを使う。（`John6666/*` の Civitai
+  ミラーの多くは diffusers 形式。）
+- **HF Xet ストレージ**: 一部 repo は Xet 経由（`resolve/main/…` が `*.cdn.hf.co` へ
+  302 リダイレクト）。リダイレクト追従の全体 GET は実バイトを返し、我々の DL 実装は対応
+  済み。`Range: 0-0` プローブが1バイトでなく小さなマニフェストを返しても問題ない。
+
+### Civitai — モデルIDではなく VERSION ID を使う
+
+`Source.Civitai` は **version ID**（`models pull` が API で解決する数字）。カタログURLは
+たいてい *モデル* ID しか無いので version を引く:
+
+```sh
+# model id 439889 -> 最新 version id + base model + primary file
+curl -s "https://civitai.com/api/v1/models/439889" \
+  | python3 -c 'import sys,json; d=json.load(sys.stdin); v=d["modelVersions"][0]; print("version id:",v["id"],"| base:",v["baseModel"]); [print(f["name"],f.get("type")) for f in v["files"] if f.get("primary")]'
+```
+
+または version 個別 URL の `?modelVersionId=` を読む。DL には `CIVITAI_TOKEN`（env か
+config）が要る。トークンはログから秘匿される — **絶対にコミットしない**。
+
+## 2. プロファイル項目を決める
+
+アーキ既定から始め、落とし穴だけ上書きする。
+
+| 項目 | 選び方 |
+| --- | --- |
+| `Arch` | `ArchSDXL` / `ArchSD15` / `ArchSD35` / `ArchFlux` / `ArchZImage`。Pony・Illustrious は `ArchSDXL`。 |
+| `Prediction` | ほぼ `PredEps`。v-prediction モデル（NoobAI v-pred 等）は `PredVPred`。 |
+| `Rating` | `RatingSafe` / `RatingQuestionable` / `RatingExplicit`。NSFW可のアニメ/Pony → `Questionable`、NSFW寄り → `Explicit`。`Questionable`/`Explicit` は `--allow-nsfw` 必須。フラグがゲート、ratingは正直な信号。判断は利用者に委ねる。 |
+| `License` | 上流ライセンス。コミュニティマージで不明瞭なら `(verify)` / "see Civitai listing" を付す。 |
+| `MinRAMGB` / `RecRAMGB` | SDXL: `16` / `32`。SD1.5: `8` / `16`。FLUX/SD3.5-large: `16`（Q4）/ `32`。 |
+
+### encode すべきモデル別の落とし穴
+
+- **SDXL 専用 VAE** — SDXL エントリには必ず fp16-fix VAE を付与（fp16 の黒画像NaN対策）:
+  `VAE: "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors"`。
+- **CLIP-skip** — SDXL arch 既定は **2**（アニメ寄り）。アニメ/Pony/Illustrious はそのまま
+  （明示するなら `ClipSkip: 2`）。**実写系SDXL**（RealVisXL・Juggernaut）は `ClipSkip: 1`
+  に上書き。
+- **Pony スコアタグ** — Pony 系は品質前置きが要るので隠す:
+  `PromptPrefix: "score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up"`。
+- **多コンポーネント**（FLUX / SD3.5 / Z-Image）— `HF`/`Civitai` を空にし、`DiffusionModel`
+  ＋エンコーダ（`ClipL` / `ClipG` / `T5XXL` / `LLM`）＋ `VAE` を設定。**標準 fp8
+  （`t5xxl_fp8_e4m3fn`）・bf16・GGUF のみ使う** — ComfyUI の `fp8_scaled` / `fp8_mixed`
+  ビルドは sd.cpp 非互換（ブランク/ロード失敗）。
+
+## 3. エントリを追加
+
+`Default()` のリストに、類似モデルと同じ場所へ追加。例（Civitai Pony）— 実エントリは
+`prefect-pony-xl` / `realvisxl-v5` 付近参照:
+
+```go
+{
+    Name: "prefect-pony-xl", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
+    Rating: profile.RatingQuestionable, License: "Pony-derived; see Civitai listing",
+    MinRAMGB: 16, RecRAMGB: 32,
+    Source: Source{
+        Civitai: "2114187", // https://civitai.com/models/439889 (v6)
+        VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
+    },
+    ClipSkip:     2,
+    PromptPrefix: "score_9, score_8_up, score_7_up, score_6_up, score_5_up, score_4_up",
+    Notes:        "Prefect Pony XL v6 (Civitai): high-quality Pony SDXL. Needs CIVITAI_TOKEN.",
+},
+```
+
+## 4. テスト追加/更新
+
+テストは必須。[`internal/catalog/catalog_test.go`](../../internal/catalog/catalog_test.go) で:
+
+- 既存のテーブルテスト（Pony score-prefix、Civitai version-id、実写 clip-skip-1 等）に名前を追加。
+- 基本 invariant（名前非空・一意・license有・prediction伝搬）は全エントリを既にカバー。緑を保つ。
+
+## 5. ビルド & 確認
+
+```sh
+make build          # スキャフォールドがコンパイルできる
+make test           # go test（third_party除外）
+make vet
+./dist/image-forge models list --catalog   # エントリが出る
+```
+
+## 6. 実エンジンでE2E検証（リリース前必須）
+
+メタデータが正しいだけでは不十分 — pull して描画する:
+
+```sh
+make build-engine
+image-forge models pull <name> [--allow-nsfw]     # DL（既存ファイルは再利用）
+image-forge gen -m <name> -p "…" -o /tmp/test.png
+```
+
+そして **PNG を開いて**、黒画像（VAE/NaN）でもノイズ（予測方式ミス）でもない、まともな画像
+であることを確認。`models pull` は既存チェックポイント/VAE を再利用（`haveFile`）するので、
+ファイルが手元にあれば再検証は安い。
+
+## 7. 出荷
+
+- `CHANGELOG.md` を更新（単一モデル追加は patch bump）。
+- README はモデルを列挙しないので通常変更不要。
+- 組織チェックリストに従いリリース: `chore: release vX.Y.Z` → tag → `make package`
+  （署名 + notarize）→ `gh release` + zip アップロード → アンブレラ submodule pointer
+  更新 → `check-org.sh`。
+
+## 落とし穴チートシート
+
+- Civitai `Source` は **version id**（モデルIDではない）。
+- Gated HF: `401`＝トークン、`403`＝ライセンス未承諾 → ungated ミラー。
+- diffusers 形式の HF repo は単一ファイルpull不可。
+- ComfyUI `fp8_scaled` / `fp8_mixed` のエンコーダ/チェックポイントは sd.cpp 非互換。
+- SDXL arch 既定の CLIP-skip は 2（アニメ）。実写は 1 に上書き。
+- SDXL fp16 は fp16-fix VAE 必須（無いと黒画像）。
+- Pony 系は `score_*` プロンプト前置きが必要。
+- 黒画像 → VAE/精度、純ノイズ → `Prediction`（eps か v）の誤り。

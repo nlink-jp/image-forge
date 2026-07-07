@@ -191,7 +191,8 @@ make test           # go test（third_party 除外）
 make vet
 ```
 
-**util-series** の一員。構造と注意点は [AGENTS.md](AGENTS.md)、設計全体は
+**util-series** の一員。構造と注意点は [AGENTS.md](AGENTS.md)、カタログへのモデル追加は
+[docs/ja/adding-a-model.ja.md](docs/ja/adding-a-model.ja.md)、設計全体は
 [docs/ja/image-forge-rfp.ja.md](docs/ja/image-forge-rfp.ja.md) を参照。
 
 ## ライセンス
