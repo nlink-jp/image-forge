@@ -21,6 +21,17 @@ type LoRA struct {
 	Weight float64
 }
 
+// PNGText is one PNG text chunk carrying generation metadata. The CLI builds
+// these (friendly model name, AUTOMATIC1111-style parameters, JSON record,
+// binary version); the engine writes them into the PNG immediately after IHDR
+// via encodePNGWithText. Keyword is the chunk keyword ("parameters",
+// "image-forge"); Text is the value (UTF-8-safe — encoded as tEXt when Latin-1,
+// else iTXt).
+type PNGText struct {
+	Keyword string
+	Text    string
+}
+
 // Request is a single generation request (txt2img, or img2img when InitImage set).
 type Request struct {
 	Prompt    string
@@ -55,6 +66,11 @@ type Request struct {
 	HiresSteps    int
 	HiresModel    string // ESRGAN model path, only used when HiresUpscaler == "model"
 
+	// Metadata is written into each generated PNG as text chunks (tEXt/iTXt)
+	// immediately after IHDR. Built by the CLI (which knows the friendly model
+	// name, prediction type, and binary version); empty => nothing embedded.
+	Metadata []PNGText
+
 	Output string // output path; index is inserted before the extension for batches
 }
 
@@ -66,6 +82,7 @@ type UpscaleParams struct {
 	OutputPath string       // where to write the upscaled PNG
 	Factor     int          // requested upscale factor (the model's native factor governs the actual output)
 	Events     chan<- Event // optional progress/done sink; the caller must drain it
+	Metadata   []PNGText    // text chunks written into the output PNG (light source/upscaler/factor record)
 }
 
 // Event is a progress event streamed during generation (serialized as one JSON

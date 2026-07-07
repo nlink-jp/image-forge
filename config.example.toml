@@ -40,3 +40,10 @@ upscaler = "auto"
 # without --model, and hires with an ESRGAN upscaler and no explicit model.
 [upscaler]
 # default_model = "realesrgan-x4-anime"
+
+# Embed generation metadata (prompt / parameters / model) into output PNGs as
+# text chunks — an AUTOMATIC1111-compatible `parameters` chunk plus a complete
+# `image-forge` JSON chunk (Civitai / A1111 read these). Default: true. Set false
+# to keep prompts out of shared images. `gen --no-metadata` also disables it.
+[metadata]
+# embed = false

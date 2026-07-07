@@ -117,6 +117,12 @@ func buildRender(r RenderRequest) (engine.Request, engine.OpenParams, string, in
 		pred = normPrediction(*r.Prediction)
 	}
 
+	// Embed generation metadata into the PNG unless config [metadata] embed =
+	// false. serve/mcp have no per-call opt-out flag; the config governs.
+	if conf.EmbedMetadata() {
+		req.Metadata = buildImageMetadata(req, modelDisplayName(r.Model, r.ModelPath), pred, true)
+	}
+
 	op := engine.OpenParams{
 		ModelPath:      res.Path,
 		DiffusionModel: res.Components.DiffusionModel,

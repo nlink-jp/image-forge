@@ -16,8 +16,10 @@ import (
 // ErrNotImplemented marks scaffold subcommands that are not wired yet.
 var ErrNotImplemented = errors.New("not implemented yet (scaffold)")
 
-// Run dispatches args[0] as a subcommand. version is printed by `version`.
+// Run dispatches args[0] as a subcommand. version is printed by `version` and
+// embedded in generation metadata (via the binVersion package var).
 func Run(version string, args []string) error {
+	binVersion = version // record for embedded PNG metadata (mirrors mcpVersion)
 	if len(args) == 0 {
 		usage(os.Stderr)
 		return errors.New("no subcommand given")

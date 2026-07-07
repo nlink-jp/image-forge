@@ -4,6 +4,18 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.12.0] - 2026-07-07
+
+### Added
+- **Generation metadata embedded in the PNG** (self-describing images). Every
+  generated PNG carries the prompt, parameters, and model as text chunks: an
+  **AUTOMATIC1111-compatible `parameters` chunk** (Civitai / A1111 parse it) and a
+  complete **`image-forge` JSON** chunk. Unicode prompts use `iTXt` (UTF-8) so they
+  round-trip. On by default; disable with `gen --no-metadata` or config
+  `[metadata] embed = false`. `serve` / the MCP `generate` tool honor the config;
+  `upscale` embeds a light record. Verified E2E (round-trip English tEXt + Japanese
+  iTXt, valid CRCs). See ADR-0005.
+
 ## [0.11.0] - 2026-07-07
 
 ### Added

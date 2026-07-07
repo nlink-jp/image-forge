@@ -38,7 +38,7 @@ import (
 	"fmt"
 	"image"
 	_ "image/jpeg" // register JPEG decoder for init images
-	"image/png"
+	_ "image/png"  // register PNG decoder for init images (encoding is done by encodePNGWithText)
 	"os"
 	"runtime/cgo"
 	"strings"
@@ -323,7 +323,7 @@ func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event
 	list := unsafe.Slice(imgs, int(n))
 	for i := 0; i < int(n); i++ {
 		path := outputPath(req.Output, i, int(n))
-		err := saveImage(list[i], path)
+		err := saveImage(list[i], path, req.Metadata)
 		C.free(unsafe.Pointer(list[i].data))
 		if err != nil {
 			return err
@@ -407,7 +407,7 @@ func Upscale(p UpscaleParams) error {
 	defer C.free(unsafe.Pointer(out))
 
 	list := unsafe.Slice(out, int(n))
-	saveErr := saveImage(list[0], p.OutputPath)
+	saveErr := saveImage(list[0], p.OutputPath, p.Metadata)
 	for i := 0; i < int(n); i++ {
 		C.free(unsafe.Pointer(list[i].data))
 	}
@@ -487,8 +487,9 @@ func loadMaskImage(path string) (C.sd_image_t, func(), error) {
 	return ci, func() { C.free(buf) }, nil
 }
 
-// saveImage encodes an sd_image_t (RGB/RGBA/gray) to a PNG file.
-func saveImage(ci C.sd_image_t, path string) error {
+// saveImage encodes an sd_image_t (RGB/RGBA/gray) to a PNG file, splicing the
+// given generation-metadata text chunks in after IHDR (see encodePNGWithText).
+func saveImage(ci C.sd_image_t, path string, texts []PNGText) error {
 	w, hgt, ch := int(ci.width), int(ci.height), int(ci.channel)
 	if ci.data == nil || w == 0 || hgt == 0 {
 		return errors.New("sdcpp: empty image returned")
@@ -510,10 +511,9 @@ func saveImage(ci C.sd_image_t, path string) error {
 			}
 		}
 	}
-	f, err := os.Create(path)
+	data, err := encodePNGWithText(img, texts)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	return png.Encode(f, img)
+	return os.WriteFile(path, data, 0o644)
 }

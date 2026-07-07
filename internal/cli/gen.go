@@ -48,6 +48,8 @@ func runGen(args []string) error {
 		hiresDenoise  = fs.Float64("hires-denoise", 0, "hires denoise strength 0..1 (default: profile or 0.5)")
 		hiresUpscaler = fs.String("hires-upscaler", "", "hires upscaler: latent|lanczos|nearest|model (default: profile or latent)")
 		hiresModel    = fs.String("hires-model", "", "ESRGAN model (installed upscaler name or path) for --hires-upscaler model")
+
+		noMetadata = fs.Bool("no-metadata", false, "do not embed generation metadata (prompt/params/model) into the PNG")
 	)
 	var loraArgs multiFlag
 	fs.Var(&loraArgs, "lora", "LoRA as <path>:<weight> (repeatable)")
@@ -150,6 +152,13 @@ func runGen(args []string) error {
 	if set["prediction"] {
 		pred = normPrediction(*predict)
 	}
+
+	// Generation metadata is embedded by default; config [metadata] embed = false
+	// or --no-metadata suppresses it. The concrete seed differs per image, so the
+	// metadata is (re)built inside the render loop below.
+	embed := conf.EmbedMetadata() && !*noMetadata
+	metaModelName := modelDisplayName(mName, *modelPath)
+
 	sess, err := engine.Open(engine.OpenParams{
 		ModelPath:      res.Path,
 		DiffusionModel: res.Components.DiffusionModel,
@@ -179,6 +188,7 @@ func runGen(args []string) error {
 			r.Seed = *seed + int64(i) // sequential variations for a fixed seed
 		}
 		r.Output = seededOutput(outPath, r.Seed, n)
+		r.Metadata = buildImageMetadata(r, metaModelName, pred, embed)
 
 		events := make(chan engine.Event, 8)
 		errc := make(chan error, 1)

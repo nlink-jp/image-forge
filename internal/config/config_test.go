@@ -79,3 +79,48 @@ func TestModelsDirResolved(t *testing.T) {
 		t.Errorf("~ expansion = %q, want %s/if-models", got, home)
 	}
 }
+
+func TestEmbedMetadata_DefaultTrue(t *testing.T) {
+	// Absent config => embedding is on by default.
+	if !(Config{}).EmbedMetadata() {
+		t.Error("EmbedMetadata should default to true when unset")
+	}
+	// Loading a file without a [metadata] section keeps the default.
+	t.Setenv("IMAGE_FORGE_CONFIG", filepath.Join(t.TempDir(), "missing.toml"))
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.EmbedMetadata() {
+		t.Error("EmbedMetadata should be true when [metadata] is absent")
+	}
+}
+
+func TestEmbedMetadata_ExplicitFalse(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(p, []byte("[metadata]\nembed = false\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("IMAGE_FORGE_CONFIG", p)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.EmbedMetadata() {
+		t.Error("explicit embed = false should disable embedding")
+	}
+
+	// And explicit true stays true.
+	p2 := filepath.Join(t.TempDir(), "config2.toml")
+	if err := os.WriteFile(p2, []byte("[metadata]\nembed = true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("IMAGE_FORGE_CONFIG", p2)
+	c2, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c2.EmbedMetadata() {
+		t.Error("explicit embed = true should enable embedding")
+	}
+}

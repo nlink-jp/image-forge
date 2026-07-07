@@ -52,8 +52,9 @@ internal/store/             installed-model registry (JSON) at $IMAGE_FORGE_HOME
 internal/config/            optional config.toml (default_model/output/allow_nsfw/tokens; BurntSushi/toml)
 internal/download/          HF (hf:owner/repo/file) / URL fetch with progress; token from caller
 internal/engine/            Session interface (Open loads once, Render renders many); output.go
-                            (pure, tested); engine_stub.go (no runtime); engine_sdcpp.go (CGO
-                            sd.cpp binding: Open/Render, txt2img+img2img, under `cgo_sdcpp`)
+                            (pure, tested); pngmeta.go (pure: tEXt/iTXt writer for embedded
+                            metadata, ADR-0005); engine_stub.go (no runtime); engine_sdcpp.go (CGO
+                            sd.cpp binding: Open/Render/Upscale, under `cgo_sdcpp`)
 docs/{ja,en}/               RFP; adding-a-model.md (catalog contributor guide); docs/adr/ decisions
 Makefile                    build/build-engine/deps/test/vet/clean/build-all
 ```

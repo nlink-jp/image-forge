@@ -45,6 +45,12 @@ func runUpscale(args []string) error {
 		return fmt.Errorf("upscale: %w", err)
 	}
 
+	// Embed a light metadata record (upscaler / factor / source) unless disabled.
+	var meta []engine.PNGText
+	if conf.EmbedMetadata() {
+		meta = buildUpscaleMetadata(*modelName, esrgan, *scale, input)
+	}
+
 	enc := json.NewEncoder(os.Stderr)
 	events := make(chan engine.Event, 8)
 	errc := make(chan error, 1)
@@ -55,6 +61,7 @@ func runUpscale(args []string) error {
 			OutputPath: *out,
 			Factor:     *scale,
 			Events:     events,
+			Metadata:   meta,
 		})
 		close(events)
 	}()

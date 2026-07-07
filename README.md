@@ -77,9 +77,16 @@ fp16-fix VAE.
 | `--control-net <model>` `--control <image>` | ControlNet: steer generation by a control image (add `--control-strength`, and `--canny` to edge-preprocess) |
 | `--hires auto\|on\|off` | hires.fix (generate → upscale → a 2nd img2img pass for detail). `auto` (default) follows the model profile; `on`/`off` force it |
 | `--hires-scale` `--hires-denoise` `--hires-upscaler latent\|lanczos\|nearest\|model` `--hires-model <name\|path>` | fine-tune hires (defaults: latent, scale 1.5, denoise 0.5) |
+| `--no-metadata` | do not embed the prompt/parameters/model into the PNG |
 
 Progress is emitted as a JSON-line stream on stderr (`load` / `progress` / `done` /
 `error`), one event per line; the output path is printed to stdout.
+
+**Embedded metadata**: generated PNGs carry the prompt, parameters, and model in
+text chunks by default — an **AUTOMATIC1111-compatible `parameters` chunk** (which
+Civitai / A1111 parse) plus a complete **`image-forge` JSON** chunk. Unicode prompts
+use `iTXt` (UTF-8) so they round-trip. Turn it off with `--no-metadata` or config
+`[metadata] embed = false` (e.g. to keep prompts out of shared images).
 
 ### `upscale` — super-resolve an image
 

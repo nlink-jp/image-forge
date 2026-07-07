@@ -22,6 +22,25 @@ type Config struct {
 	MCP          MCPConfig      `toml:"mcp"`
 	Hires        HiresConfig    `toml:"hires"`
 	Upscaler     UpscalerConfig `toml:"upscaler"`
+	Metadata     MetadataConfig `toml:"metadata"`
+}
+
+// MetadataConfig controls embedding generation metadata (prompt/params/model)
+// into generated PNGs as text chunks. Embed is a pointer so absence (nil) means
+// "on" — the default is embed=true; only an explicit `embed = false` disables it.
+type MetadataConfig struct {
+	Embed *bool `toml:"embed"`
+}
+
+// EmbedMetadata reports whether generation metadata should be embedded into
+// output PNGs. Defaults to true (absence means on); only an explicit
+// `[metadata] embed = false` turns it off. The `gen --no-metadata` flag composes
+// on top of this (either one being false suppresses embedding).
+func (c Config) EmbedMetadata() bool {
+	if c.Metadata.Embed == nil {
+		return true
+	}
+	return *c.Metadata.Embed
 }
 
 // ModelsDirResolved returns the configured model-file directory with "~"

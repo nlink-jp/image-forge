@@ -157,6 +157,13 @@ func (u *engineUpscaler) Upscale(ctx context.Context, req tools.UpscaleRequest, 
 		return err
 	}
 
+	// Embed a light metadata record (upscaler / factor / source) unless disabled,
+	// mirroring the CLI `upscale` command.
+	var meta []engine.PNGText
+	if conf, cerr := config.Load(); cerr != nil || conf.EmbedMetadata() {
+		meta = buildUpscaleMetadata(req.Model, esrgan, req.Scale, req.Input)
+	}
+
 	events := make(chan engine.Event, 8)
 	done := make(chan struct{})
 	go func() {
@@ -173,6 +180,7 @@ func (u *engineUpscaler) Upscale(ctx context.Context, req tools.UpscaleRequest, 
 		OutputPath: req.Output,
 		Factor:     req.Scale,
 		Events:     events,
+		Metadata:   meta,
 	})
 	close(events)
 	<-done
