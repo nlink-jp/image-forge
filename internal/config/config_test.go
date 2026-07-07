@@ -66,3 +66,16 @@ func TestResolveHFToken_EnvWins(t *testing.T) {
 		t.Errorf("fallback to config, got %q", got)
 	}
 }
+
+func TestModelsDirResolved(t *testing.T) {
+	if got := (Config{}).ModelsDirResolved(); got != "" {
+		t.Errorf("empty models_dir should resolve to \"\" (use default), got %q", got)
+	}
+	if got := (Config{ModelsDir: "/mnt/ext/models"}).ModelsDirResolved(); got != "/mnt/ext/models" {
+		t.Errorf("absolute models_dir = %q", got)
+	}
+	home, _ := os.UserHomeDir()
+	if got := (Config{ModelsDir: "~/if-models"}).ModelsDirResolved(); got != home+"/if-models" {
+		t.Errorf("~ expansion = %q, want %s/if-models", got, home)
+	}
+}

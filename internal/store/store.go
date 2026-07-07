@@ -57,8 +57,28 @@ func Home() string {
 	return filepath.Join(h, ".local", "share", "image-forge")
 }
 
-// ModelsDir is where pulled model files are stored.
-func ModelsDir() string { return filepath.Join(Home(), "models") }
+// modelsDirOverride, when non-empty, relocates the model-file directory away
+// from <home>/models — e.g. onto a bigger disk. It is set once at startup from
+// config (SetModelsDir) rather than read here, so this package stays free of a
+// config import (config already imports store).
+var modelsDirOverride string
+
+// SetModelsDir overrides the directory pulled model files are stored in. An
+// empty dir restores the default (<home>/models). Also honored via the
+// IMAGE_FORGE_MODELS_DIR environment variable. Call once at startup.
+func SetModelsDir(dir string) { modelsDirOverride = dir }
+
+// ModelsDir is where pulled model files are stored: the SetModelsDir/config
+// override, else $IMAGE_FORGE_MODELS_DIR, else <home>/models.
+func ModelsDir() string {
+	if modelsDirOverride != "" {
+		return modelsDirOverride
+	}
+	if d := os.Getenv("IMAGE_FORGE_MODELS_DIR"); d != "" {
+		return d
+	}
+	return filepath.Join(Home(), "models")
+}
 
 func registryPath() string { return filepath.Join(Home(), "registry.json") }
 

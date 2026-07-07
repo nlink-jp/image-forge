@@ -13,6 +13,13 @@ output = "out.png"
 # Allow pulling / using questionable- or explicit-rated models without --allow-nsfw.
 allow_nsfw = false
 
+# Directory for pulled model files (checkpoints, VAEs, upscalers — the multi-GB
+# part). Point it at a bigger disk if you're low on space. "~" is expanded; also
+# settable via $IMAGE_FORGE_MODELS_DIR. This affects NEW pulls — already-installed
+# models keep the absolute paths recorded in the registry (move them and re-pull,
+# or `models rm` + re-pull, to relocate). Default: <data-dir>/models.
+# models_dir = "/Volumes/BigDisk/image-forge/models"
+
 # API tokens for gated / authenticated downloads. PREFER the environment variables
 # HF_TOKEN / CIVITAI_TOKEN — they take precedence; these are only a fallback.
 # Never commit real tokens.

@@ -209,6 +209,11 @@ Downloads come from Hugging Face / Civitai / direct URLs. Provide tokens via
 
 - **Data directory**: `$IMAGE_FORGE_HOME` (default `~/.local/share/image-forge`)
   holds the model registry (`registry.json`) and pulled model files (`models/`).
+- **Model directory** (for a bigger disk): set `models_dir` in the config (or
+  `$IMAGE_FORGE_MODELS_DIR`) to store the multi-GB model files elsewhere. It
+  affects **new** pulls; already-installed models keep the absolute paths in the
+  registry, so both locations coexist (relocate an existing one with `models rm`
+  + re-pull). The small `registry.json` stays in the data directory.
 - **Config file** (optional): `~/.config/image-forge/config.toml` (honors
   `$XDG_CONFIG_HOME` and `$IMAGE_FORGE_CONFIG`). Sets `default_model`, `output`,
   `allow_nsfw`, fallback tokens, and the hires upscaler policy (`[hires] upscaler`

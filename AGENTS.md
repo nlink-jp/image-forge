@@ -46,7 +46,9 @@ internal/mcp/               `image-forge mcp` MCP stdio server (ADR-0003): jsonr
                             (get_usage/generate/check_job/list_models/upscale)
 internal/profile/           model profiles, per-arch defaults, arch Detect (the gotcha-hiding core)
 internal/catalog/           curated model catalog (content_rating, license, RAM tier, source) + Profile()
-internal/store/             installed-model registry (JSON) at $IMAGE_FORGE_HOME/registry.json
+internal/store/             installed-model registry (JSON) at $IMAGE_FORGE_HOME/registry.json;
+                            ModelsDir relocatable via config models_dir / $IMAGE_FORGE_MODELS_DIR
+                            (store.SetModelsDir, set from config in cli.Run — store stays config-free)
 internal/config/            optional config.toml (default_model/output/allow_nsfw/tokens; BurntSushi/toml)
 internal/download/          HF (hf:owner/repo/file) / URL fetch with progress; token from caller
 internal/engine/            Session interface (Open loads once, Render renders many); output.go

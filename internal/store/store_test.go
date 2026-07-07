@@ -79,3 +79,27 @@ func TestUpscalerKindRoundTrip(t *testing.T) {
 		t.Errorf("upscaler kind did not round-trip: %+v (ok=%v)", got, ok)
 	}
 }
+
+func TestModelsDirOverride(t *testing.T) {
+	t.Setenv("IMAGE_FORGE_HOME", "/data/if")
+	t.Setenv("IMAGE_FORGE_MODELS_DIR", "")
+	defer SetModelsDir("") // reset the package global for other tests
+
+	// Default: <home>/models.
+	SetModelsDir("")
+	if got := ModelsDir(); got != "/data/if/models" {
+		t.Errorf("default ModelsDir = %q, want /data/if/models", got)
+	}
+
+	// Env var relocates it.
+	t.Setenv("IMAGE_FORGE_MODELS_DIR", "/mnt/ext/models")
+	if got := ModelsDir(); got != "/mnt/ext/models" {
+		t.Errorf("env ModelsDir = %q, want /mnt/ext/models", got)
+	}
+
+	// The explicit override wins over the env var.
+	SetModelsDir("/big/disk/models")
+	if got := ModelsDir(); got != "/big/disk/models" {
+		t.Errorf("override ModelsDir = %q, want /big/disk/models", got)
+	}
+}

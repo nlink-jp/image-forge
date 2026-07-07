@@ -16,11 +16,20 @@ type Config struct {
 	DefaultModel string         `toml:"default_model"`
 	Output       string         `toml:"output"`
 	AllowNSFW    bool           `toml:"allow_nsfw"`
+	ModelsDir    string         `toml:"models_dir"`
 	HFToken      string         `toml:"hf_token"`
 	CivitaiToken string         `toml:"civitai_token"`
 	MCP          MCPConfig      `toml:"mcp"`
 	Hires        HiresConfig    `toml:"hires"`
 	Upscaler     UpscalerConfig `toml:"upscaler"`
+}
+
+// ModelsDirResolved returns the configured model-file directory with "~"
+// expanded, or "" to use the default (<data-dir>/models). Relocating it (e.g.
+// onto a bigger disk) affects new pulls; already-installed models keep the
+// absolute paths recorded in the registry.
+func (c Config) ModelsDirResolved() string {
+	return expandHome(c.ModelsDir)
 }
 
 // HiresConfig holds the default hires.fix upscaler policy.

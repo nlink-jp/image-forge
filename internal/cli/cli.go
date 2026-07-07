@@ -8,7 +8,9 @@ import (
 	"io"
 	"os"
 
+	"github.com/nlink-jp/image-forge/internal/config"
 	"github.com/nlink-jp/image-forge/internal/engine"
+	"github.com/nlink-jp/image-forge/internal/store"
 )
 
 // ErrNotImplemented marks scaffold subcommands that are not wired yet.
@@ -19,6 +21,14 @@ func Run(version string, args []string) error {
 	if len(args) == 0 {
 		usage(os.Stderr)
 		return errors.New("no subcommand given")
+	}
+	// Honor a config-relocated models directory (e.g. onto a bigger disk) before
+	// any subcommand resolves paths. Best-effort: a missing/invalid config must
+	// not break `version`/`help`.
+	if conf, err := config.Load(); err == nil {
+		if d := conf.ModelsDirResolved(); d != "" {
+			store.SetModelsDir(d)
+		}
 	}
 	switch args[0] {
 	case "gen":

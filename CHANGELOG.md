@@ -4,6 +4,18 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.0] - 2026-07-07
+
+### Added
+- **Configurable model directory** — set `models_dir` in the config (or
+  `$IMAGE_FORGE_MODELS_DIR`) to store the multi-GB model files on a bigger disk.
+  Affects new pulls; already-installed models keep their registry paths, and the
+  small `registry.json` stays in the data directory. Verified E2E.
+
+### Docs
+- `models list` documents that pulled ESRGAN upscalers appear (arch `upscaler`)
+  and that `--json` carries a `kind` field.
+
 ## [0.10.0] - 2026-07-07
 
 Upscaling: a standalone ESRGAN upscaler and profile-driven hires.fix.
