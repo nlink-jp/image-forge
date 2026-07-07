@@ -4,6 +4,22 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.9.0] - 2026-07-07
+
+An `image-forge mcp` server so an AI can generate images.
+
+### Added
+- **`image-forge mcp`**: an MCP (Model Context Protocol) stdio server that
+  exposes image generation to an AI, reusing the resident engine. It is
+  file-mediated (like the voice-/video-studio MCP servers): tools return file
+  **paths**, never image bytes; work happens in a **workspace** directory and
+  outputs land in its `output/`. Generation is **async** — `generate` returns a
+  `job_id` and the client polls `check_job`. Tools: `get_usage`, `generate`,
+  `check_job`, `list_models` (same views as `models list --json`). Errors are
+  structured `{code, message, details}`. Verified E2E over stdio with a dummy
+  client (handshake → generate → live progress → a real PNG in the workspace).
+  See ADR-0003.
+
 ## [0.8.0] - 2026-07-07
 
 Separate installed / catalog views for `models list`, plus JSON output.

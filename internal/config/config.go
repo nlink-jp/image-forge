@@ -13,11 +13,45 @@ import (
 // Config holds user settings. Tokens here are a fallback; the matching
 // environment variables (HF_TOKEN / CIVITAI_TOKEN) take precedence.
 type Config struct {
-	DefaultModel string `toml:"default_model"`
-	Output       string `toml:"output"`
-	AllowNSFW    bool   `toml:"allow_nsfw"`
-	HFToken      string `toml:"hf_token"`
-	CivitaiToken string `toml:"civitai_token"`
+	DefaultModel string    `toml:"default_model"`
+	Output       string    `toml:"output"`
+	AllowNSFW    bool      `toml:"allow_nsfw"`
+	HFToken      string    `toml:"hf_token"`
+	CivitaiToken string    `toml:"civitai_token"`
+	MCP          MCPConfig `toml:"mcp"`
+}
+
+// MCPConfig holds optional settings for the `image-forge mcp` server. Every
+// field is optional; an empty WorkspaceRoot falls back to the built-in default
+// (<data-dir>/mcp-workspaces).
+type MCPConfig struct {
+	// WorkspaceRoot is the default root the MCP server writes workspaces under
+	// when a call omits workspace_root.
+	WorkspaceRoot string `toml:"workspace_root"`
+}
+
+// MCPWorkspaceRoot returns the configured default MCP workspace root, with "~"
+// expanded. Empty means "use the built-in default".
+func (c Config) MCPWorkspaceRoot() string {
+	return expandHome(c.MCP.WorkspaceRoot)
+}
+
+// expandHome expands a leading "~" to the user's home directory.
+func expandHome(p string) string {
+	if p == "" || p[0] != '~' {
+		return p
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return p
+	}
+	if p == "~" {
+		return home
+	}
+	if len(p) > 1 && p[1] == '/' {
+		return filepath.Join(home, p[2:])
+	}
+	return p
 }
 
 // Path is the config file location, matching the other util-series tools:

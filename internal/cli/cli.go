@@ -27,6 +27,9 @@ func Run(version string, args []string) error {
 		return runModels(args[1:])
 	case "serve":
 		return runServe(args[1:])
+	case "mcp":
+		mcpVersion = version
+		return runMCP(args[1:])
 	case "version", "--version", "-v":
 		fmt.Fprintln(os.Stdout, "image-forge", version)
 		fmt.Fprintln(os.Stdout, engine.Info())
@@ -47,6 +50,7 @@ Usage:
   image-forge gen    -p "<prompt>" [flags]              generate (txt2img / img2img)
   image-forge models <list|pull|import|quantize|rm>     manage models
   image-forge serve  [flags]                            resident JSON-line API (Phase 2)
+  image-forge mcp    [--workspace-root <dir>]           MCP stdio server (AI image generation)
   image-forge version                                   print version
 
 Run "image-forge <command> --help" for command details.

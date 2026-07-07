@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/nlink-jp/image-forge/internal/engine"
 )
@@ -41,23 +40,30 @@ type serveRequest struct {
 	Canny           bool     `json:"canny,omitempty"`
 }
 
+// renderRequest maps this serve line onto the shared cli.RenderRequest.
+func (r serveRequest) renderRequest() RenderRequest {
+	return RenderRequest{
+		Prompt: r.Prompt, Negative: r.Negative, Model: r.Model, ModelPath: r.ModelPath,
+		VAE: r.VAE, Output: r.Output, Seed: r.Seed, Steps: r.Steps, CFG: r.CFG,
+		Width: r.Width, Height: r.Height, Sampler: r.Sampler, Scheduler: r.Scheduler,
+		Prediction: r.Prediction, ClipSkip: r.ClipSkip, Batch: r.Batch,
+		Init: r.Init, Mask: r.Mask, Strength: r.Strength, LoRAs: r.LoRAs,
+		ControlNet: r.ControlNet, Control: r.Control, ControlStrength: r.ControlStrength, Canny: r.Canny,
+	}
+}
+
 // runServe is the resident mode: it loads a model once and renders many requests
 // against it, reloading only when the requested model changes. This avoids
-// paying the model load + Metal init on every generation.
+// paying the model load + Metal init on every generation. The resident-session
+// and request-building logic lives in ResidentEngine (render.go), shared with
+// the MCP render worker.
 func runServe(args []string) error {
 	dec := json.NewDecoder(os.Stdin)
 	enc := json.NewEncoder(os.Stdout)
 	emit := func(ev engine.Event) { _ = enc.Encode(ev) }
 
-	var (
-		sess   engine.Session
-		curKey string // identity of the loaded model (path/components + vae + prediction)
-	)
-	defer func() {
-		if sess != nil {
-			sess.Close()
-		}
-	}()
+	re := NewResidentEngine()
+	defer re.Close()
 
 	emit(engine.Event{Kind: "ready", Message: "send one JSON request per line"})
 	for {
@@ -74,88 +80,6 @@ func runServe(args []string) error {
 			continue
 		}
 
-		res, err := resolveModel(r.Model, r.ModelPath)
-		if err != nil {
-			emit(engine.Event{Kind: "error", Message: err.Error()})
-			continue
-		}
-		loras, err := parseLoras(r.LoRAs)
-		if err != nil {
-			emit(engine.Event{Kind: "error", Message: err.Error()})
-			continue
-		}
-
-		seed := int64(42)
-		if r.Seed != nil {
-			seed = *r.Seed
-		}
-		seed = resolveSeed(seed) // -1 => a concrete random seed (reported in "done")
-		batch := 1
-		if r.Batch != nil {
-			batch = *r.Batch
-		}
-		strength := 0.6
-		if r.Strength != nil {
-			strength = *r.Strength
-		}
-		out := r.Output
-		if out == "" {
-			out = "out.png"
-		}
-		ov := genOverrides{
-			Negative: r.Negative, Steps: r.Steps, CFG: r.CFG,
-			Width: r.Width, Height: r.Height, Sampler: r.Sampler,
-			ClipSkip: r.ClipSkip, VAE: r.VAE,
-		}
-		req := applyProfile(res.Path, res.VAEPath, r.Prompt, seed, batch, r.Init, strength, loras, out, res.Profile, ov)
-		if r.Scheduler != nil {
-			req.Scheduler = *r.Scheduler
-		}
-		req.Mask = r.Mask
-		req.ControlImage = r.Control
-		req.Canny = r.Canny
-		req.ControlStrength = 0.9
-		if r.ControlStrength != nil {
-			req.ControlStrength = *r.ControlStrength
-		}
-
-		pred := predArg(res.Profile.Prediction)
-		if r.Prediction != nil {
-			pred = normPrediction(*r.Prediction)
-		}
-
-		op := engine.OpenParams{
-			ModelPath:      res.Path,
-			DiffusionModel: res.Components.DiffusionModel,
-			ClipL:          res.Components.ClipL,
-			ClipG:          res.Components.ClipG,
-			T5XXL:          res.Components.T5XXL,
-			LLM:            res.Components.LLM,
-			VAEPath:        req.VAEPath,
-			ControlNet:     r.ControlNet,
-			Prediction:     pred,
-		}
-		key := strings.Join([]string{op.ModelPath, op.DiffusionModel, op.ClipL, op.ClipG, op.T5XXL, op.LLM, op.VAEPath, op.ControlNet, op.Prediction}, "\x00")
-
-		// (Re)load the model only when its identity changes.
-		if sess == nil || key != curKey {
-			if sess != nil {
-				sess.Close()
-				sess = nil
-			}
-			label := op.ModelPath
-			if label == "" {
-				label = op.DiffusionModel
-			}
-			emit(engine.Event{Kind: "load", Message: label})
-			s, oerr := engine.Open(op)
-			if oerr != nil {
-				emit(engine.Event{Kind: "error", Message: oerr.Error()})
-				continue
-			}
-			sess, curKey = s, key
-		}
-
 		events := make(chan engine.Event, 8)
 		done := make(chan struct{})
 		go func() {
@@ -164,7 +88,8 @@ func runServe(args []string) error {
 			}
 			close(done)
 		}()
-		if rerr := sess.Render(context.Background(), req, events); rerr != nil {
+		_, _, rerr := re.Render(context.Background(), r.renderRequest(), events)
+		if rerr != nil {
 			// Render may have already emitted events; surface the failure too.
 			events <- engine.Event{Kind: "error", Message: rerr.Error()}
 		}

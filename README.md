@@ -138,6 +138,39 @@ optional fields fall back to the model profile. `seed: -1` draws a random seed
 `{"kind":"progress","progress":0.5}` per step, `{"kind":"done","output":"a.png"}`
 per image, `{"kind":"error","message":"..."}` on failure.
 
+### `mcp` — MCP server (use it from an AI)
+
+Exposes image generation to an AI over the Model Context Protocol (JSON-RPC 2.0
+on stdio), reusing the resident engine.
+
+```sh
+image-forge mcp [--workspace-root <dir>]
+```
+
+It is **file-mediated** (like the voice-/video-studio MCP servers): tools return
+file **paths**, never image bytes. Work happens in a **workspace** directory (a
+default root under the data dir, or an agent-prepared `workspace_root` per call);
+generated PNGs land in the workspace's `output/`. Generation is **async** — a
+render takes a minute or two, so the server returns a `job_id` immediately and
+the client polls.
+
+Tools:
+
+- **`get_usage`** — the operating manual (workspace model, params, job lifecycle,
+  recovery table). Call it first.
+- **`generate`** — enqueue a render: `workspace_id` + `prompt` (required), plus
+  optional `model`, `negative`, `seed`, `steps`, `cfg`, `width`, `height`,
+  `sampler`, `scheduler`, `clip_skip`, `batch`, `init`/`mask`/`strength`
+  (img2img/inpaint, workspace-relative paths), `output_name`. Returns a `job_id`.
+- **`check_job`** — poll a `job_id`: `state` (queued/running/done/error),
+  progress, and on done the output PNG path(s) + seed(s).
+- **`list_models`** — installed / catalog models (`scope`), the same views as
+  `models list --json`.
+
+Errors are structured `{code, message, details}`. To register it with a client,
+point the client at the `image-forge` binary with the `mcp` argument. See
+ADR-0003 for the design.
+
 ## Models & content rating
 
 The curated catalog tags each entry with `content_rating`

@@ -111,6 +111,38 @@ func installedViews(reg *store.Registry) []installedView {
 	return out
 }
 
+// ModelListing is the JSON shape returned by the MCP list_models tool. Exactly
+// the same views that `models list --json` renders (installedView/catalogView),
+// so the two surfaces never drift.
+type ModelListing struct {
+	Installed []installedView `json:"installed,omitempty"`
+	Catalog   []catalogView   `json:"catalog,omitempty"`
+}
+
+// ListModels returns the installed and/or catalog views for the given scope
+// ("installed", "catalog", or "all"). It reuses the exact installedViews /
+// catalogViews that back `models list`, so the MCP tool and the CLI stay in
+// lockstep. An unknown scope returns an error.
+func ListModels(scope string) (ModelListing, error) {
+	reg, err := store.Load()
+	if err != nil {
+		return ModelListing{}, err
+	}
+	var out ModelListing
+	switch scope {
+	case "installed":
+		out.Installed = installedViews(reg)
+	case "catalog":
+		out.Catalog = catalogViews(reg)
+	case "all":
+		out.Installed = installedViews(reg)
+		out.Catalog = catalogViews(reg)
+	default:
+		return ModelListing{}, fmt.Errorf("unknown scope %q (want installed|catalog|all)", scope)
+	}
+	return out, nil
+}
+
 func printJSON(v any) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")

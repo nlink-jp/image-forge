@@ -3,7 +3,17 @@
 // Engine interface, not the C bindings, so generation logic stays testable.
 package engine
 
-import "context"
+import (
+	"context"
+	"errors"
+)
+
+// ErrNoRuntime is returned by Open/Quantize when the binary was built without
+// the diffusion runtime (i.e. without the cgo_sdcpp build tag). It is declared
+// here — under both build tags — so callers can branch on it (errors.Is)
+// regardless of how the binary was built; only the no-runtime Open actually
+// returns it.
+var ErrNoRuntime = errors.New("this build has no diffusion runtime: build with -tags cgo_sdcpp (requires cmake + Metal Toolchain + the sd.cpp submodule)")
 
 // LoRA is a LoRA adapter applied at generation time.
 type LoRA struct {

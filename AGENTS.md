@@ -38,7 +38,12 @@ make vet           # go vet ./...
 ```
 main.go                     entry; injects version; delegates to internal/cli
 internal/cli/               dispatch (cli.go); gen (gen.go); models (models.go); serve (serve.go);
+                            mcp server bootstrap (mcp.go); shared resident engine (render.go);
                             shared model-resolution + profile merge (resolve.go)
+internal/mcp/               `image-forge mcp` MCP stdio server (ADR-0003): jsonrpc, transport,
+                            mcpserver (initialize/tools list+call), toolerr ({code,message,details}),
+                            job (async FIFO worker), workspace (os.Root containment), tools
+                            (get_usage/generate/check_job/list_models)
 internal/profile/           model profiles, per-arch defaults, arch Detect (the gotcha-hiding core)
 internal/catalog/           curated model catalog (content_rating, license, RAM tier, source) + Profile()
 internal/store/             installed-model registry (JSON) at $IMAGE_FORGE_HOME/registry.json
@@ -56,6 +61,13 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
 - **Toolchain for the engine build**: `cmake` (`brew install cmake`) and the Xcode
   **Metal Toolchain** (`xcodebuild -downloadComponent MetalToolchain`) are required
   for `make deps` / `make build-engine`. Neither is needed for scaffold work.
+- **MCP stdout isolation (critical)**: the embedded sd.cpp/ggml C code writes a
+  progress bar to **fd 1 (stdout)**, which corrupts the `image-forge mcp` JSON-RPC
+  stream. `runMCP` therefore dups the real stdout into a private handle for the MCP
+  transport and repoints fd 1 at stderr (`redirectStdoutToStderr` in `mcp.go`). Any
+  new stdout writer in the engine path is fine — it lands on stderr. Verify the MCP
+  server with the dummy stdio client (initialize→generate→check_job→PNG); a blank/
+  garbage line on the response stream means something bypassed this isolation.
 - **CGO static link is proven** (ADR-0001): `make build-engine` links sd.cpp + ggml
   + Metal into one 4.7 MB binary (verified on M2 Max, `image-forge version` inits
   Metal). `make deps` builds the sd.cpp static libs; the CGO flags live in

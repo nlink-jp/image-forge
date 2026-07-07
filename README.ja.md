@@ -129,6 +129,35 @@ image-forge serve < requests.jsonl
 ステップ毎 `{"kind":"progress","progress":0.5}`、画像毎 `{"kind":"done","output":"a.png"}`、
 失敗時 `{"kind":"error","message":"..."}`。
 
+### `mcp` — MCP サーバー（AIから使う）
+
+画像生成を MCP（stdio 上の JSON-RPC 2.0）で AI に公開する。常駐エンジンを再利用。
+
+```sh
+image-forge mcp [--workspace-root <dir>]
+```
+
+voice-/video-studio の MCP サーバー同様 **file-mediated**（ツールは画像bytesではなく
+ファイル**パス**を返す）。作業は**ワークスペース**ディレクトリ内（既定ルートはデータ
+ディレクトリ下、または呼び出し毎に `workspace_root` を指定）、生成PNGは `output/` に出力。
+生成は1〜2分かかるため**非同期** — `generate` は即座に `job_id` を返し、クライアントが
+ポーリングする。
+
+ツール:
+
+- **`get_usage`** — 操作マニュアル（ワークスペースモデル・パラメータ・jobライフサイクル・
+  リカバリ表）。最初に呼ぶ。
+- **`generate`** — 生成を投入: `workspace_id` + `prompt`（必須）、任意で `model`,
+  `negative`, `seed`, `steps`, `cfg`, `width`, `height`, `sampler`, `scheduler`,
+  `clip_skip`, `batch`, `init`/`mask`/`strength`（img2img/inpaint、ワークスペース相対
+  パス）, `output_name`。`job_id` を返す。
+- **`check_job`** — `job_id` をポーリング: `state`(queued/running/done/error)・進捗、
+  完了時に出力PNGパスとseed。
+- **`list_models`** — インストール済み / カタログ（`scope`）。`models list --json` と同一ビュー。
+
+エラーは構造化 `{code, message, details}`。クライアントには `image-forge` バイナリを
+`mcp` 引数付きで登録する。設計は ADR-0003 を参照。
+
 ## モデルとコンテンツ格付け
 
 カタログは各エントリに `content_rating`（`safe` / `questionable` / `explicit`）と
