@@ -100,9 +100,10 @@ image-forge models rm <name>
 ```
 
 - **list**: 既定では**インストール済み**モデルを表示（名前・アーキ・格付け・
-  ライセンス・パス）。`--catalog` はカタログ（`installed` 列付き）、`--all` は両方を
-  セクション分けで表示。いずれも `--json` で機械可読出力（installed→配列、
-  catalog→`installed` フラグ付き配列、`--all`→`installed`/`catalog` 配列を持つオブジェクト）。
+  ライセンス・パス）。pull した ESRGAN アップスケーラもアーキ `upscaler` として並ぶ。
+  `--catalog` はカタログ（`installed` 列付き）、`--all` は両方をセクション分けで表示。
+  いずれも `--json` で機械可読出力（各エントリに `kind`＝`""`/diffusion か `upscaler`；
+  installed→配列、catalog→`installed` フラグ付き配列、`--all`→`installed`/`catalog` 配列を持つオブジェクト）。
 - **pull**: カタログ名をソースに解決し、チェックポイントと（カタログエントリなら）
   専用 VAE を DL してプロファイル登録。生の `hf:owner/repo/file` 参照、
   `civitai:<versionId>` 参照（Civitai モデルのダウンロードURLの数字。`CIVITAI_TOKEN` 必須）、

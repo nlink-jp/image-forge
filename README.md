@@ -105,11 +105,12 @@ image-forge models rm <name>
 ```
 
 - **list** shows your **installed** models by default (name, arch, rating,
-  license, path). `--catalog` lists the curated catalog instead (with an
-  `installed` column), and `--all` shows both as separate sections. Add `--json`
-  to any of these for machine-readable output (installed → array; catalog →
-  array with an `installed` flag; `--all` → an object with `installed` and
-  `catalog` arrays).
+  license, path); pulled ESRGAN upscalers appear here too with arch `upscaler`.
+  `--catalog` lists the curated catalog instead (with an `installed` column), and
+  `--all` shows both as separate sections. Add `--json` to any of these for
+  machine-readable output (each entry carries a `kind`, `""`/diffusion or
+  `upscaler`; installed → array; catalog → array with an `installed` flag;
+  `--all` → an object with `installed` and `catalog` arrays).
 - **pull** resolves a catalog name to its source, downloads the checkpoint and (for
   catalog entries) the dedicated VAE, and registers a profile. You can also pull a
   raw `hf:owner/repo/file` reference, a `civitai:<versionId>` reference (the number
