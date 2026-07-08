@@ -47,8 +47,15 @@ stub build.
 
 **Default on, with an opt-out** for privacy (an embedded prompt is visible to
 anyone the image is shared with): `gen --no-metadata`, and config `[metadata]
-embed = false`. `serve` / the MCP `generate` tool honor the config; `upscale`
-embeds a light record (source, upscaler, factor).
+embed = false`. `serve` / the MCP `generate` tool honor the config.
+
+**Upscale (v0.12.1+):** `upscale` reads the source PNG's metadata
+(`engine.ReadPNGText`, the inverse of the chunk writer) and **carries it through**
+— the upscaled image keeps the original prompt / seed / parameters (and the
+source's `parameters` chunk) plus an `upscale` sub-record `{upscaler, factor,
+source}`, so an upscale stays self-describing and its provenance survives a
+gallery reload. When the source has no image-forge metadata, only the light
+`upscale` record is written.
 
 ## Consequences
 

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -93,6 +94,13 @@ type imgforgeMeta struct {
 	Img2Img    *img2imgMeta    `json:"img2img,omitempty"`
 	Hires      *hiresMeta      `json:"hires,omitempty"`
 	ControlNet *controlNetMeta `json:"controlnet,omitempty"`
+	Upscale    *upscaleMeta    `json:"upscale,omitempty"`
+}
+
+type upscaleMeta struct {
+	Upscaler string `json:"upscaler"`
+	Factor   int    `json:"factor"`
+	Source   string `json:"source"`
 }
 
 type img2imgMeta struct {
@@ -159,28 +167,63 @@ func imageForgeJSON(req engine.Request, modelName, prediction string) string {
 	return string(b)
 }
 
-// buildUpscaleMetadata builds the light "image-forge" record embedded into a
+// buildUpscaleMetadata builds the "image-forge" record embedded into a
 // standalone-upscale output PNG. upscalerName is the friendly upscaler name (or
 // its model-file base name when unnamed); factor is the requested factor (0 =
 // the model's native factor); input is the source image path.
+//
+// The source image's own generation metadata (prompt / seed / params) is carried
+// through so the upscaled PNG retains its provenance, with an `upscale`
+// sub-record noting how it was produced. When the source carries no image-forge
+// metadata, a light record with just the `upscale` sub-record is written. The
+// source's AUTOMATIC1111 `parameters` chunk (if any) is carried through verbatim.
 func buildUpscaleMetadata(upscalerName, esrganPath string, factor int, input string) []engine.PNGText {
 	up := upscalerName
 	if up == "" {
 		up = modelBaseName(esrganPath)
 	}
-	rec := struct {
-		Version  string `json:"version"`
-		Upscaler string `json:"upscaler"`
-		Factor   int    `json:"factor"`
-		Source   string `json:"source"`
-	}{
-		Version:  binVersion,
-		Upscaler: up,
-		Factor:   factor,
-		Source:   filepath.Base(input),
+	upRec := &upscaleMeta{Upscaler: up, Factor: factor, Source: filepath.Base(input)}
+
+	src, params, ok := readForgeMetadata(input)
+	var forgeJSON string
+	if ok {
+		src.Version = binVersion // stamp the upscaling binary
+		src.Upscale = upRec
+		b, _ := json.Marshal(src)
+		forgeJSON = string(b)
+	} else {
+		rec := struct {
+			Version string       `json:"version"`
+			Upscale *upscaleMeta `json:"upscale"`
+		}{Version: binVersion, Upscale: upRec}
+		b, _ := json.Marshal(rec)
+		forgeJSON = string(b)
 	}
-	b, _ := json.Marshal(rec)
-	return []engine.PNGText{{Keyword: "image-forge", Text: string(b)}}
+
+	texts := []engine.PNGText{{Keyword: "image-forge", Text: forgeJSON}}
+	if params != "" {
+		texts = append(texts, engine.PNGText{Keyword: "parameters", Text: params})
+	}
+	return texts
+}
+
+// readForgeMetadata reads a PNG's embedded metadata: the `image-forge` JSON record
+// (decoded into imgforgeMeta) and the raw `parameters` string. ok is true only
+// when the image-forge JSON was present and decoded. Missing file / not a PNG /
+// no metadata returns zero values.
+func readForgeMetadata(path string) (meta imgforgeMeta, params string, ok bool) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return imgforgeMeta{}, "", false
+	}
+	chunks := engine.ReadPNGText(data)
+	params = chunks["parameters"]
+	if js, has := chunks["image-forge"]; has {
+		if json.Unmarshal([]byte(js), &meta) == nil {
+			return meta, params, true
+		}
+	}
+	return imgforgeMeta{}, params, false
 }
 
 // lorasToStrings renders LoRAs as "path:weight" entries (nil when none).

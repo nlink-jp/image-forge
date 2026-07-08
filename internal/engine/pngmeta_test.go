@@ -185,3 +185,31 @@ func TestEncodeTextChunk_RejectsBadKeyword(t *testing.T) {
 		t.Error("80-byte keyword should error")
 	}
 }
+
+func TestReadPNGText_RoundTrip(t *testing.T) {
+	asciiText := "a cat\nSteps: 26, Seed: 42" // tEXt (Latin-1)
+	jpText := "猫、詳細な背景"                       // iTXt (UTF-8)
+	out, err := encodePNGWithText(tinyImage(), []PNGText{
+		{Keyword: "parameters", Text: asciiText},
+		{Keyword: "image-forge", Text: jpText},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := ReadPNGText(out)
+	if got["parameters"] != asciiText {
+		t.Errorf("parameters = %q, want %q", got["parameters"], asciiText)
+	}
+	if got["image-forge"] != jpText {
+		t.Errorf("image-forge = %q, want %q", got["image-forge"], jpText)
+	}
+}
+
+func TestReadPNGText_NotPNG(t *testing.T) {
+	if ReadPNGText([]byte("not a png")) != nil {
+		t.Error("non-PNG should return nil")
+	}
+	if ReadPNGText(nil) != nil {
+		t.Error("nil should return nil")
+	}
+}

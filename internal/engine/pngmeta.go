@@ -64,6 +64,90 @@ func encodePNGWithText(img image.Image, texts []PNGText) ([]byte, error) {
 	return out, nil
 }
 
+// ReadPNGText walks a PNG's chunks and returns the text carried by every tEXt /
+// iTXt chunk, keyed by keyword — the inverse of encodePNGWithText. Compressed
+// iTXt (compression flag != 0) is skipped; image-forge never writes it. CRCs are
+// not verified. Returns nil when data is not a PNG.
+func ReadPNGText(data []byte) map[string]string {
+	if len(data) < 8 || !bytes.Equal(data[:8], pngSignature) {
+		return nil
+	}
+	out := map[string]string{}
+	i := 8
+	for i+8 <= len(data) {
+		length := int(binary.BigEndian.Uint32(data[i : i+4]))
+		ctype := string(data[i+4 : i+8])
+		start := i + 8
+		if length < 0 || start+length+4 > len(data) {
+			break
+		}
+		payload := data[start : start+length]
+		switch ctype {
+		case "tEXt":
+			if k, v, ok := decodeTEXt(payload); ok {
+				out[k] = v
+			}
+		case "iTXt":
+			if k, v, ok := decodeITXt(payload); ok {
+				out[k] = v
+			}
+		}
+		i = start + length + 4
+		if ctype == "IEND" {
+			break
+		}
+	}
+	return out
+}
+
+// decodeTEXt parses `keyword \0 latin1(text)`.
+func decodeTEXt(d []byte) (string, string, bool) {
+	nul := bytes.IndexByte(d, 0)
+	if nul < 1 {
+		return "", "", false
+	}
+	return fromLatin1(d[:nul]), fromLatin1(d[nul+1:]), true
+}
+
+// decodeITXt parses `keyword \0 compFlag compMethod langtag \0 transkw \0 utf8(text)`.
+// Compressed iTXt is unsupported (returns false).
+func decodeITXt(d []byte) (string, string, bool) {
+	nul := bytes.IndexByte(d, 0)
+	if nul < 1 {
+		return "", "", false
+	}
+	keyword := fromLatin1(d[:nul])
+	j := nul + 1
+	if j+2 > len(d) {
+		return "", "", false
+	}
+	compFlag := d[j]
+	j += 2 // skip compression flag + method
+	langNul := bytes.IndexByte(d[j:], 0)
+	if langNul < 0 {
+		return "", "", false
+	}
+	j += langNul + 1
+	transNul := bytes.IndexByte(d[j:], 0)
+	if transNul < 0 {
+		return "", "", false
+	}
+	j += transNul + 1
+	if compFlag != 0 {
+		return "", "", false
+	}
+	return keyword, string(d[j:]), true // text is UTF-8
+}
+
+// fromLatin1 decodes Latin-1 bytes (one byte per rune) to a string.
+func fromLatin1(b []byte) string {
+	rs := make([]rune, len(b))
+	for i, c := range b {
+		rs[i] = rune(c)
+	}
+	return string(rs)
+}
+
 // encodeTextChunk builds a single tEXt or iTXt chunk for one PNGText entry. tEXt
 // is used when the text is Latin-1-safe; iTXt (UTF-8) otherwise.
 func encodeTextChunk(t PNGText) ([]byte, error) {

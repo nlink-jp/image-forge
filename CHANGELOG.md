@@ -4,6 +4,20 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.12.1] - 2026-07-09
+
+### Changed
+- **`upscale` now preserves the source image's generation metadata.** An upscaled
+  PNG carries the original prompt / seed / parameters through (plus the source's
+  AUTOMATIC1111 `parameters` chunk), with an `upscale` sub-record `{upscaler,
+  factor, source}` noting how it was produced — instead of only a light
+  `{upscaler, factor, source}` record. So an upscaled image stays self-describing
+  and its provenance survives (e.g. a GUI gallery can still show the prompt after
+  reload). When the source has no image-forge metadata, the light record is
+  written as before (now nested under `upscale`). Extends ADR-0005.
+- Added `engine.ReadPNGText` (a tEXt / iTXt reader, the inverse of the existing
+  writer) so `upscale` can read the source PNG's chunks.
+
 ## [0.12.0] - 2026-07-07
 
 ### Added

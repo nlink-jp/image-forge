@@ -1,7 +1,12 @@
 package cli
 
 import (
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
+	"hash/crc32"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -144,6 +149,7 @@ func TestBuildImageMetadata_HiresFields(t *testing.T) {
 
 func TestBuildUpscaleMetadata(t *testing.T) {
 	withVersion(t, "v1.2.3")
+	// Source path doesn't exist → light record with just the upscale sub-record.
 	texts := buildUpscaleMetadata("realesrgan-x4plus", "/models/x4.pth", 4, "/tmp/in.png")
 	if len(texts) != 1 || texts[0].Keyword != "image-forge" {
 		t.Fatalf("want one image-forge chunk, got %v", texts)
@@ -152,17 +158,87 @@ func TestBuildUpscaleMetadata(t *testing.T) {
 	if err := json.Unmarshal([]byte(texts[0].Text), &m); err != nil {
 		t.Fatalf("invalid JSON: %v\n%s", err, texts[0].Text)
 	}
-	if m["upscaler"] != "realesrgan-x4plus" || m["factor"].(float64) != 4 ||
-		m["source"] != "in.png" || m["version"] != "v1.2.3" {
+	up, _ := m["upscale"].(map[string]any)
+	if up == nil || up["upscaler"] != "realesrgan-x4plus" || up["factor"].(float64) != 4 ||
+		up["source"] != "in.png" || m["version"] != "v1.2.3" {
 		t.Errorf("upscale record wrong: %v", m)
 	}
 	// Unnamed upscaler falls back to the model-file base name.
 	texts2 := buildUpscaleMetadata("", "/models/x4-anime.pth", 0, "in.jpg")
 	var m2 map[string]any
 	_ = json.Unmarshal([]byte(texts2[0].Text), &m2)
-	if m2["upscaler"] != "x4-anime" {
-		t.Errorf("unnamed upscaler = %v, want x4-anime", m2["upscaler"])
+	up2, _ := m2["upscale"].(map[string]any)
+	if up2 == nil || up2["upscaler"] != "x4-anime" {
+		t.Errorf("unnamed upscaler = %v, want x4-anime", m2["upscale"])
 	}
+}
+
+// A source PNG's generation metadata (prompt / seed / params) is carried through
+// into the upscaled PNG, plus the upscale sub-record and the parameters chunk.
+func TestBuildUpscaleMetadataCarriesSource(t *testing.T) {
+	withVersion(t, "v9")
+	forge := `{"version":"v1","model":"realvisxl-v5","prompt":"a cat",` +
+		`"negative":"blurry","seed":42,"steps":30,"width":768,"height":768,"sampler":"euler_a"}`
+	src := writePNGWithText(t, map[string]string{
+		"image-forge": forge,
+		"parameters":  "a cat\nNegative prompt: blurry\nSteps: 30, Seed: 42",
+	})
+
+	texts := buildUpscaleMetadata("realesrgan-x4plus", "/models/x4.pth", 4, src)
+	byKw := map[string]string{}
+	for _, tx := range texts {
+		byKw[tx.Keyword] = tx.Text
+	}
+
+	var m imgforgeMeta
+	if err := json.Unmarshal([]byte(byKw["image-forge"]), &m); err != nil {
+		t.Fatalf("bad image-forge json: %v", err)
+	}
+	if m.Prompt != "a cat" || m.Seed != 42 || m.Model != "realvisxl-v5" || m.Width != 768 {
+		t.Errorf("source metadata not carried: %+v", m)
+	}
+	if m.Upscale == nil || m.Upscale.Upscaler != "realesrgan-x4plus" || m.Upscale.Factor != 4 {
+		t.Errorf("upscale sub-record wrong: %+v", m.Upscale)
+	}
+	if m.Version != "v9" {
+		t.Errorf("version not stamped with upscaling binary: %q", m.Version)
+	}
+	if !strings.Contains(byKw["parameters"], "a cat") {
+		t.Errorf("parameters chunk not carried: %q", byKw["parameters"])
+	}
+}
+
+// writePNGWithText writes a minimal structurally-valid PNG carrying the given
+// tEXt chunks (enough for engine.ReadPNGText to walk), returning its temp path.
+func writePNGWithText(t *testing.T, chunks map[string]string) string {
+	t.Helper()
+	var buf bytes.Buffer
+	buf.Write([]byte{0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a})
+	buf.Write(rawChunk("IHDR", []byte{0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0}))
+	for kw, text := range chunks {
+		data := append([]byte(kw), 0)
+		data = append(data, []byte(text)...)
+		buf.Write(rawChunk("tEXt", data))
+	}
+	buf.Write(rawChunk("IEND", nil))
+	path := filepath.Join(t.TempDir(), "src.png")
+	if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// rawChunk assembles one PNG chunk: length(4 BE) + type + data + CRC-32(4 BE).
+func rawChunk(typ string, data []byte) []byte {
+	td := append([]byte(typ), data...)
+	var u32 [4]byte
+	var out []byte
+	binary.BigEndian.PutUint32(u32[:], uint32(len(data)))
+	out = append(out, u32[:]...)
+	out = append(out, td...)
+	binary.BigEndian.PutUint32(u32[:], crc32.ChecksumIEEE(td))
+	out = append(out, u32[:]...)
+	return out
 }
 
 func TestModelDisplayName(t *testing.T) {
