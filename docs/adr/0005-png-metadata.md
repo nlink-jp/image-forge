@@ -57,10 +57,35 @@ source}`, so an upscale stays self-describing and its provenance survives a
 gallery reload. When the source has no image-forge metadata, only the light
 `upscale` record is written.
 
+**No filesystem paths (v0.13.1+).** The original record embedded absolute paths
+(`model_path`, `vae_path`, `loras: ["/abs/path.safetensors:1"]`, `img2img.init`,
+`controlnet.image`, `hires.model`). That was wrong. A generated image is *made to
+be shared*, and an absolute path leaks the machine's layout — and, via the home
+directory, **the user's name** (`/Users/alice/…`) — to anyone the image reaches,
+including Civitai. It also reproduces nothing: the path is meaningless on another
+machine.
+
+So every model reference is now recorded as an **identifier**: its registry name
+when installed, else the file's base name. That is *more* useful for
+reproduction, not less, because `-m` / `--lora` / `--control-net` resolve
+installed names (ADR-0006) — `"loras": ["lcm-lora-sdxl:1"]` is directly
+re-runnable. **Input images are not recorded at all**: `img2img` keeps only
+`strength`, `controlnet` only `strength` / `canny`. A file *name* can itself be
+personal (`my-passport-scan.png`), and A1111's own `parameters` chunk records the
+denoising strength without naming the init image — we match that. A regression
+test asserts no `/Users`, `/Volumes`, or file extension can appear in either
+chunk.
+
+This narrows "lossless" (a Consequence below): we keep everything needed to
+*reproduce* the image, and deliberately drop what only describes *this machine*.
+
 ## Consequences
 
 - Images are self-describing and round-trip into the A1111/Civitai ecosystem,
-  while the JSON chunk preserves everything image-forge knows (lossless).
+  while the JSON chunk preserves everything needed to **reproduce** the render —
+  but never the filesystem paths or input images that would only describe *this
+  machine* (see "No filesystem paths" above). It is not a byte-for-byte record of
+  the invocation, and deliberately so.
 - Unicode prompts are handled (iTXt), unlike a naive tEXt-only approach.
 - No new dependency; the chunk writer is pure Go and unit-tested; the interop
   string builder is tested independently of the engine.

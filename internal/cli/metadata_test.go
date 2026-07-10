@@ -116,8 +116,12 @@ func TestBuildImageMetadata_Img2ImgAddsDenoising(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected img2img object: %s", texts[1].Text)
 	}
-	if sub["init"] != "in.png" || sub["strength"].(float64) != 0.4 {
+	if sub["strength"].(float64) != 0.4 {
 		t.Errorf("img2img record wrong: %v", sub)
+	}
+	// The init image itself must never be recorded (ADR-0005: no paths, no inputs).
+	if _, present := sub["init"]; present {
+		t.Errorf("img2img must not record the init image: %v", sub)
 	}
 }
 

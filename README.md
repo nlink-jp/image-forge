@@ -84,9 +84,15 @@ Progress is emitted as a JSON-line stream on stderr (`load` / `progress` / `done
 
 **Embedded metadata**: generated PNGs carry the prompt, parameters, and model in
 text chunks by default — an **AUTOMATIC1111-compatible `parameters` chunk** (which
-Civitai / A1111 parse) plus a complete **`image-forge` JSON** chunk. Unicode prompts
+Civitai / A1111 parse) plus an **`image-forge` JSON** chunk. Unicode prompts
 use `iTXt` (UTF-8) so they round-trip. Turn it off with `--no-metadata` or config
 `[metadata] embed = false` (e.g. to keep prompts out of shared images).
+
+**No filesystem paths are embedded.** Models are recorded by identifier — the
+registry name when installed, else the file's base name — so a shared image never
+reveals your directory layout or username, and `"loras": ["lcm-lora-sdxl:1"]` is
+directly re-runnable. Input images (img2img init, ControlNet control) are not
+recorded at all; only the parameters that shaped the render (`strength`, `canny`).
 
 ### `upscale` — super-resolve an image
 

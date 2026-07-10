@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/nlink-jp/image-forge/internal/engine"
+	"github.com/nlink-jp/image-forge/internal/store"
 )
 
 // binVersion is the binary version string, set at the top of Run (mirroring
@@ -29,9 +30,10 @@ func buildImageMetadata(req engine.Request, modelName, prediction string, embed 
 	if !embed {
 		return nil
 	}
+	names := registryNameByPath()
 	return []engine.PNGText{
 		{Keyword: "parameters", Text: a1111Parameters(req, modelName)},
-		{Keyword: "image-forge", Text: imageForgeJSON(req, modelName, prediction)},
+		{Keyword: "image-forge", Text: imageForgeJSON(req, modelName, prediction, names)},
 	}
 }
 
@@ -72,12 +74,20 @@ func a1111Parameters(req engine.Request, modelName string) string {
 	return b.String()
 }
 
-// imgforgeMeta is the flat, lossless JSON record embedded under the "image-forge"
-// keyword. Sub-records are pointers so they omit entirely when not applicable.
+// imgforgeMeta is the JSON record embedded under the "image-forge" keyword.
+// Sub-records are pointers so they omit entirely when not applicable.
+//
+// **It never carries a filesystem path.** A generated image is meant to be
+// shared, and an absolute path leaks the machine's layout (and, via the home
+// directory, the user's name) while being useless on anyone else's machine.
+// Models are recorded by identifier — a registry name where we have one, else the
+// file's base name — which is also what actually reproduces the image, since
+// `--lora` / `--control-net` / `-m` resolve installed names (ADR-0005, ADR-0006).
+// Input images (img2img init, ControlNet control) are not recorded at all; only
+// the parameters that shaped the render.
 type imgforgeMeta struct {
 	Version    string          `json:"version"`
 	Model      string          `json:"model"`
-	ModelPath  string          `json:"model_path"`
 	Prompt     string          `json:"prompt"`
 	Negative   string          `json:"negative"`
 	Seed       int64           `json:"seed"`
@@ -89,7 +99,7 @@ type imgforgeMeta struct {
 	Scheduler  string          `json:"scheduler,omitempty"`
 	ClipSkip   int             `json:"clip_skip"`
 	Prediction string          `json:"prediction,omitempty"`
-	VAEPath    string          `json:"vae_path,omitempty"`
+	VAE        string          `json:"vae,omitempty"` // identifier, never a path
 	LoRAs      []string        `json:"loras,omitempty"`
 	Img2Img    *img2imgMeta    `json:"img2img,omitempty"`
 	Hires      *hiresMeta      `json:"hires,omitempty"`
@@ -100,11 +110,12 @@ type imgforgeMeta struct {
 type upscaleMeta struct {
 	Upscaler string `json:"upscaler"`
 	Factor   int    `json:"factor"`
-	Source   string `json:"source"`
+	Source   string `json:"source"` // base name of the source image, never a path
 }
 
+// img2imgMeta records that this was an img2img render and how strongly the init
+// image was denoised. The init image itself is deliberately not recorded.
 type img2imgMeta struct {
-	Init     string  `json:"init"`
 	Strength float64 `json:"strength"`
 }
 
@@ -114,21 +125,23 @@ type hiresMeta struct {
 	Denoise  float64 `json:"denoise"`
 	Upscaler string  `json:"upscaler"`
 	Steps    int     `json:"steps"`
-	Model    string  `json:"model"`
+	Model    string  `json:"model,omitempty"` // identifier, never a path
 }
 
+// controlNetMeta records the ControlNet parameters. The control image itself is
+// deliberately not recorded.
 type controlNetMeta struct {
-	Image    string  `json:"image"`
 	Strength float64 `json:"strength"`
 	Canny    bool    `json:"canny"`
 }
 
-// imageForgeJSON marshals the lossless generation record to compact JSON.
-func imageForgeJSON(req engine.Request, modelName, prediction string) string {
+// imageForgeJSON marshals the generation record to compact JSON. `names` maps an
+// absolute model path back to its registry name; it is injected so this stays a
+// pure function. Every model reference is rendered as an identifier, never a path.
+func imageForgeJSON(req engine.Request, modelName, prediction string, names map[string]string) string {
 	m := imgforgeMeta{
 		Version:    binVersion,
 		Model:      modelName,
-		ModelPath:  req.ModelPath,
 		Prompt:     req.Prompt,
 		Negative:   req.Negative,
 		Seed:       req.Seed,
@@ -140,11 +153,12 @@ func imageForgeJSON(req engine.Request, modelName, prediction string) string {
 		Scheduler:  req.Scheduler,
 		ClipSkip:   req.ClipSkip,
 		Prediction: prediction,
-		VAEPath:    req.VAEPath,
-		LoRAs:      lorasToStrings(req.LoRAs),
+		VAE:        modelIdent(req.VAEPath, names),
+		LoRAs:      lorasToStrings(req.LoRAs, names),
 	}
+	// The init / control images are NOT recorded — only how they shaped the render.
 	if req.InitImage != "" {
-		m.Img2Img = &img2imgMeta{Init: req.InitImage, Strength: req.Strength}
+		m.Img2Img = &img2imgMeta{Strength: req.Strength}
 	}
 	if req.Hires {
 		m.Hires = &hiresMeta{
@@ -153,18 +167,46 @@ func imageForgeJSON(req engine.Request, modelName, prediction string) string {
 			Denoise:  req.HiresDenoise,
 			Upscaler: req.HiresUpscaler,
 			Steps:    req.HiresSteps,
-			Model:    req.HiresModel,
+			Model:    modelIdent(req.HiresModel, names),
 		}
 	}
 	if req.ControlImage != "" {
 		m.ControlNet = &controlNetMeta{
-			Image:    req.ControlImage,
 			Strength: req.ControlStrength,
 			Canny:    req.Canny,
 		}
 	}
 	b, _ := json.Marshal(m)
 	return string(b)
+}
+
+// modelIdent renders a model file as an identifier that never reveals the
+// filesystem: its registry name when installed, else the file's base name.
+// Empty in, empty out.
+func modelIdent(path string, names map[string]string) string {
+	if path == "" {
+		return ""
+	}
+	if n, ok := names[path]; ok && n != "" {
+		return n
+	}
+	return modelBaseName(path)
+}
+
+// registryNameByPath builds an absolute-path -> registry-name lookup, so embedded
+// metadata can name the models it used instead of pointing at them.
+func registryNameByPath() map[string]string {
+	reg, err := store.Load()
+	if err != nil {
+		return nil
+	}
+	names := make(map[string]string, len(reg.Models))
+	for _, im := range reg.Models {
+		if im.Path != "" {
+			names[im.Path] = im.Name
+		}
+	}
+	return names
 }
 
 // buildUpscaleMetadata builds the "image-forge" record embedded into a
@@ -226,14 +268,17 @@ func readForgeMetadata(path string) (meta imgforgeMeta, params string, ok bool) 
 	return imgforgeMeta{}, params, false
 }
 
-// lorasToStrings renders LoRAs as "path:weight" entries (nil when none).
-func lorasToStrings(loras []engine.LoRA) []string {
+// lorasToStrings renders LoRAs as "<identifier>:<weight>" entries (nil when
+// none) — a registry name where we have one, else the file's base name. Never a
+// path: `gen --lora <name>:<weight>` resolves the name back, so this is both
+// safe to share and what actually reproduces the image.
+func lorasToStrings(loras []engine.LoRA, names map[string]string) []string {
 	if len(loras) == 0 {
 		return nil
 	}
 	out := make([]string, len(loras))
 	for i, l := range loras {
-		out[i] = l.Path + ":" + ftoa(l.Weight)
+		out[i] = modelIdent(l.Path, names) + ":" + ftoa(l.Weight)
 	}
 	return out
 }

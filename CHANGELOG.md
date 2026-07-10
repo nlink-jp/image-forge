@@ -4,6 +4,29 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.13.1] - unreleased
+
+### Fixed (privacy)
+- **Embedded PNG metadata no longer contains filesystem paths.** Since v0.12.0
+  every generated image carried absolute paths — `model_path`, `vae_path`,
+  `loras: ["/abs/path.safetensors:1"]`, `img2img.init`, `controlnet.image`,
+  `hires.model` — leaking the machine's layout and, via the home directory, **the
+  user's name** (`/Users/alice/…`) to anyone the image was shared with, Civitai
+  included. `upscale` (v0.12.1+) propagated them to upscaled images too.
+
+  Models are now recorded as **identifiers**: the registry name when installed,
+  else the file's base name. This is *better* for reproduction, since `-m` /
+  `--lora` / `--control-net` resolve installed names — `"loras":
+  ["lcm-lora-sdxl:1"]` is directly re-runnable. **Input images are not recorded at
+  all**: `img2img` keeps only `strength`, `controlnet` only `strength` / `canny`
+  (a file name can itself be personal, and A1111 records the denoising strength
+  without naming the init image). `model_path` / `vae_path` are gone; `vae` holds
+  an identifier. A regression test asserts neither chunk can contain `/Users`,
+  `/Volumes`, or a model file extension. See ADR-0005.
+
+  Already-generated images keep whatever they were written with; re-generate (or
+  re-`upscale`, which now drops the old paths on carry-through) to clean them.
+
 ## [0.13.0] - 2026-07-09
 
 ### Added
