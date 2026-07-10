@@ -87,7 +87,50 @@ Start from the architecture defaults and override only the gotchas.
 - **Upscaler (ESRGAN) entries** are a different `Kind: "upscaler"` — a single
   `.pth`/`.safetensors` ESRGAN with no VAE/prediction/profile (e.g.
   `realesrgan-x4plus`). They power `image-forge upscale` and hires
-  `--hires-upscaler model`.
+  `--hires-upscaler model`. Upscalers are **architecture-agnostic**: leave `Arch`
+  unset.
+- **LoRA entries** use `Kind: catalog.KindLoRA` and, unlike upscalers, **must set
+  `Arch`** — a LoRA only works on the base architecture it was trained against, and
+  the registry's `arch` is what lets `models list --json` consumers (and the GUI)
+  hide incompatible ones. No VAE, prediction, clip-skip, or hires fields.
+
+  ```go
+  {
+      Name: "lcm-lora-sdxl", Kind: KindLoRA, Arch: profile.ArchSDXL,
+      Rating: profile.RatingSafe, License: "OpenRAIL++",
+      MinRAMGB: 16, RecRAMGB: 32,
+      Source: Source{HF: "latent-consistency/lcm-lora-sdxl/pytorch_lora_weights.safetensors"},
+      Notes:  "Few-step sampling. Use ~4-8 steps, CFG ~1-2, sampler lcm.",
+  }
+  ```
+
+  **Verify the format before adding an entry.** sd.cpp wants kohya-style keys
+  (`lora_unet_*.lora_down.weight` / `.lora_up.weight` / `.alpha`). Read the
+  safetensors header — you don't need the whole file:
+
+  ```sh
+  python3 -c "
+  import struct, json, sys
+  with open(sys.argv[1],'rb') as f:
+      hdr = json.loads(f.read(struct.unpack('<Q', f.read(8))[0]))
+  keys = [k for k in hdr if k != '__metadata__']
+  print('kohya:', any(k.startswith('lora_unet') for k in keys), '| tensors:', len(keys))
+  print('has text-encoder tensors:', any(k.startswith('lora_te') for k in keys))
+  " some-lora.safetensors
+  ```
+
+  Then **render once with it** (`gen --lora <name>:1.0`) and compare against the
+  same seed without it. A LoRA that loads but does nothing, or one that crashes
+  sd.cpp, must not ship in the catalog. (UNet-only LoRAs — no `lora_te*` — used to
+  segfault sd.cpp's up-front merge path; image-forge pins `lora_apply_mode =
+  at_runtime` to avoid it. See ADR-0006.)
+
+- **ControlNet entries** use `Kind: catalog.KindControlNet` and likewise **must set
+  `Arch`**. None ship yet: sd.cpp is picky about the ControlNet format, and we do
+  not add an entry we haven't rendered with. Until one is verified, register a
+  local file with `models import <path> --kind controlnet`. Note that changing the
+  ControlNet **reloads the base model** (it is part of the engine's reload key),
+  unlike LoRAs which apply per render.
 - **Multi-component** (FLUX / SD3.5 / Z-Image) — leave `HF`/`Civitai` empty and set
   `DiffusionModel` + the encoders (`ClipL` / `ClipG` / `T5XXL` / `LLM`) + `VAE`.
   **Use standard fp8 (`t5xxl_fp8_e4m3fn`), bf16, or GGUF only** — ComfyUI's
