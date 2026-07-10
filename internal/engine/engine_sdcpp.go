@@ -91,6 +91,14 @@ func Open(p OpenParams) (Session, error) {
 	var cp C.sd_ctx_params_t
 	C.sd_ctx_params_init(&cp)
 
+	// LoRA application mode. sd.cpp's LORA_APPLY_AUTO picks "immediately" for
+	// non-quantized weights, which merges the LoRA into the model params up front
+	// (ModelManager::apply_loras_to_params). That path segfaults on some LoRAs
+	// (e.g. UNet-only SDXL LCM-LoRAs). at_runtime applies the LoRA during the
+	// forward pass instead, which is robust; the cost is per-step compute rather
+	// than a one-off merge. Correctness over speed.
+	cp.lora_apply_mode = C.LORA_APPLY_AT_RUNTIME
+
 	// Set each non-empty path; the CStrings must outlive new_sd_ctx, so free them
 	// only after it returns.
 	var frees []unsafe.Pointer

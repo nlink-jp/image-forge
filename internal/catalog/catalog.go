@@ -23,10 +23,14 @@ type Source struct {
 }
 
 // Kind classifies a catalog entry. The empty string means a diffusion model (the
-// default); "upscaler" is a standalone ESRGAN super-resolution model.
+// default); the rest are auxiliary models that are not renderable on their own.
+// LoRA / ControlNet entries are bound to a base architecture (see ADR-0006);
+// upscalers are architecture-agnostic.
 const (
-	KindDiffusion = ""
-	KindUpscaler  = "upscaler"
+	KindDiffusion  = ""
+	KindUpscaler   = "upscaler"
+	KindLoRA       = "lora"
+	KindControlNet = "controlnet"
 )
 
 // Entry is a catalog record.
@@ -62,6 +66,18 @@ func (e Entry) NeedsOptIn() bool {
 // IsUpscaler reports whether this entry is a standalone ESRGAN upscaler rather
 // than a diffusion model.
 func (e Entry) IsUpscaler() bool { return e.Kind == KindUpscaler }
+
+// IsLoRA reports whether this entry is a LoRA adapter applied on top of a base
+// diffusion model of the same Arch.
+func (e Entry) IsLoRA() bool { return e.Kind == KindLoRA }
+
+// IsControlNet reports whether this entry is a ControlNet model loaded alongside
+// a base diffusion model of the same Arch.
+func (e Entry) IsControlNet() bool { return e.Kind == KindControlNet }
+
+// IsAuxiliary reports whether this entry is a non-renderable helper model
+// (upscaler / LoRA / ControlNet) rather than a base diffusion model.
+func (e Entry) IsAuxiliary() bool { return e.Kind != KindDiffusion }
 
 // IsMultiComponent reports whether this model is assembled from separate weight
 // files (diffusion model + encoders + VAE) rather than a single checkpoint.
@@ -278,6 +294,23 @@ func Default() []Entry {
 			MinRAMGB: 4, RecRAMGB: 8,
 			Source: Source{HF: "utnah/esrgan/RealESRGAN_x4plus_anime_6B.pth"},
 			Notes:  "Real-ESRGAN x4 anime-tuned upscaler (ESRGAN, 6B). For `image-forge upscale` and `gen --hires-upscaler model --hires-model realesrgan-x4-anime`.",
+		},
+
+		// LoRA adapters (ADR-0006). Bound to a base architecture; applied per
+		// render with `gen --lora <name>:<weight>` (no model reload).
+		{
+			Name: "lcm-lora-sdxl", Kind: KindLoRA, Arch: profile.ArchSDXL,
+			Rating: profile.RatingSafe, License: "OpenRAIL++",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source: Source{HF: "latent-consistency/lcm-lora-sdxl/pytorch_lora_weights.safetensors"},
+			Notes:  "Latent Consistency LoRA for SDXL: few-step sampling. Use ~4-8 steps, CFG ~1-2, sampler lcm. e.g. `gen --lora lcm-lora-sdxl:1.0 --steps 6 --cfg 1.5 --sampler lcm`.",
+		},
+		{
+			Name: "lcm-lora-sd15", Kind: KindLoRA, Arch: profile.ArchSD15,
+			Rating: profile.RatingSafe, License: "OpenRAIL++",
+			MinRAMGB: 8, RecRAMGB: 16,
+			Source: Source{HF: "latent-consistency/lcm-lora-sdv1-5/pytorch_lora_weights.safetensors"},
+			Notes:  "Latent Consistency LoRA for SD1.5: few-step sampling. Use ~4-8 steps, CFG ~1-2, sampler lcm.",
 		},
 	}
 }

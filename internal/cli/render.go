@@ -62,6 +62,11 @@ func buildRender(r RenderRequest) (engine.Request, engine.OpenParams, string, in
 	if err != nil {
 		return engine.Request{}, engine.OpenParams{}, "", 0, err
 	}
+	// LoRA / ControlNet may be given as registry names or as raw paths (ADR-0006).
+	loras, controlNet, err := resolveAuxRefs(loras, r.ControlNet)
+	if err != nil {
+		return engine.Request{}, engine.OpenParams{}, "", 0, err
+	}
 
 	seed := int64(42)
 	if r.Seed != nil {
@@ -131,7 +136,7 @@ func buildRender(r RenderRequest) (engine.Request, engine.OpenParams, string, in
 		T5XXL:          res.Components.T5XXL,
 		LLM:            res.Components.LLM,
 		VAEPath:        req.VAEPath,
-		ControlNet:     r.ControlNet,
+		ControlNet:     controlNet,
 		Prediction:     pred,
 	}
 	key := reloadKey(op)

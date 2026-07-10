@@ -4,6 +4,45 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.13.0] - unreleased
+
+### Added
+- **LoRA and ControlNet are first-class registry model kinds** (ADR-0006). The
+  registry previously understood only diffusion models and upscalers, so a LoRA
+  or ControlNet could only be named by raw file path — nothing could acquire,
+  enumerate, or arch-check them.
+  - `models pull lcm-lora-sdxl` installs a LoRA like any other model. Catalog
+    entries added for **`lcm-lora-sdxl`** and **`lcm-lora-sd15`** (Latent
+    Consistency LoRAs: few-step sampling at ~4-8 steps, CFG ~1-2, sampler `lcm`).
+  - `models import <path> --kind lora|controlnet|upscaler` registers a local file.
+  - `models list --kind diffusion|lora|controlnet|upscaler` filters the listing
+    (table and `--json`).
+  - LoRA / ControlNet entries record the base **architecture** they were trained
+    against (unlike upscalers, which are architecture-agnostic), so `models list
+    --json` reports a usable `arch` and callers can reject incompatible pairings.
+- **`--lora` and `--control-net` accept an installed registry name** as well as a
+  path: `gen --lora lcm-lora-sdxl:1.0`. A value that looks like a path passes
+  through unchanged (existing invocations keep working); a bare name that isn't
+  installed, or one registered under a different kind, is a clear up-front error
+  instead of a confusing failure inside sd.cpp. Resolution is shared by `gen`,
+  `serve`, and the MCP render worker.
+
+### Fixed
+- **`--lora` no longer crashes the process.** sd.cpp's default `lora_apply_mode`
+  (`auto`) merges the LoRA into the model parameters up front for non-quantized
+  weights, and that merge path segfaults on UNet-only LoRAs (e.g. the SDXL
+  LCM-LoRA). image-forge now pins `lora_apply_mode = at_runtime`, applying the
+  LoRA during the forward pass. This affected any `gen --lora <path>` on an fp16
+  model — and would have taken down the resident `serve` engine. Verified E2E:
+  `--lora lcm-lora-sdxl:1.0 --steps 6 --cfg 1.5 --sampler lcm` now renders, and
+  the LoRA is demonstrably applied (the same seed without it is a blurry mess).
+
+### Notes
+- Changing the **ControlNet** model reloads the base model (it is part of the
+  engine's reload key); changing **LoRAs** does not — they are applied per render.
+- ControlNet catalog entries are not included yet; use `models import --kind
+  controlnet <path>` until they are verified against sd.cpp's expected format.
+
 ## [0.12.1] - 2026-07-09
 
 ### Changed

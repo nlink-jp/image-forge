@@ -43,7 +43,7 @@ func runModels(args []string) error {
 // internal catalog.Entry / store.InstalledModel structs.
 type catalogView struct {
 	Name           string `json:"name"`
-	Kind           string `json:"kind,omitempty"` // "" (diffusion) or "upscaler"
+	Kind           string `json:"kind,omitempty"` // "" (diffusion) | upscaler | lora | controlnet
 	Arch           string `json:"arch"`
 	Prediction     string `json:"prediction"`
 	Rating         string `json:"rating"`
@@ -59,7 +59,7 @@ type catalogView struct {
 
 type installedView struct {
 	Name           string `json:"name"`
-	Kind           string `json:"kind,omitempty"` // "" (diffusion) or "upscaler"
+	Kind           string `json:"kind,omitempty"` // "" (diffusion) | upscaler | lora | controlnet
 	Arch           string `json:"arch"`
 	Rating         string `json:"rating,omitempty"`
 	License        string `json:"license,omitempty"`
@@ -119,7 +119,9 @@ func installedViews(reg *store.Registry) []installedView {
 		out = append(out, installedView{
 			Name: m.Name, Kind: m.Kind, Arch: string(m.Profile.Arch), Rating: string(m.Rating),
 			License: m.License, Path: m.Path, VAEPath: m.VAEPath,
-			MultiComponent: m.Path == "" && m.Kind != "upscaler", InCatalog: inCat,
+			// Only a base diffusion model can be assembled from components; an
+			// upscaler / LoRA / ControlNet with no Path would just be broken.
+			MultiComponent: m.Path == "" && m.IsDiffusion(), InCatalog: inCat,
 		})
 	}
 	return out
@@ -169,6 +171,7 @@ func modelsList(args []string) error {
 	installedOnly := fs.Bool("installed", false, "list installed models (the default)")
 	all := fs.Bool("all", false, "list both installed models and the catalog")
 	asJSON := fs.Bool("json", false, "output JSON instead of a table")
+	kindFlag := fs.String("kind", "", "only this kind: diffusion|lora|controlnet|upscaler")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -179,6 +182,14 @@ func modelsList(args []string) error {
 	showInstalled, showCatalog := resolveListMode(*all, *catalogOnly, *installedOnly)
 	inst := installedViews(reg)
 	cat := catalogViews(reg)
+	if *kindFlag != "" {
+		kind, err := normalizeKind(*kindFlag)
+		if err != nil {
+			return fmt.Errorf("models list: %w", err)
+		}
+		inst = filterByKind(inst, kind, func(v installedView) string { return v.Kind })
+		cat = filterByKind(cat, kind, func(v catalogView) string { return v.Kind })
+	}
 
 	if *asJSON {
 		switch {
@@ -264,8 +275,13 @@ func modelsImport(args []string) error {
 	name := fs.String("name", "", "registry name (default: file base name)")
 	archFlag := fs.String("arch", "", "architecture: sdxl|sd15|sd35|flux|zimage (default: auto-detect)")
 	vae := fs.String("vae", "", "path to an external VAE")
+	kindFlag := fs.String("kind", "", "model kind: lora|controlnet|upscaler (default: a base diffusion model)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
+	}
+	kind, err := normalizeKind(*kindFlag)
+	if err != nil {
+		return fmt.Errorf("models import: %w", err)
 	}
 	abs, err := filepath.Abs(pathArg)
 	if err != nil {
@@ -283,19 +299,73 @@ func modelsImport(args []string) error {
 	if *archFlag != "" {
 		arch = profile.Arch(*archFlag)
 	}
-	prof := profile.ArchDefaults(arch)
-	prof.Name = nm
+
+	// Base models get the full architecture defaults. Auxiliary models are not
+	// renderable, so they carry only what identifies them: a name, and — for
+	// LoRA / ControlNet — the base architecture they're bound to (ADR-0006).
+	var prof profile.Profile
+	switch kind {
+	case catalog.KindDiffusion:
+		prof = profile.ArchDefaults(arch)
+		prof.Name = nm
+	case catalog.KindUpscaler:
+		prof = profile.Profile{Name: nm}
+	default: // lora | controlnet
+		prof = profile.Profile{Name: nm, Arch: arch}
+	}
 
 	reg, err := store.Load()
 	if err != nil {
 		return err
 	}
-	reg.Add(store.InstalledModel{Name: nm, Path: abs, VAEPath: *vae, Profile: prof, Rating: profile.RatingSafe})
+	vaePath := *vae
+	if kind != catalog.KindDiffusion {
+		vaePath = ""
+	}
+	reg.Add(store.InstalledModel{
+		Name: nm, Kind: kind, Path: abs, VAEPath: vaePath,
+		Profile: prof, Rating: profile.RatingSafe,
+	})
 	if err := reg.Save(); err != nil {
 		return err
 	}
-	fmt.Printf("imported %q (%s) -> %s\n", nm, arch, abs)
+	if kind == catalog.KindUpscaler {
+		fmt.Printf("imported %q (%s) -> %s\n", nm, kind, abs)
+	} else if kind != catalog.KindDiffusion {
+		fmt.Printf("imported %q (%s, %s) -> %s\n", nm, kind, arch, abs)
+	} else {
+		fmt.Printf("imported %q (%s) -> %s\n", nm, arch, abs)
+	}
 	return nil
+}
+
+// filterByKind keeps only the views whose kind (read by `kindOf`) equals `kind`.
+// Pure, so `models list --kind` filtering is unit-testable.
+func filterByKind[T any](views []T, kind string, kindOf func(T) string) []T {
+	out := make([]T, 0, len(views))
+	for _, v := range views {
+		if kindOf(v) == kind {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// normalizeKind validates a --kind flag value, mapping "" (and "diffusion") to
+// the default base-model kind.
+func normalizeKind(s string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "", "diffusion":
+		return catalog.KindDiffusion, nil
+	case catalog.KindUpscaler:
+		return catalog.KindUpscaler, nil
+	case catalog.KindLoRA:
+		return catalog.KindLoRA, nil
+	case catalog.KindControlNet, "control-net", "control_net":
+		return catalog.KindControlNet, nil
+	default:
+		return "", fmt.Errorf("unknown kind %q (want lora|controlnet|upscaler)", s)
+	}
 }
 
 // haveFile reports whether path is an already-downloaded, non-empty file we can
@@ -358,9 +428,15 @@ func modelsPull(args []string) error {
 			return fmt.Errorf("models pull: catalog entry %q has no downloadable source", e.Name)
 		}
 		prof, rating, license, vaeSrc, kind = e.Profile(), e.Rating, e.License, e.Source.VAE, e.Kind
-		if e.IsUpscaler() {
-			// Upscalers carry no diffusion profile / VAE — register a minimal one.
+		switch {
+		case e.IsUpscaler():
+			// Upscalers are architecture-agnostic and carry no diffusion profile / VAE.
 			prof, vaeSrc = profile.Profile{Name: e.Name}, ""
+		case e.IsLoRA(), e.IsControlNet():
+			// LoRA / ControlNet carry no diffusion profile or VAE either, but they
+			// ARE bound to a base architecture — keep Arch so `models list` can
+			// report it and callers can filter incompatible combinations (ADR-0006).
+			prof, vaeSrc = profile.Profile{Name: e.Name, Arch: e.Arch}, ""
 		}
 		if regName == "" {
 			regName = e.Name

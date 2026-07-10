@@ -25,8 +25,9 @@ type Components struct {
 // InstalledModel is a registered, ready-to-use model. Either Path (a single-file
 // checkpoint) or Components (multi-component) is set.
 type InstalledModel struct {
-	Name       string          `json:"name"`
-	Kind       string          `json:"kind,omitempty"` // "" (diffusion, default) or "upscaler"
+	Name string `json:"name"`
+	// "" (diffusion, default), "upscaler", "lora", or "controlnet" (ADR-0006).
+	Kind       string          `json:"kind,omitempty"`
 	Path       string          `json:"path"`
 	VAEPath    string          `json:"vae_path,omitempty"`
 	Components Components      `json:"components,omitempty"`
@@ -38,6 +39,18 @@ type InstalledModel struct {
 // IsUpscaler reports whether this installed model is a standalone ESRGAN
 // upscaler rather than a diffusion model.
 func (m InstalledModel) IsUpscaler() bool { return m.Kind == "upscaler" }
+
+// IsLoRA reports whether this installed model is a LoRA adapter (applied on top
+// of a base diffusion model of the same architecture).
+func (m InstalledModel) IsLoRA() bool { return m.Kind == "lora" }
+
+// IsControlNet reports whether this installed model is a ControlNet model
+// (loaded alongside a base diffusion model of the same architecture).
+func (m InstalledModel) IsControlNet() bool { return m.Kind == "controlnet" }
+
+// IsDiffusion reports whether this installed model is a renderable base model
+// (as opposed to an upscaler / LoRA / ControlNet helper).
+func (m InstalledModel) IsDiffusion() bool { return m.Kind == "" }
 
 // Registry is the set of installed models, keyed by name.
 type Registry struct {

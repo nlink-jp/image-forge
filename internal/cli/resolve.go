@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/nlink-jp/image-forge/internal/catalog"
 	"github.com/nlink-jp/image-forge/internal/config"
 	"github.com/nlink-jp/image-forge/internal/engine"
 	"github.com/nlink-jp/image-forge/internal/profile"
@@ -113,6 +114,71 @@ func installedUpscalers() map[string]string {
 // an ESRGAN model path for the standalone `upscale` command. With neither given
 // it falls back to the config [upscaler] default_model, then to the sole
 // installed upscaler. It rejects a diffusion model passed as --model.
+// kindNoun renders a model kind for error messages.
+func kindNoun(kind string) string {
+	switch kind {
+	case catalog.KindLoRA:
+		return "LoRA"
+	case catalog.KindControlNet:
+		return "ControlNet model"
+	case catalog.KindUpscaler:
+		return "upscaler"
+	default:
+		return "diffusion model"
+	}
+}
+
+// looksLikePath reports whether a --lora / --control-net value is a filesystem
+// path rather than a bare registry name (it has a separator or a file extension).
+func looksLikePath(s string) bool {
+	return strings.ContainsRune(s, filepath.Separator) || filepath.Ext(s) != ""
+}
+
+// resolveAuxModel resolves a LoRA / ControlNet reference to a file path: an
+// installed model of `kind` resolves by registry name; a value that looks like a
+// path passes through unchanged (so existing path-based invocations keep
+// working); a bare name that isn't installed is a clear error. `get` is the
+// registry lookup, injected so this stays unit-testable. See ADR-0006.
+func resolveAuxModel(ref, kind string, get func(string) (store.InstalledModel, bool)) (string, error) {
+	if ref == "" {
+		return "", nil
+	}
+	if im, ok := get(ref); ok {
+		if im.Kind != kind {
+			return "", fmt.Errorf("%q is a %s, not a %s", ref, kindNoun(im.Kind), kindNoun(kind))
+		}
+		return im.Path, nil
+	}
+	if looksLikePath(ref) {
+		return ref, nil
+	}
+	return "", fmt.Errorf("%s %q is not installed (try: image-forge models pull %s)", kindNoun(kind), ref, ref)
+}
+
+// resolveAuxRefs resolves LoRA references (in place) and a ControlNet reference
+// against the registry: registry names become installed paths, raw paths pass
+// through. Shared by `gen`, the resident `serve` loop, and the MCP worker so all
+// three accept installed names identically (ADR-0006).
+func resolveAuxRefs(loras []engine.LoRA, controlNet string) ([]engine.LoRA, string, error) {
+	reg, err := store.Load()
+	if err != nil {
+		return nil, "", err
+	}
+	get := func(n string) (store.InstalledModel, bool) { return reg.Get(n) }
+	for i := range loras {
+		p, err := resolveAuxModel(loras[i].Path, catalog.KindLoRA, get)
+		if err != nil {
+			return nil, "", fmt.Errorf("lora: %w", err)
+		}
+		loras[i].Path = p
+	}
+	cn, err := resolveAuxModel(controlNet, catalog.KindControlNet, get)
+	if err != nil {
+		return nil, "", fmt.Errorf("control-net: %w", err)
+	}
+	return loras, cn, nil
+}
+
 func resolveUpscalerModel(name, path string, conf config.Config) (string, error) {
 	switch {
 	case name != "":

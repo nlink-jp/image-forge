@@ -73,8 +73,8 @@ fp16-fix VAE.
 | `--batch` | images per run (sd.cpp batch, sequential seeds) |
 | `--init` `--strength` | img2img: init image + denoise strength (0..1; lower = closer to the init) |
 | `--mask` | inpaint (with `--init`): regenerate only the white region of the mask (same size as the init) |
-| `--lora <path>:<weight>` | apply a LoRA (repeatable) |
-| `--control-net <model>` `--control <image>` | ControlNet: steer generation by a control image (add `--control-strength`, and `--canny` to edge-preprocess) |
+| `--lora <name\|path>:<weight>` | apply a LoRA (repeatable). An installed LoRA's registry name resolves to its file; a path also works. Applied per render — no model reload |
+| `--control-net <name\|path>` `--control <image>` | ControlNet: steer generation by a control image (add `--control-strength`, and `--canny` to edge-preprocess). **Changing the ControlNet reloads the base model** |
 | `--hires auto\|on\|off` | hires.fix (generate → upscale → a 2nd img2img pass for detail). `auto` (default) follows the model profile; `on`/`off` force it |
 | `--hires-scale` `--hires-denoise` `--hires-upscaler latent\|lanczos\|nearest\|model` `--hires-model <name\|path>` | fine-tune hires (defaults: latent, scale 1.5, denoise 0.5) |
 | `--no-metadata` | do not embed the prompt/parameters/model into the PNG |
@@ -104,11 +104,23 @@ printed to stdout.
 ### `models` — manage models
 
 ```sh
-image-forge models list [--catalog|--all] [--json]      # installed (default), catalog, or both
+image-forge models list [--catalog|--all] [--json] [--kind K]   # installed (default), catalog, or both
 image-forge models pull <name | hf:owner/repo/file | civitai:<versionId> | url> [--allow-nsfw] [--name N]
-image-forge models import <path> [--name N] [--arch A] [--vae V]
+image-forge models import <path> [--name N] [--arch A] [--vae V] [--kind K]
 image-forge models quantize <name> --to <type> [--name N]
 image-forge models rm <name>
+```
+
+The registry holds four **kinds** (`--kind diffusion|lora|controlnet|upscaler`):
+a base diffusion model, plus three auxiliary kinds that aren't renderable on
+their own. LoRA and ControlNet entries record the base **architecture** they were
+trained against, so incompatible combinations can be caught up front (ADR-0006).
+
+```sh
+image-forge models pull lcm-lora-sdxl          # a LoRA, like any other model
+image-forge models list --kind lora --json     # what a front-end enumerates
+image-forge gen -p "a red apple" -m animagine-xl-4 \
+  --lora lcm-lora-sdxl:1.0 --steps 6 --cfg 1.5 --sampler lcm
 ```
 
 - **list** shows your **installed** models by default (name, arch, rating,
