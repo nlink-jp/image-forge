@@ -152,7 +152,7 @@ them). `--trigger "a,b"` sets them when importing a local file.
   VAE you already have (even under another registered name) is reused rather than
   re-downloaded.
 - **import** registers a model file you already have; the architecture is
-  auto-detected from the name (override with `--arch sdxl|sd15|sd35|flux|zimage`).
+  auto-detected from the name (override with `--arch sdxl|sd15|sd35|flux|zimage|anima`).
 - **quantize** converts a registered model to a GGUF at `--to` ∈
   `q8_0 q5_0 q5_1 q4_0 q4_1 q2_k q3_k q4_k q5_k q6_k f16 f32`, baking in its VAE, and
   registers it as `<name>-<type>`. q8_0 ≈ half size at near-full quality; q4_* ≈ a

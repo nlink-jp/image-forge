@@ -277,7 +277,7 @@ func modelsImport(args []string) error {
 	pathArg := args[0]
 	fs := flag.NewFlagSet("models import", flag.ContinueOnError)
 	name := fs.String("name", "", "registry name (default: file base name)")
-	archFlag := fs.String("arch", "", "architecture: sdxl|sd15|sd35|flux|zimage (default: auto-detect)")
+	archFlag := fs.String("arch", "", "architecture: sdxl|sd15|sd35|flux|zimage|anima (default: auto-detect)")
 	vae := fs.String("vae", "", "path to an external VAE")
 	kindFlag := fs.String("kind", "", "model kind: lora|controlnet|upscaler (default: a base diffusion model)")
 	triggerFlag := fs.String("trigger", "", "comma-separated LoRA trigger words (prompt tokens that activate it)")

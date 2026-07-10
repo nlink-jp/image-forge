@@ -289,6 +289,22 @@ func Default() []Entry {
 			Notes:    "v-prediction SDXL (verified; the profile sets prediction=v). NSFW-capable.",
 		},
 		{
+			// Anima is its own architecture (sd.cpp VERSION_ANIMA), not an SDXL
+			// derivative — see profile.ArchAnima. Like Z-Image it is multi-component:
+			// the DiT checkpoint carries only `model.diffusion_model.*`, and sd.cpp's
+			// AnimaConditioner wants a Qwen3 LLM under `text_encoders.llm` plus the
+			// Qwen-Image VAE. The single-file Civitai download will NOT load.
+			Name: "anima-turbo", Arch: profile.ArchAnima, Prediction: profile.PredEps,
+			Rating: profile.RatingSafe, License: "NVIDIA Open Model License (see model card)",
+			MinRAMGB: 8, RecRAMGB: 16,
+			Source: Source{
+				DiffusionModel: "circlestone-labs/Anima/split_files/diffusion_models/anima-turbo-v1.0.safetensors",
+				LLM:            "circlestone-labs/Anima/split_files/text_encoders/qwen_3_06b_base.safetensors",
+				VAE:            "circlestone-labs/Anima/split_files/vae/qwen_image_vae.safetensors",
+			},
+			Notes: "Anima turbo (CircleStone Labs x Comfy Org, 2B): anime / illustration focused, explicitly not for realism. Distilled — CFG 1 and 8-12 steps (the profile sets 10, sampler euler, no negative prompt). Multi-component: DiT + Qwen3-0.6B text encoder + Qwen-Image VAE. Base for Anima LoRAs.",
+		},
+		{
 			Name: "realesrgan-x4plus", Kind: KindUpscaler,
 			Rating: profile.RatingSafe, License: "BSD-3-Clause",
 			MinRAMGB: 4, RecRAMGB: 8,

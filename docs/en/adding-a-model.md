@@ -139,8 +139,16 @@ Start from the architecture defaults and override only the gotchas.
   local file with `models import <path> --kind controlnet`. Note that changing the
   ControlNet **reloads the base model** (it is part of the engine's reload key),
   unlike LoRAs which apply per render.
-- **Multi-component** (FLUX / SD3.5 / Z-Image) — leave `HF`/`Civitai` empty and set
-  `DiffusionModel` + the encoders (`ClipL` / `ClipG` / `T5XXL` / `LLM`) + `VAE`.
+- **Multi-component** (FLUX / SD3.5 / Z-Image / **Anima**) — leave `HF`/`Civitai`
+  empty and set `DiffusionModel` + the encoders (`ClipL` / `ClipG` / `T5XXL` / `LLM`) + `VAE`.
+  A "checkpoint" on Civitai is often the DiT **only**: inspect the safetensors header
+  and check whether it holds anything besides `model.diffusion_model.*`. If not, it
+  needs its text encoder and VAE listed separately, or sd.cpp fails with
+  `failed to load model`. (Anima: DiT + Qwen3-0.6B + Qwen-Image VAE.)
+- **Beware architecture names that are substrings of each other.** `profile.Detect`
+  matches on the model name, and `animagine` (SDXL) contains `anima` (a different
+  architecture). Order the matches so the longer name wins, and add a test —
+  otherwise a misdetected model silently gets the wrong profile defaults.
   **Use standard fp8 (`t5xxl_fp8_e4m3fn`), bf16, or GGUF only** — ComfyUI's
   `fp8_scaled` / `fp8_mixed` builds are NOT sd.cpp-compatible (they load blank or
   fail).

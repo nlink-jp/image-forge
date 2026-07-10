@@ -143,7 +143,7 @@ image-forge gen -p "a red apple" -m animagine-xl-4 \
   切れても最初からやり直さない）。既に手元にある同一ファイル（別名で登録済みでも）は
   再ダウンロードせず再利用する。
 - **import**: 手元のモデルファイルを登録。アーキは名前から自動判定（`--arch
-  sdxl|sd15|sd35|flux|zimage` で上書き）。
+  sdxl|sd15|sd35|flux|zimage|anima` で上書き）。
 - **quantize**: 登録済みモデルを `--to` ∈
   `q8_0 q5_0 q5_1 q4_0 q4_1 q2_k q3_k q4_k q5_k q6_k f16 f32` の GGUF に変換し、VAE を
   bake、`<name>-<type>` として登録。q8_0 ≈ ほぼ無劣化で約半分、q4_* ≈ 約1/3（省メモリ）。

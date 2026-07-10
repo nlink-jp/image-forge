@@ -9,11 +9,14 @@ import "strings"
 type Arch string
 
 const (
-	ArchSD15    Arch = "sd15"
-	ArchSDXL    Arch = "sdxl"
-	ArchSD35    Arch = "sd35"
-	ArchFlux    Arch = "flux"
-	ArchZImage  Arch = "zimage"
+	ArchSD15   Arch = "sd15"
+	ArchSDXL   Arch = "sdxl"
+	ArchSD35   Arch = "sd35"
+	ArchFlux   Arch = "flux"
+	ArchZImage Arch = "zimage"
+	// ArchAnima is CircleStone Labs / Comfy Org's 2B anime model — its own
+	// architecture (sd.cpp: VERSION_ANIMA, Qwen conditioner), not an SDXL derivative.
+	ArchAnima   Arch = "anima"
 	ArchUnknown Arch = "unknown"
 )
 
@@ -83,7 +86,14 @@ func Detect(name string) Arch {
 		return ArchFlux
 	case strings.Contains(n, "z-image"), strings.Contains(n, "zimage"):
 		return ArchZImage
-	case strings.Contains(n, "xl"), strings.Contains(n, "pony"), strings.Contains(n, "illustrious"), strings.Contains(n, "animagine"), strings.Contains(n, "noob"):
+	// "animagine" is an SDXL model whose name contains "anima" — it must be
+	// matched BEFORE the Anima architecture below, or every Animagine checkpoint
+	// would be misdetected as Anima.
+	case strings.Contains(n, "animagine"):
+		return ArchSDXL
+	case strings.Contains(n, "anima"):
+		return ArchAnima
+	case strings.Contains(n, "xl"), strings.Contains(n, "pony"), strings.Contains(n, "illustrious"), strings.Contains(n, "noob"):
 		return ArchSDXL
 	default:
 		return ArchSDXL
@@ -106,6 +116,10 @@ func ArchDefaults(a Arch) Profile {
 	case ArchZImage:
 		// Turbo: distilled, low guidance.
 		return Profile{Arch: a, Prediction: PredEps, Sampler: "euler", Steps: 8, CFG: 1, Width: 1024, Height: 1024, NegativeOK: false}
+	case ArchAnima:
+		// The turbo release we ship is distilled: "use with CFG 1 and 8-12 steps".
+		// At CFG 1 a negative prompt has no effect, so don't invite one.
+		return Profile{Arch: a, Prediction: PredEps, Sampler: "euler", Steps: 10, CFG: 1, Width: 1024, Height: 1024, NegativeOK: false}
 	default:
 		return Profile{Arch: ArchUnknown, Prediction: PredEps, Sampler: "euler_a", Steps: 25, CFG: 7, Width: 512, Height: 512, NegativeOK: true}
 	}

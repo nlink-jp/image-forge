@@ -27,6 +27,19 @@ project adheres to [Semantic Versioning](https://semver.org/).
   LoRA, so its terms are unclear.
 - `pull` / `import` now print the model's kind and architecture for auxiliary
   models (`installed "sdxl-lightning-8step" (lora, sdxl) -> …`).
+- **New architecture: `anima`** — CircleStone Labs / Comfy Org's 2B anime model
+  (sd.cpp `VERSION_ANIMA`). It is *not* an SDXL derivative. Like Z-Image it is
+  **multi-component**: the DiT checkpoint holds only `model.diffusion_model.*`,
+  and sd.cpp's `AnimaConditioner` additionally needs a **Qwen3-0.6B** text encoder
+  (`text_encoders.llm`) and the **Qwen-Image VAE**. The single-file Civitai
+  download does not load on its own. Catalog entry **`anima-turbo`** pulls all
+  three from `circlestone-labs/Anima`; the profile applies the distilled defaults
+  (CFG 1, 10 steps, sampler euler, no negative prompt). `--arch` accepts `anima`.
+
+  `profile.Detect` had to be taught the difference between **`anima`** and
+  **`animagine`** — an SDXL model whose name contains "anima". Without ordering the
+  match, every Animagine checkpoint would have been misdetected as Anima and
+  silently given CFG 1 / 10-step defaults. Guarded by a test.
 
 ## [0.13.1] - 2026-07-09
 
