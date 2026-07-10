@@ -40,6 +40,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
   **`animagine`** — an SDXL model whose name contains "anima". Without ordering the
   match, every Animagine checkpoint would have been misdetected as Anima and
   silently given CFG 1 / 10-step defaults. Guarded by a test.
+- **Style / concept LoRA catalog entries** (SDXL family — Illustrious / NoobAI),
+  each with its `TriggerWords`, and each verified by rendering with and without it
+  at the same seed:
+  - **`genba-neko-illustrious`** (現場猫風) — safe
+  - **`mythic-fantasy-illustrious`**, **`s1-dramatic-lighting-illustrious`**,
+    **`lighting-slider-illustrious`** — questionable
+  - **`pov-on-couch-illustrious`**, **`ai-illust-ojisan-noobai`** — explicit
+    (require `--allow-nsfw` or config `allow_nsfw`)
+
+  Ratings mirror the Civitai listing's `nsfwLevel`. `genba-neko`'s listing forbids
+  derivatives and requires credit; that is stated in its `License`.
 
 ## [0.13.1] - 2026-07-09
 

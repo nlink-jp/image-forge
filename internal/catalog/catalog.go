@@ -356,6 +356,58 @@ func Default() []Entry {
 			Source: Source{HF: "tianweiy/DMD2/dmd2_sdxl_4step_lora_fp16.safetensors"},
 			Notes:  "DMD2 (Improved Distribution Matching Distillation): 4-step sampling. Use `--steps 4 --cfg 1 --sampler euler`. NOTE: CC BY-NC 4.0 — non-commercial use only.",
 		},
+
+		// Style / concept LoRAs from Civitai (SDXL-family bases: Illustrious, NoobAI).
+		// Each needs its TriggerWords in the prompt or it does nothing. Ratings mirror
+		// the Civitai listing's nsfwLevel; questionable/explicit require --allow-nsfw.
+		{
+			Name: "mythic-fantasy-illustrious", Kind: KindLoRA, Arch: profile.ArchSDXL,
+			Rating: profile.RatingQuestionable, License: "Civitai listing: derivatives allowed, commercial image/rent/sell",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source:       Source{Civitai: "1373674"}, // https://civitai.com/models/599757 (illustrious)
+			TriggerWords: []string{"mythp0rt"},
+			Notes:        "Velvet's Mythic Fantasy style (Illustrious). Painterly fantasy portraits.",
+		},
+		{
+			Name: "genba-neko-illustrious", Kind: KindLoRA, Arch: profile.ArchSDXL,
+			Rating: profile.RatingSafe, License: "Civitai listing: NO derivatives, credit required, commercial rent-on-Civitai only",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source:       Source{Civitai: "1619987"}, // https://civitai.com/models/1128981 (v2.0 IL)
+			TriggerWords: []string{"genba_neko", "chibi", "pointing", "standing on one leg", ":3", "open mouth", "meme", "parody"},
+			Notes:        "現場猫風 / Genba Neko meme style (Illustrious).",
+		},
+		{
+			Name: "lighting-slider-illustrious", Kind: KindLoRA, Arch: profile.ArchSDXL,
+			Rating: profile.RatingQuestionable, License: "Civitai listing: derivatives allowed, commercial image/rent",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source:       Source{Civitai: "1444863"}, // https://civitai.com/models/1280702 (Illustrious)
+			TriggerWords: []string{"dark", "late night", "blue hour"},
+			Notes:        "Lighting / darkness slider (Illustrious). A slider: a POSITIVE weight brightens, a NEGATIVE weight darkens (measured mean luma on one prompt: -1.0 => 22, no LoRA => 40, +1.0 => 108). The trigger words describe a dark scene; the weight then moves the exposure.",
+		},
+		{
+			Name: "s1-dramatic-lighting-illustrious", Kind: KindLoRA, Arch: profile.ArchSDXL,
+			Rating: profile.RatingQuestionable, License: "Civitai listing: derivatives allowed, commercial rent-on-Civitai only",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source:       Source{Civitai: "2200691"}, // https://civitai.com/models/661736 (Illustrious V1)
+			TriggerWords: []string{"s1_dram"},
+			Notes:        "S1 Dramatic Lighting (Illustrious V1). In practice it shifts the art style as much as the lighting. V2 exists but its listing is rated explicit; V1 is the same effect at a lower rating.",
+		},
+		{
+			Name: "pov-on-couch-illustrious", Kind: KindLoRA, Arch: profile.ArchSDXL,
+			Rating: profile.RatingExplicit, License: "Civitai listing: derivatives allowed, commercial image/rent-on-Civitai",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source:       Source{Civitai: "1361868"}, // https://civitai.com/models/1209145 (v1.0)
+			TriggerWords: []string{"pov", "on couch"},
+			Notes:        "POV on-couch pose LoRA (Illustrious). The trigger is plain English, so the base model already produces a couch scene; the LoRA mainly strengthens the low POV angle and hands. NSFW-capable.",
+		},
+		{
+			Name: "ai-illust-ojisan-noobai", Kind: KindLoRA, Arch: profile.ArchSDXL,
+			Rating: profile.RatingExplicit, License: "Civitai listing: derivatives allowed, commercial image/rent-on-Civitai",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source:       Source{Civitai: "2927805"}, // https://civitai.com/models/2564226 (v1.0 Chenkin)
+			TriggerWords: []string{"@411llust0j1s4n,"},
+			Notes:        "AIイラストおじさん / Uncle AI illustration style (NoobAI, an SDXL family base). NSFW-capable.",
+		},
 	}
 }
 
