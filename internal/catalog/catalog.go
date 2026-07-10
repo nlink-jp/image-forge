@@ -382,7 +382,7 @@ func Default() []Entry {
 			MinRAMGB: 16, RecRAMGB: 32,
 			Source:       Source{Civitai: "1444863"}, // https://civitai.com/models/1280702 (Illustrious)
 			TriggerWords: []string{"dark", "late night", "blue hour"},
-			Notes:        "Lighting / darkness slider (Illustrious). A slider: a POSITIVE weight brightens, a NEGATIVE weight darkens (measured mean luma on one prompt: -1.0 => 22, no LoRA => 40, +1.0 => 108). The trigger words describe a dark scene; the weight then moves the exposure.",
+			Notes:        "Lighting / darkness slider (Illustrious). Adjust the LoRA weight to move the exposure; on this base a positive weight brightened and a negative one darkened (measured mean luma: -1.0 => 22, no LoRA => 40, +1.0 => 108). The direction is base-dependent — the Anima version darkens at positive weight — so try both signs.",
 		},
 		{
 			Name: "s1-dramatic-lighting-illustrious", Kind: KindLoRA, Arch: profile.ArchSDXL,
@@ -407,6 +407,56 @@ func Default() []Entry {
 			Source:       Source{Civitai: "2927805"}, // https://civitai.com/models/2564226 (v1.0 Chenkin)
 			TriggerWords: []string{"@411llust0j1s4n,"},
 			Notes:        "AIイラストおじさん / Uncle AI illustration style (NoobAI, an SDXL family base). NSFW-capable.",
+		},
+
+		// The same styles trained on the Anima base (Arch: anima). Use with the
+		// anima-turbo model. Ratings mirror the Civitai listing's nsfwLevel.
+		{
+			Name: "mythic-fantasy-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
+			Rating: profile.RatingQuestionable, License: "Civitai listing: derivatives allowed, commercial image/rent/sell",
+			MinRAMGB: 8, RecRAMGB: 16,
+			Source:       Source{Civitai: "3084665"}, // https://civitai.com/models/599757 (Anima Portrait Style)
+			TriggerWords: []string{"mythp0rt"},
+			Notes:        "Velvet's Mythic Fantasy style (Anima). Painterly fantasy portraits.",
+		},
+		{
+			Name: "genba-neko-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
+			Rating: profile.RatingSafe, License: "Civitai listing: NO derivatives, credit required, commercial rent-on-Civitai only",
+			MinRAMGB: 8, RecRAMGB: 16,
+			Source:       Source{Civitai: "3029956"}, // https://civitai.com/models/1128981 (v1.0 Anima)
+			TriggerWords: []string{"genba_neko", "chibi", "pointing", "standing on one leg", ":3", "open mouth", "meme", "parody"},
+			Notes:        "現場猫風 / Genba Neko meme style (Anima).",
+		},
+		{
+			Name: "lighting-slider-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
+			Rating: profile.RatingSafe, License: "Civitai listing: derivatives allowed, commercial image/rent",
+			MinRAMGB: 8, RecRAMGB: 16,
+			Source: Source{Civitai: "3078972"}, // https://civitai.com/models/1280702 (Anima)
+			Notes:  "Lighting / darkness slider (Anima). A slider with no trigger word: adjust the LoRA weight to move the exposure (see lighting-slider-illustrious for the measured direction).",
+		},
+		{
+			Name: "s1-dramatic-lighting-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
+			Rating: profile.RatingQuestionable, License: "Civitai listing: derivatives allowed, commercial rent-on-Civitai only",
+			MinRAMGB: 8, RecRAMGB: 16,
+			Source:       Source{Civitai: "3037397"}, // https://civitai.com/models/661736 (Anima v1.0)
+			TriggerWords: []string{"s1_dram"},
+			Notes:        "S1 Dramatic Lighting (Anima).",
+		},
+		{
+			Name: "pov-on-couch-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
+			Rating: profile.RatingExplicit, License: "Civitai listing: derivatives allowed, commercial image/rent-on-Civitai",
+			MinRAMGB: 8, RecRAMGB: 16,
+			Source:       Source{Civitai: "3101268"}, // https://civitai.com/models/1209145 (v2.0 Anima)
+			TriggerWords: []string{"pov", "on couch"},
+			Notes:        "POV on-couch pose LoRA (Anima). NSFW-capable.",
+		},
+		{
+			Name: "ai-illust-ojisan-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
+			Rating: profile.RatingExplicit, License: "Civitai listing: derivatives allowed, commercial image/rent-on-Civitai",
+			MinRAMGB: 8, RecRAMGB: 16,
+			Source:       Source{Civitai: "3038551"}, // https://civitai.com/models/2564226 (v1.0 AB1)
+			TriggerWords: []string{"@411llust0j1s4n,"},
+			Notes:        "AIイラストおじさん / Uncle AI illustration style (Anima). NSFW-capable.",
 		},
 	}
 }

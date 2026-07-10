@@ -51,6 +51,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
   Ratings mirror the Civitai listing's `nsfwLevel`. `genba-neko`'s listing forbids
   derivatives and requires credit; that is stated in its `License`.
+- **The same six styles trained on the Anima base** (`*-anima`, for use with
+  `anima-turbo`). Also verified with/without at the same seed. Notable: Anima LoRAs
+  use a different key layout (`lora_unet_blocks_N_cross_attn_*` — Anima is a DiT,
+  not a UNet) yet sd.cpp applies them fine; and effect strength differs by base
+  (Anima's `s1-dramatic-lighting` is markedly more dramatic than the Illustrious
+  one, and its `lighting-slider` darkens at positive weight where the Illustrious
+  one brightens — the direction is base-dependent).
 
 ## [0.13.1] - 2026-07-09
 
