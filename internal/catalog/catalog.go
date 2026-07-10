@@ -319,6 +319,27 @@ func Default() []Entry {
 			Source: Source{HF: "latent-consistency/lcm-lora-sdv1-5/pytorch_lora_weights.safetensors"},
 			Notes:  "Latent Consistency LoRA for SD1.5: few-step sampling. Use ~4-8 steps, CFG ~1-2, sampler lcm.",
 		},
+		{
+			Name: "sdxl-lightning-4step", Kind: KindLoRA, Arch: profile.ArchSDXL,
+			Rating: profile.RatingSafe, License: "OpenRAIL++",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source: Source{HF: "ByteDance/SDXL-Lightning/sdxl_lightning_4step_lora.safetensors"},
+			Notes:  "SDXL Lightning (ByteDance): 4-step sampling, generally sharper than LCM. Use `--steps 4 --cfg 1 --sampler euler`.",
+		},
+		{
+			Name: "sdxl-lightning-8step", Kind: KindLoRA, Arch: profile.ArchSDXL,
+			Rating: profile.RatingSafe, License: "OpenRAIL++",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source: Source{HF: "ByteDance/SDXL-Lightning/sdxl_lightning_8step_lora.safetensors"},
+			Notes:  "SDXL Lightning (ByteDance): 8-step sampling, higher quality than the 4-step. Use `--steps 8 --cfg 1 --sampler euler`.",
+		},
+		{
+			Name: "dmd2-sdxl-4step", Kind: KindLoRA, Arch: profile.ArchSDXL,
+			Rating: profile.RatingSafe, License: "CC BY-NC 4.0 (non-commercial only)",
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source: Source{HF: "tianweiy/DMD2/dmd2_sdxl_4step_lora_fp16.safetensors"},
+			Notes:  "DMD2 (Improved Distribution Matching Distillation): 4-step sampling. Use `--steps 4 --cfg 1 --sampler euler`. NOTE: CC BY-NC 4.0 — non-commercial use only.",
+		},
 	}
 }
 

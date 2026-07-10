@@ -42,15 +42,15 @@ func runModels(args []string) error {
 // `models list` (as a table or, with --json, as JSON) — decoupled from the
 // internal catalog.Entry / store.InstalledModel structs.
 type catalogView struct {
-	Name           string `json:"name"`
-	Kind           string `json:"kind,omitempty"` // "" (diffusion) | upscaler | lora | controlnet
-	Arch           string `json:"arch"`
-	Prediction     string `json:"prediction"`
-	Rating         string `json:"rating"`
-	License        string `json:"license"`
-	MinRAMGB       int    `json:"min_ram_gb"`
-	RecRAMGB       int    `json:"rec_ram_gb"`
-	MultiComponent bool   `json:"multi_component"`
+	Name           string   `json:"name"`
+	Kind           string   `json:"kind,omitempty"` // "" (diffusion) | upscaler | lora | controlnet
+	Arch           string   `json:"arch"`
+	Prediction     string   `json:"prediction"`
+	Rating         string   `json:"rating"`
+	License        string   `json:"license"`
+	MinRAMGB       int      `json:"min_ram_gb"`
+	RecRAMGB       int      `json:"rec_ram_gb"`
+	MultiComponent bool     `json:"multi_component"`
 	NeedsOptIn     bool     `json:"needs_opt_in"`
 	Experimental   bool     `json:"experimental,omitempty"`
 	Installed      bool     `json:"installed"`
@@ -59,12 +59,12 @@ type catalogView struct {
 }
 
 type installedView struct {
-	Name           string `json:"name"`
-	Kind           string `json:"kind,omitempty"` // "" (diffusion) | upscaler | lora | controlnet
-	Arch           string `json:"arch"`
-	Rating         string `json:"rating,omitempty"`
-	License        string `json:"license,omitempty"`
-	Path           string `json:"path,omitempty"`
+	Name           string   `json:"name"`
+	Kind           string   `json:"kind,omitempty"` // "" (diffusion) | upscaler | lora | controlnet
+	Arch           string   `json:"arch"`
+	Rating         string   `json:"rating,omitempty"`
+	License        string   `json:"license,omitempty"`
+	Path           string   `json:"path,omitempty"`
 	VAEPath        string   `json:"vae_path,omitempty"`
 	MultiComponent bool     `json:"multi_component"`
 	InCatalog      bool     `json:"in_catalog"`
@@ -125,7 +125,7 @@ func installedViews(reg *store.Registry) []installedView {
 			// Only a base diffusion model can be assembled from components; an
 			// upscaler / LoRA / ControlNet with no Path would just be broken.
 			MultiComponent: m.Path == "" && m.IsDiffusion(), InCatalog: inCat,
-			TriggerWords:   m.TriggerWords,
+			TriggerWords: m.TriggerWords,
 		})
 	}
 	return out

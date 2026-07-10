@@ -15,6 +15,18 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `models list --json` (both installed and catalog views) so a front-end can show
   or insert them. `models import <path> --kind lora --trigger "a,b"` sets them for
   a local file. Empty for LoRAs that need none (LCM, sliders).
+- **New LoRA catalog entries** (all verified: kohya-format header, pulled, and
+  rendered against the same seed without them to prove they actually do something):
+  - **`sdxl-lightning-4step`** / **`sdxl-lightning-8step`** (ByteDance, OpenRAIL++)
+    — few-step sampling, generally sharper than LCM. `--steps 4|8 --cfg 1 --sampler euler`.
+  - **`dmd2-sdxl-4step`** (DMD2) — `--steps 4 --cfg 1 --sampler euler`.
+    **Licensed CC BY-NC 4.0: non-commercial use only**, surfaced in `models list`.
+
+  ByteDance's Hyper-SD was evaluated and **not** added: its `LICENSE.md` only
+  covers the FLUX.1-dev derivatives and the repo declares no license for the SDXL
+  LoRA, so its terms are unclear.
+- `pull` / `import` now print the model's kind and architecture for auxiliary
+  models (`installed "sdxl-lightning-8step" (lora, sdxl) -> …`).
 
 ## [0.13.1] - 2026-07-09
 
