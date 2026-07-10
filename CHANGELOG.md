@@ -4,7 +4,7 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.13.1] - unreleased
+## [0.13.1] - 2026-07-09
 
 ### Fixed (privacy)
 - **Embedded PNG metadata no longer contains filesystem paths.** Since v0.12.0
