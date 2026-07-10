@@ -34,6 +34,10 @@ type InstalledModel struct {
 	Profile    profile.Profile `json:"profile"`
 	Rating     profile.Rating  `json:"rating,omitempty"`
 	License    string          `json:"license,omitempty"`
+	// TriggerWords are the prompt tokens a LoRA needs to take effect. Recorded at
+	// install time so `models list` can tell the user what to type — a LoRA whose
+	// trigger is missing loads silently and does nothing.
+	TriggerWords []string `json:"trigger_words,omitempty"`
 }
 
 // IsUpscaler reports whether this installed model is a standalone ESRGAN

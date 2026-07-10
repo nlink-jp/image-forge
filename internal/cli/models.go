@@ -51,10 +51,11 @@ type catalogView struct {
 	MinRAMGB       int    `json:"min_ram_gb"`
 	RecRAMGB       int    `json:"rec_ram_gb"`
 	MultiComponent bool   `json:"multi_component"`
-	NeedsOptIn     bool   `json:"needs_opt_in"`
-	Experimental   bool   `json:"experimental,omitempty"`
-	Installed      bool   `json:"installed"`
-	Notes          string `json:"notes,omitempty"`
+	NeedsOptIn     bool     `json:"needs_opt_in"`
+	Experimental   bool     `json:"experimental,omitempty"`
+	Installed      bool     `json:"installed"`
+	Notes          string   `json:"notes,omitempty"`
+	TriggerWords   []string `json:"trigger_words,omitempty"`
 }
 
 type installedView struct {
@@ -64,9 +65,10 @@ type installedView struct {
 	Rating         string `json:"rating,omitempty"`
 	License        string `json:"license,omitempty"`
 	Path           string `json:"path,omitempty"`
-	VAEPath        string `json:"vae_path,omitempty"`
-	MultiComponent bool   `json:"multi_component"`
-	InCatalog      bool   `json:"in_catalog"`
+	VAEPath        string   `json:"vae_path,omitempty"`
+	MultiComponent bool     `json:"multi_component"`
+	InCatalog      bool     `json:"in_catalog"`
+	TriggerWords   []string `json:"trigger_words,omitempty"`
 }
 
 // archCell renders the ARCH column: an upscaler has no diffusion architecture,
@@ -101,6 +103,7 @@ func catalogViews(reg *store.Registry) []catalogView {
 			MinRAMGB: e.MinRAMGB, RecRAMGB: e.RecRAMGB,
 			MultiComponent: e.IsMultiComponent(), NeedsOptIn: e.NeedsOptIn(),
 			Experimental: e.Experimental, Installed: installed, Notes: e.Notes,
+			TriggerWords: e.TriggerWords,
 		})
 	}
 	return out
@@ -122,6 +125,7 @@ func installedViews(reg *store.Registry) []installedView {
 			// Only a base diffusion model can be assembled from components; an
 			// upscaler / LoRA / ControlNet with no Path would just be broken.
 			MultiComponent: m.Path == "" && m.IsDiffusion(), InCatalog: inCat,
+			TriggerWords:   m.TriggerWords,
 		})
 	}
 	return out
@@ -276,9 +280,11 @@ func modelsImport(args []string) error {
 	archFlag := fs.String("arch", "", "architecture: sdxl|sd15|sd35|flux|zimage (default: auto-detect)")
 	vae := fs.String("vae", "", "path to an external VAE")
 	kindFlag := fs.String("kind", "", "model kind: lora|controlnet|upscaler (default: a base diffusion model)")
+	triggerFlag := fs.String("trigger", "", "comma-separated LoRA trigger words (prompt tokens that activate it)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
+	triggers := splitTriggers(*triggerFlag)
 	kind, err := normalizeKind(*kindFlag)
 	if err != nil {
 		return fmt.Errorf("models import: %w", err)
@@ -324,7 +330,7 @@ func modelsImport(args []string) error {
 	}
 	reg.Add(store.InstalledModel{
 		Name: nm, Kind: kind, Path: abs, VAEPath: vaePath,
-		Profile: prof, Rating: profile.RatingSafe,
+		Profile: prof, Rating: profile.RatingSafe, TriggerWords: triggers,
 	})
 	if err := reg.Save(); err != nil {
 		return err
@@ -336,6 +342,7 @@ func modelsImport(args []string) error {
 	} else {
 		fmt.Printf("imported %q (%s) -> %s\n", nm, arch, abs)
 	}
+	printTriggerWords(triggers)
 	return nil
 }
 
@@ -346,6 +353,29 @@ func filterByKind[T any](views []T, kind string, kindOf func(T) string) []T {
 	for _, v := range views {
 		if kindOf(v) == kind {
 			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// printTriggerWords tells the user what to put in the prompt. A LoRA whose
+// trigger is missing loads without error and silently does nothing, so this is
+// worth surfacing right after install rather than leaving it to `models list`.
+func printTriggerWords(triggers []string) {
+	if len(triggers) == 0 {
+		return
+	}
+	fmt.Printf("  trigger words (add to your prompt): %s\n", strings.Join(triggers, ", "))
+}
+
+// splitTriggers parses a comma-separated --trigger value into activation tokens,
+// dropping blanks. A trigger may itself contain spaces ("pov, on couch" is two
+// tokens by this rule, which matches how Civitai stores them). Pure, for tests.
+func splitTriggers(s string) []string {
+	var out []string
+	for _, t := range strings.Split(s, ",") {
+		if t = strings.TrimSpace(t); t != "" {
+			out = append(out, t)
 		}
 	}
 	return out
@@ -395,13 +425,14 @@ func modelsPull(args []string) error {
 
 	srcRef := ref
 	var (
-		prof    profile.Profile
-		rating  profile.Rating
-		license string
-		vaeSrc  string
-		kind    string
-		regName = *nameOverride
-		known   bool
+		prof     profile.Profile
+		rating   profile.Rating
+		license  string
+		vaeSrc   string
+		kind     string
+		triggers []string
+		regName  = *nameOverride
+		known    bool
 	)
 	if e, ok := catalog.Find(ref); ok {
 		known = true
@@ -428,6 +459,7 @@ func modelsPull(args []string) error {
 			return fmt.Errorf("models pull: catalog entry %q has no downloadable source", e.Name)
 		}
 		prof, rating, license, vaeSrc, kind = e.Profile(), e.Rating, e.License, e.Source.VAE, e.Kind
+		triggers = e.TriggerWords
 		switch {
 		case e.IsUpscaler():
 			// Upscalers are architecture-agnostic and carry no diffusion profile / VAE.
@@ -526,15 +558,21 @@ func modelsPull(args []string) error {
 	if err != nil {
 		return err
 	}
-	reg.Add(store.InstalledModel{Name: regName, Kind: kind, Path: dest, VAEPath: vaePath, Profile: prof, Rating: rating, License: license})
+	reg.Add(store.InstalledModel{
+		Name: regName, Kind: kind, Path: dest, VAEPath: vaePath,
+		Profile: prof, Rating: rating, License: license, TriggerWords: triggers,
+	})
 	if err := reg.Save(); err != nil {
 		return err
 	}
 	if kind == "upscaler" {
 		fmt.Printf("installed %q (upscaler) -> %s\n", regName, dest)
+	} else if kind != catalog.KindDiffusion {
+		fmt.Printf("installed %q (%s, %s) -> %s\n", regName, kind, prof.Arch, dest)
 	} else {
 		fmt.Printf("installed %q (%s) -> %s\n", regName, prof.Arch, dest)
 	}
+	printTriggerWords(triggers)
 	return nil
 }
 

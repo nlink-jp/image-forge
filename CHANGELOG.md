@@ -4,6 +4,18 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.14.0] - unreleased
+
+### Added
+- **LoRA trigger words are recorded and surfaced.** Many LoRAs only take effect
+  when specific tokens appear in the prompt (Civitai's "trained words"); without
+  them the LoRA loads without error and silently does nothing. Catalog entries now
+  carry `TriggerWords`, they are copied onto the registry entry at install time,
+  printed right after `pull` / `import`, and exposed as `trigger_words` in
+  `models list --json` (both installed and catalog views) so a front-end can show
+  or insert them. `models import <path> --kind lora --trigger "a,b"` sets them for
+  a local file. Empty for LoRAs that need none (LCM, sliders).
+
 ## [0.13.1] - 2026-07-09
 
 ### Fixed (privacy)

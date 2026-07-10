@@ -36,7 +36,7 @@ const (
 // Entry is a catalog record.
 type Entry struct {
 	Name         string
-	Kind         string // "" (diffusion, default) or "upscaler"
+	Kind         string // "" (diffusion, default) | upscaler | lora | controlnet
 	Arch         profile.Arch
 	Prediction   profile.Prediction
 	Rating       profile.Rating
@@ -48,6 +48,13 @@ type Entry struct {
 	PromptPrefix string // e.g. Pony-family score tags
 	Notes        string
 	Experimental bool // e.g. v-pred models pending sd.cpp verification
+
+	// TriggerWords are the activation tokens a LoRA needs in the prompt to take
+	// effect (Civitai calls them "trained words"). Without them the LoRA loads but
+	// does nothing, so they must survive installation — they are copied onto the
+	// registry entry and surfaced by `models list --json`. Empty for LoRAs that
+	// need no trigger (LCM, sliders) and for non-LoRA kinds.
+	TriggerWords []string
 
 	// hires.fix defaults surfaced through the profile. Set HiresEnabled on a model
 	// whose upstream notes recommend "always use hires".

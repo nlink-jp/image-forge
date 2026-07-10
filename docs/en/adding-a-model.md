@@ -101,8 +101,16 @@ Start from the architecture defaults and override only the gotchas.
       MinRAMGB: 16, RecRAMGB: 32,
       Source: Source{HF: "latent-consistency/lcm-lora-sdxl/pytorch_lora_weights.safetensors"},
       Notes:  "Few-step sampling. Use ~4-8 steps, CFG ~1-2, sampler lcm.",
+      // TriggerWords: []string{"mythp0rt"},  // if the LoRA needs activation tokens
   }
   ```
+
+  **`TriggerWords`** are the prompt tokens that activate the LoRA (Civitai calls
+  them "trained words"). Set them if the upstream page lists any — **a LoRA whose
+  trigger is missing loads without error and silently does nothing**, which is a
+  miserable thing to debug. They are copied onto the registry entry at install
+  time, printed after `pull`, and exposed as `trigger_words` in
+  `models list --json`. Leave empty for LoRAs that need none (LCM, sliders).
 
   **Verify the format before adding an entry.** sd.cpp wants kohya-style keys
   (`lora_unet_*.lora_down.weight` / `.lora_up.weight` / `.alpha`). Read the

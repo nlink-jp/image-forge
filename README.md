@@ -112,7 +112,7 @@ printed to stdout.
 ```sh
 image-forge models list [--catalog|--all] [--json] [--kind K]   # installed (default), catalog, or both
 image-forge models pull <name | hf:owner/repo/file | civitai:<versionId> | url> [--allow-nsfw] [--name N]
-image-forge models import <path> [--name N] [--arch A] [--vae V] [--kind K]
+image-forge models import <path> [--name N] [--arch A] [--vae V] [--kind K] [--trigger "a,b"]
 image-forge models quantize <name> --to <type> [--name N]
 image-forge models rm <name>
 ```
@@ -128,6 +128,12 @@ image-forge models list --kind lora --json     # what a front-end enumerates
 image-forge gen -p "a red apple" -m animagine-xl-4 \
   --lora lcm-lora-sdxl:1.0 --steps 6 --cfg 1.5 --sampler lcm
 ```
+
+Many LoRAs need **trigger words** in the prompt to take effect — without them the
+LoRA loads and silently does nothing. They are recorded in the catalog, kept on
+the registry entry at install time, printed after `pull` / `import`, and exposed
+as `trigger_words` in `models list --json` (so a front-end can show or insert
+them). `--trigger "a,b"` sets them when importing a local file.
 
 - **list** shows your **installed** models by default (name, arch, rating,
   license, path); pulled ESRGAN upscalers appear here too with arch `upscaler`.
