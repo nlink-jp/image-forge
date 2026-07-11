@@ -55,6 +55,7 @@ type catalogView struct {
 	Experimental   bool     `json:"experimental,omitempty"`
 	Installed      bool     `json:"installed"`
 	Notes          string   `json:"notes,omitempty"`
+	LicenseFlags   []string `json:"license_flags,omitempty"`
 	TriggerWords   []string `json:"trigger_words,omitempty"`
 }
 
@@ -68,6 +69,7 @@ type installedView struct {
 	VAEPath        string   `json:"vae_path,omitempty"`
 	MultiComponent bool     `json:"multi_component"`
 	InCatalog      bool     `json:"in_catalog"`
+	LicenseFlags   []string `json:"license_flags,omitempty"`
 	TriggerWords   []string `json:"trigger_words,omitempty"`
 }
 
@@ -103,7 +105,7 @@ func catalogViews(reg *store.Registry) []catalogView {
 			MinRAMGB: e.MinRAMGB, RecRAMGB: e.RecRAMGB,
 			MultiComponent: e.IsMultiComponent(), NeedsOptIn: e.NeedsOptIn(),
 			Experimental: e.Experimental, Installed: installed, Notes: e.Notes,
-			TriggerWords: e.TriggerWords,
+			LicenseFlags: e.LicenseFlags, TriggerWords: e.TriggerWords,
 		})
 	}
 	return out
@@ -118,14 +120,25 @@ func installedViews(reg *store.Registry) []installedView {
 	out := make([]installedView, 0, len(names))
 	for _, n := range names {
 		m := reg.Models[n]
-		_, inCat := catalog.Find(n)
+		e, inCat := catalog.Find(n)
+		// Surfaced metadata (license terms, trigger words) is descriptive, not part
+		// of the installed bytes. For a cataloged model the catalog is the current
+		// source of truth — use it so entries installed before these fields existed
+		// (or corrected in the catalog since) are still reported accurately.
+		license, flags, triggers := m.License, m.LicenseFlags, m.TriggerWords
+		if inCat {
+			flags, triggers = e.LicenseFlags, e.TriggerWords
+			if license == "" {
+				license = e.License
+			}
+		}
 		out = append(out, installedView{
 			Name: m.Name, Kind: m.Kind, Arch: string(m.Profile.Arch), Rating: string(m.Rating),
-			License: m.License, Path: m.Path, VAEPath: m.VAEPath,
+			License: license, Path: m.Path, VAEPath: m.VAEPath,
 			// Only a base diffusion model can be assembled from components; an
 			// upscaler / LoRA / ControlNet with no Path would just be broken.
 			MultiComponent: m.Path == "" && m.IsDiffusion(), InCatalog: inCat,
-			TriggerWords: m.TriggerWords,
+			LicenseFlags: flags, TriggerWords: triggers,
 		})
 	}
 	return out
@@ -428,6 +441,7 @@ func modelsPull(args []string) error {
 		prof     profile.Profile
 		rating   profile.Rating
 		license  string
+		licFlags []string
 		vaeSrc   string
 		kind     string
 		triggers []string
@@ -459,7 +473,7 @@ func modelsPull(args []string) error {
 			return fmt.Errorf("models pull: catalog entry %q has no downloadable source", e.Name)
 		}
 		prof, rating, license, vaeSrc, kind = e.Profile(), e.Rating, e.License, e.Source.VAE, e.Kind
-		triggers = e.TriggerWords
+		triggers, licFlags = e.TriggerWords, e.LicenseFlags
 		switch {
 		case e.IsUpscaler():
 			// Upscalers are architecture-agnostic and carry no diffusion profile / VAE.
@@ -560,7 +574,8 @@ func modelsPull(args []string) error {
 	}
 	reg.Add(store.InstalledModel{
 		Name: regName, Kind: kind, Path: dest, VAEPath: vaePath,
-		Profile: prof, Rating: rating, License: license, TriggerWords: triggers,
+		Profile: prof, Rating: rating, License: license,
+		LicenseFlags: licFlags, TriggerWords: triggers,
 	})
 	if err := reg.Save(); err != nil {
 		return err

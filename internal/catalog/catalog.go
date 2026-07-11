@@ -33,6 +33,17 @@ const (
 	KindControlNet = "controlnet"
 )
 
+// License flags surface notable usage restrictions of a model to the user (a
+// front-end can highlight them). They are stable identifiers derived from the
+// source listing's terms — informational, not legal advice. A model may carry
+// several, or none (permissive). The License string still holds the full text.
+const (
+	LicenseNonCommercial = "non-commercial" // commercial use of outputs not permitted
+	LicenseNoDerivatives = "no-derivatives" // derivative works not permitted
+	LicenseAttribution   = "attribution"    // credit / attribution required
+	LicenseShareAlike    = "share-alike"    // derivatives must keep the same license
+)
+
 // Entry is a catalog record.
 type Entry struct {
 	Name         string
@@ -41,8 +52,9 @@ type Entry struct {
 	Prediction   profile.Prediction
 	Rating       profile.Rating
 	License      string
-	MinRAMGB     int // baseline RAM to run (with the recommended quantization)
-	RecRAMGB     int // RAM for a comfortable fp16 / large run
+	LicenseFlags []string // notable restrictions (non-commercial / no-derivatives / …)
+	MinRAMGB     int      // baseline RAM to run (with the recommended quantization)
+	RecRAMGB     int      // RAM for a comfortable fp16 / large run
 	Source       Source
 	ClipSkip     int    // override on top of profile.ArchDefaults(Arch)
 	PromptPrefix string // e.g. Pony-family score tags
@@ -352,7 +364,8 @@ func Default() []Entry {
 		{
 			Name: "dmd2-sdxl-4step", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingSafe, License: "CC BY-NC 4.0 (non-commercial only)",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseFlags: []string{LicenseNonCommercial, LicenseAttribution},
+			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{HF: "tianweiy/DMD2/dmd2_sdxl_4step_lora_fp16.safetensors"},
 			Notes:  "DMD2 (Improved Distribution Matching Distillation): 4-step sampling. Use `--steps 4 --cfg 1 --sampler euler`. NOTE: CC BY-NC 4.0 — non-commercial use only.",
 		},
@@ -371,7 +384,8 @@ func Default() []Entry {
 		{
 			Name: "genba-neko-illustrious", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingSafe, License: "Civitai listing: NO derivatives, credit required, commercial rent-on-Civitai only",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseFlags: []string{LicenseNonCommercial, LicenseNoDerivatives, LicenseAttribution},
+			MinRAMGB:     16, RecRAMGB: 32,
 			Source:       Source{Civitai: "1619987"}, // https://civitai.com/models/1128981 (v2.0 IL)
 			TriggerWords: []string{"genba_neko", "chibi", "pointing", "standing on one leg", ":3", "open mouth", "meme", "parody"},
 			Notes:        "現場猫風 / Genba Neko meme style (Illustrious).",
@@ -387,7 +401,8 @@ func Default() []Entry {
 		{
 			Name: "s1-dramatic-lighting-illustrious", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: derivatives allowed, commercial rent-on-Civitai only",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseFlags: []string{LicenseNonCommercial},
+			MinRAMGB:     16, RecRAMGB: 32,
 			Source:       Source{Civitai: "2200691"}, // https://civitai.com/models/661736 (Illustrious V1)
 			TriggerWords: []string{"s1_dram"},
 			Notes:        "S1 Dramatic Lighting (Illustrious V1). In practice it shifts the art style as much as the lighting. V2 exists but its listing is rated explicit; V1 is the same effect at a lower rating.",
@@ -422,7 +437,8 @@ func Default() []Entry {
 		{
 			Name: "genba-neko-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
 			Rating: profile.RatingSafe, License: "Civitai listing: NO derivatives, credit required, commercial rent-on-Civitai only",
-			MinRAMGB: 8, RecRAMGB: 16,
+			LicenseFlags: []string{LicenseNonCommercial, LicenseNoDerivatives, LicenseAttribution},
+			MinRAMGB:     8, RecRAMGB: 16,
 			Source:       Source{Civitai: "3029956"}, // https://civitai.com/models/1128981 (v1.0 Anima)
 			TriggerWords: []string{"genba_neko", "chibi", "pointing", "standing on one leg", ":3", "open mouth", "meme", "parody"},
 			Notes:        "現場猫風 / Genba Neko meme style (Anima).",
@@ -437,7 +453,8 @@ func Default() []Entry {
 		{
 			Name: "s1-dramatic-lighting-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: derivatives allowed, commercial rent-on-Civitai only",
-			MinRAMGB: 8, RecRAMGB: 16,
+			LicenseFlags: []string{LicenseNonCommercial},
+			MinRAMGB:     8, RecRAMGB: 16,
 			Source:       Source{Civitai: "3037397"}, // https://civitai.com/models/661736 (Anima v1.0)
 			TriggerWords: []string{"s1_dram"},
 			Notes:        "S1 Dramatic Lighting (Anima).",

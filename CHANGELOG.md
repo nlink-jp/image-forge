@@ -4,6 +4,19 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.15.0] - unreleased
+
+### Added
+- **License restriction flags.** Catalog entries can carry machine-readable
+  `LicenseFlags` (`non-commercial` / `no-derivatives` / `attribution` /
+  `share-alike`) alongside the free-text `License`, so a front-end can highlight a
+  model's notable terms reliably instead of parsing prose. Carried onto the
+  registry entry at install and exposed as `license_flags` in `models list
+  --json`. Populated from each Civitai listing's terms — currently
+  `dmd2-sdxl-4step` (non-commercial + attribution, CC BY-NC), `genba-neko-*`
+  (non-commercial + no-derivatives + attribution), and `s1-dramatic-lighting-*`
+  (non-commercial). Permissive models carry none.
+
 ## [0.14.0] - 2026-07-11
 
 ### Docs

@@ -112,6 +112,26 @@ Start from the architecture defaults and override only the gotchas.
   time, printed after `pull`, and exposed as `trigger_words` in
   `models list --json`. Leave empty for LoRAs that need none (LCM, sliders).
 
+- **`LicenseFlags`** record notable usage restrictions as machine-readable
+  identifiers (`catalog.LicenseNonCommercial` / `LicenseNoDerivatives` /
+  `LicenseAttribution` / `LicenseShareAlike`), so a front-end can highlight them —
+  the free-text `License` alone is too varied to parse reliably. Derive them from
+  the listing, don't guess. For a Civitai model the terms are in the API's
+  `allowCommercialUse` / `allowDerivatives` / `allowNoCredit`:
+
+  ```sh
+  # commercial use of generated images needs "Image" (or "Sell"); rent-only => non-commercial
+  curl -s "https://civitai.com/api/v1/models/<id>" | python3 -c "
+  import sys,json; m=json.load(sys.stdin)
+  acu=str(m.get('allowCommercialUse')); print('non-commercial:', not ('Image' in acu or 'Sell' in acu))
+  print('no-derivatives:', m.get('allowDerivatives') is False)
+  print('attribution:', m.get('allowNoCredit') is False)"
+  ```
+
+  These are informational, not legal advice, and are carried onto the registry
+  entry and into `models list --json` as `license_flags`. Leave empty for
+  permissive models (OpenRAIL / Apache / commercial-OK Civitai listings).
+
   **Verify the format before adding an entry.** sd.cpp wants kohya-style keys
   (`lora_unet_*.lora_down.weight` / `.lora_up.weight` / `.alpha`). Read the
   safetensors header — you don't need the whole file:
