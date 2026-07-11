@@ -23,6 +23,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `--sampler eluer_a` used to hit sd.cpp's out-of-range enum and silently produce
   bad output; it now errors with the full list of valid names (reflected from
   sd.cpp, so it never drifts). Applies to `gen`, `serve`, and `mcp`.
+- **`serve` error events now carry the failing request's `output`**, so a
+  front-end can free the exact in-flight entry (an error otherwise has no key to
+  remove it by). Supports the GUI's in-flight bookkeeping fix.
 
 ## [0.17.0] - 2026-07-11
 

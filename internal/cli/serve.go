@@ -109,7 +109,9 @@ func runServe(args []string) error {
 		_, _, rerr := re.Render(ctx, r.renderRequest(), events)
 		if rerr != nil {
 			// Render may have already emitted events; surface the failure too.
-			events <- engine.Event{Kind: "error", Message: rerr.Error()}
+			// Carry the request's output so a front-end can free the exact in-flight
+			// entry (an error otherwise has no key to remove it by).
+			events <- engine.Event{Kind: "error", Message: rerr.Error(), Output: r.Output}
 		}
 		close(events)
 		<-done
