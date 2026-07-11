@@ -13,16 +13,37 @@ import (
 // Config holds user settings. Tokens here are a fallback; the matching
 // environment variables (HF_TOKEN / CIVITAI_TOKEN) take precedence.
 type Config struct {
-	DefaultModel string         `toml:"default_model"`
-	Output       string         `toml:"output"`
-	AllowNSFW    bool           `toml:"allow_nsfw"`
-	ModelsDir    string         `toml:"models_dir"`
-	HFToken      string         `toml:"hf_token"`
-	CivitaiToken string         `toml:"civitai_token"`
-	MCP          MCPConfig      `toml:"mcp"`
-	Hires        HiresConfig    `toml:"hires"`
-	Upscaler     UpscalerConfig `toml:"upscaler"`
-	Metadata     MetadataConfig `toml:"metadata"`
+	DefaultModel string            `toml:"default_model"`
+	Output       string            `toml:"output"`
+	AllowNSFW    bool              `toml:"allow_nsfw"`
+	ModelsDir    string            `toml:"models_dir"`
+	HFToken      string            `toml:"hf_token"`
+	CivitaiToken string            `toml:"civitai_token"`
+	MCP          MCPConfig         `toml:"mcp"`
+	Hires        HiresConfig       `toml:"hires"`
+	Upscaler     UpscalerConfig    `toml:"upscaler"`
+	Metadata     MetadataConfig    `toml:"metadata"`
+	Performance  PerformanceConfig `toml:"performance"`
+}
+
+// PerformanceConfig holds engine performance flags.
+type PerformanceConfig struct {
+	// FlashAttn opts into flash attention (default off). On Apple Silicon / Metal
+	// it is neutral at native resolution and a modest win only on large / hires
+	// renders (~8% faster, some memory), and it changes outputs slightly
+	// (numerically-equivalent attention, not bit-identical). Off by default keeps
+	// same-seed outputs stable; enable it for large / hires work.
+	FlashAttn *bool `toml:"flash_attn"`
+}
+
+// FlashAttn reports whether flash attention should be enabled at model load.
+// Defaults to false (opt-in); `[performance] flash_attn = true` enables it, and
+// `gen --flash-attn` composes on top for one invocation.
+func (c Config) FlashAttn() bool {
+	if c.Performance.FlashAttn == nil {
+		return false
+	}
+	return *c.Performance.FlashAttn
 }
 
 // MetadataConfig controls embedding generation metadata (prompt/params/model)

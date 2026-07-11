@@ -47,3 +47,11 @@ upscaler = "auto"
 # to keep prompts out of shared images. `gen --no-metadata` also disables it.
 [metadata]
 # embed = false
+
+# Flash attention (opt-in). On Apple Silicon / Metal it is neutral at native
+# resolution and a modest win only on large / hires renders (~8% faster, some
+# memory), and it changes outputs slightly (numerically equivalent, not
+# bit-identical). Off by default so same-seed outputs stay stable; enable it for
+# large / hires work. `gen --flash-attn` overrides per run.
+[performance]
+# flash_attn = true

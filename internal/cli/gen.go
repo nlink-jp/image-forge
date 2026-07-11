@@ -49,6 +49,8 @@ func runGen(args []string) error {
 		hiresUpscaler = fs.String("hires-upscaler", "", "hires upscaler: latent|lanczos|nearest|model (default: profile or latent)")
 		hiresModel    = fs.String("hires-model", "", "ESRGAN model (installed upscaler name or path) for --hires-upscaler model")
 
+		flashAttn = fs.Bool("flash-attn", false, "flash attention: faster/leaner on large & hires renders (default off; also config [performance] flash_attn)")
+
 		noMetadata = fs.Bool("no-metadata", false, "do not embed generation metadata (prompt/params/model) into the PNG")
 	)
 	var loraArgs multiFlag
@@ -167,6 +169,12 @@ func runGen(args []string) error {
 	embed := conf.EmbedMetadata() && !*noMetadata
 	metaModelName := modelDisplayName(mName, *modelPath)
 
+	// Flash attention defaults from config; --flash-attn overrides for this run.
+	flashOn := conf.FlashAttn()
+	if set["flash-attn"] {
+		flashOn = *flashAttn
+	}
+
 	sess, err := engine.Open(engine.OpenParams{
 		ModelPath:      res.Path,
 		DiffusionModel: res.Components.DiffusionModel,
@@ -177,6 +185,7 @@ func runGen(args []string) error {
 		VAEPath:        req.VAEPath,
 		ControlNet:     ctrlNetPath,
 		Prediction:     pred,
+		FlashAttn:      flashOn,
 	})
 	if err != nil {
 		return err

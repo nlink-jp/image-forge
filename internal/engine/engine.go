@@ -111,6 +111,10 @@ type OpenParams struct {
 	VAEPath        string
 	ControlNet     string // ControlNet model, loaded alongside the base model
 	Prediction     string
+	// FlashAttn enables flash attention (both the diffusion model and the text
+	// encoders) at load time — a large attention-memory saving on the 16 GB
+	// baseline. Default-on is decided by the caller (config/flag).
+	FlashAttn bool
 }
 
 // Session is a loaded model, ready to render one or more requests. Open (defined

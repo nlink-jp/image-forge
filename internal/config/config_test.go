@@ -96,6 +96,24 @@ func TestEmbedMetadata_DefaultTrue(t *testing.T) {
 	}
 }
 
+func TestFlashAttn_DefaultFalseExplicitTrue(t *testing.T) {
+	if (Config{}).FlashAttn() {
+		t.Error("FlashAttn should default to false (opt-in) when unset")
+	}
+	p := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(p, []byte("[performance]\nflash_attn = true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("IMAGE_FORGE_CONFIG", p)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.FlashAttn() {
+		t.Error("FlashAttn should be true with [performance] flash_attn = true")
+	}
+}
+
 func TestEmbedMetadata_ExplicitFalse(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "config.toml")
 	if err := os.WriteFile(p, []byte("[metadata]\nembed = false\n"), 0o644); err != nil {

@@ -271,6 +271,10 @@ Downloads come from Hugging Face / Civitai / direct URLs. Provide tokens via
   latent; `[upscaler] default_model`). See [`config.example.toml`](config.example.toml)
   — copy it and edit. (The pre-v0.5 location, `$IMAGE_FORGE_HOME/config.toml`, is
   still read as a fallback.)
+- **Flash attention** (opt-in): `[performance] flash_attn = true` (or `gen
+  --flash-attn`). On Apple Silicon it is neutral at native resolution and a modest
+  win only on **large / hires** renders; it changes outputs slightly, so it is off
+  by default to keep same-seed outputs stable.
 - **Tokens**: `HF_TOKEN` (gated HF repos), `CIVITAI_TOKEN` (Civitai downloads).
   Environment variables take precedence over the config file. **Never commit tokens.**
 

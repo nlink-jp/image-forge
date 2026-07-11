@@ -141,6 +141,9 @@ func buildRender(r RenderRequest) (engine.Request, engine.OpenParams, string, in
 		VAEPath:        req.VAEPath,
 		ControlNet:     controlNet,
 		Prediction:     pred,
+		// Flash attention is a process-global setting (config), constant across
+		// requests, so it stays out of reloadKey — it never triggers a reload.
+		FlashAttn: conf.FlashAttn(),
 	}
 	key := reloadKey(op)
 	return req, op, key, seed, nil

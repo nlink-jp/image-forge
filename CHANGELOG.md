@@ -4,6 +4,17 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.18.0] - unreleased
+
+### Added
+- **Flash attention (opt-in)** — `[performance] flash_attn = true` (or `gen
+  --flash-attn`) enables sd.cpp's flash attention for the diffusion model and text
+  encoders (#5). **Off by default.** Measured on M2 Max / Metal it is neutral at
+  native resolution and a modest win only on **large / hires** renders (~8% faster,
+  ~120 MB less peak RSS at 1536²), and it changes outputs slightly
+  (numerically-equivalent attention, not bit-identical) — so it is opt-in to keep
+  same-seed outputs stable. Enable it for large / hires work.
+
 ## [0.17.1] - 2026-07-11
 
 ### Fixed

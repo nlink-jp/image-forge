@@ -99,6 +99,12 @@ func Open(p OpenParams) (Session, error) {
 	// than a one-off merge. Correctness over speed.
 	cp.lora_apply_mode = C.LORA_APPLY_AT_RUNTIME
 
+	// Flash attention: sd.cpp's --fa (all attention) + --diffusion-fa (the
+	// diffusion model's spatial attention, the biggest saving). One toggle drives
+	// both — a large attention-memory reduction on the 16 GB baseline.
+	cp.flash_attn = C.bool(p.FlashAttn)
+	cp.diffusion_flash_attn = C.bool(p.FlashAttn)
+
 	// Set each non-empty path; the CStrings must outlive new_sd_ctx, so free them
 	// only after it returns.
 	var frees []unsafe.Pointer
