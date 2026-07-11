@@ -4,7 +4,13 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.14.0] - unreleased
+## [0.14.0] - 2026-07-11
+
+### Docs
+- `adding-a-model` now documents the `lora` / `controlnet` registry kinds (they
+  were added in v0.13.0 but the guide still only described `upscaler`), including
+  that LoRA/ControlNet must set `Arch`, and how to verify a LoRA's format and
+  effect before adding it.
 
 ### Added
 - **LoRA trigger words are recorded and surfaced.** Many LoRAs only take effect
