@@ -4,6 +4,17 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Load-time weight quantization** (#11): `[performance] wtype = "q4_k"` (or `gen
+  --wtype q4_k`) quantizes an f16 checkpoint's weights as they load — fitting a
+  bigger model into 16/32 GB without a pre-converted GGUF on disk or a second copy.
+  Any `models quantize` type works (`q8_0` … `q4_0`; `f16`/`f32` keep full
+  precision); empty keeps the original weights. Maps to `sd_ctx_params.wtype` in
+  `Open()`; unknown types are rejected up front (`gen`/`serve`/`mcp`). It's part of
+  the model's reload identity, so changing it reloads (unlike flash attention).
+
 ## [0.20.0] - 2026-07-11
 
 ### Added

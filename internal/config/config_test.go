@@ -114,6 +114,24 @@ func TestFlashAttn_DefaultFalseExplicitTrue(t *testing.T) {
 	}
 }
 
+func TestWType(t *testing.T) {
+	if (Config{}).WType() != "" {
+		t.Error("WType should default to empty (keep original weights)")
+	}
+	p := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(p, []byte("[performance]\nwtype = \"q4_k\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("IMAGE_FORGE_CONFIG", p)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.WType() != "q4_k" {
+		t.Errorf("WType = %q, want q4_k", c.WType())
+	}
+}
+
 func TestVAETiling_DefaultFalseExplicitTrue(t *testing.T) {
 	if (Config{}).VAETiling() {
 		t.Error("VAETiling should default to false (opt-in) when unset")

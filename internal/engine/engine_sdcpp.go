@@ -41,6 +41,7 @@ import (
 	_ "image/png"  // register PNG decoder for init images (encoding is done by encodePNGWithText)
 	"os"
 	"runtime/cgo"
+	"sort"
 	"strings"
 	"unsafe"
 )
@@ -109,6 +110,16 @@ func Open(p OpenParams) (Session, error) {
 	// both — a large attention-memory reduction on the 16 GB baseline.
 	cp.flash_attn = C.bool(p.FlashAttn)
 	cp.diffusion_flash_attn = C.bool(p.FlashAttn)
+
+	// Load-time weight quantization: quantize the checkpoint's weights to WType as
+	// they're read, so a big f16 model fits without a pre-converted GGUF. Empty
+	// leaves the default (SD_TYPE_COUNT = keep original). Unknown types are rejected
+	// by the caller; guard here too so a bad value can't silently mis-quantize.
+	if p.WType != "" {
+		if t, ok := quantTypes[strings.ToLower(p.WType)]; ok {
+			cp.wtype = t
+		}
+	}
 
 	// Set each non-empty path; the CStrings must outlive new_sd_ctx, so free them
 	// only after it returns.
@@ -440,6 +451,23 @@ func ValidScheduler(name string) bool {
 	cs := C.CString(name)
 	defer C.free(unsafe.Pointer(cs))
 	return C.str_to_scheduler(cs) != C.SCHEDULER_COUNT
+}
+
+// QuantTypes returns the load-time weight-quantization type names image-forge
+// accepts (the keys of quantTypes), sorted, for `gen --wtype` validation/help.
+func QuantTypes() []string {
+	out := make([]string, 0, len(quantTypes))
+	for k := range quantTypes {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// ValidWType reports whether name is a quant type usable as a load-time wtype.
+func ValidWType(name string) bool {
+	_, ok := quantTypes[strings.ToLower(name)]
+	return ok
 }
 
 // hiresUpscalerEnum maps image-forge's lowercase upscaler names to the sd.cpp

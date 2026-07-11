@@ -56,6 +56,7 @@ func runGen(args []string) error {
 
 		flashAttn = fs.Bool("flash-attn", false, "flash attention: faster/leaner on large & hires renders (default off; also config [performance] flash_attn)")
 		vaeTiling = fs.Bool("vae-tiling", false, "tiled VAE decode: caps decode memory so high-res/hires renders don't OOM the VAE (default off; also config [performance] vae_tiling)")
+		wtype     = fs.String("wtype", "", "quantize weights at load: q8_0|q5_1|q4_k|q4_0|... — fit a big f16 model in RAM without a pre-converted GGUF (also config [performance] wtype)")
 
 		noMetadata = fs.Bool("no-metadata", false, "do not embed generation metadata (prompt/params/model) into the PNG")
 	)
@@ -192,6 +193,15 @@ func runGen(args []string) error {
 		req.VAETiling = *vaeTiling
 	}
 
+	// Load-time weight quantization defaults from config; --wtype overrides.
+	wtypeOn := conf.WType()
+	if set["wtype"] {
+		wtypeOn = *wtype
+	}
+	if err := validateWType(wtypeOn); err != nil {
+		return fmt.Errorf("gen: %w", err)
+	}
+
 	sess, err := engine.Open(engine.OpenParams{
 		ModelPath:      res.Path,
 		DiffusionModel: res.Components.DiffusionModel,
@@ -203,6 +213,7 @@ func runGen(args []string) error {
 		ControlNet:     ctrlNetPath,
 		Prediction:     pred,
 		FlashAttn:      flashOn,
+		WType:          wtypeOn,
 	})
 	if err != nil {
 		return err

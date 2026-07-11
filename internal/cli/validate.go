@@ -25,3 +25,13 @@ func validateSamplerScheduler(sampler, scheduler string) error {
 	}
 	return nil
 }
+
+// validateWType rejects an unknown load-time weight-quantization type up front
+// (empty = keep the checkpoint's original weights). Shared by gen and the
+// serve/MCP render path.
+func validateWType(wtype string) error {
+	if wtype != "" && !engine.ValidWType(wtype) {
+		return fmt.Errorf("invalid wtype %q (valid: %s)", wtype, strings.Join(engine.QuantTypes(), ", "))
+	}
+	return nil
+}

@@ -60,6 +60,12 @@ upscaler = "auto"
 # Costs a little speed and adds near-invisible seams at native resolution, so
 # it's off by default. Turn it on if a high-res render dies during VAE decode.
 # `gen --vae-tiling` overrides per run.
+#
+# Load-time weight quantization. Quantizes an f16 checkpoint's weights as they
+# load (q8_0 … q4_0; f16/f32 keep full precision), so a bigger model fits in
+# 16/32 GB without a pre-converted GGUF on disk. Empty = keep original weights.
+# `gen --wtype q4_k` overrides per run.
 [performance]
 # flash_attn = true
 # vae_tiling = true
+# wtype = "q4_k"

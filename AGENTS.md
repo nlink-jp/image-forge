@@ -117,6 +117,10 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   256px tile when `tile_size`/`rel_size` are 0). sd.cpp also has an `auto_fit` ctx mode that
   auto-tiles on actual OOM, but it bundles discrete-GPU param-offload logic and logs a scary
   "no usable GPU devices" on Metal, so we don't enable it.
+  `wtype` (`OpenParams.WType` → `cp.wtype`, reusing the `quantTypes` map) quantizes weights at
+  load so a big f16 model fits without a pre-converted GGUF — unlike the other two it IS part of
+  `reloadKey` (it changes the loaded weights), and unknown types are rejected by `validateWType`
+  (`engine.QuantTypes()`/`ValidWType`, cgo + stub).
 - **Disk reclamation (`rm --purge` / `gc`) is share-aware AND HITL-gated.** Files
   can be shared across registry entries (a common VAE, text encoders reused by
   multi-component models), and `import` registers files *in place* (Path can be

@@ -153,6 +153,10 @@ func buildRender(r RenderRequest) (engine.Request, engine.OpenParams, string, in
 	// VAE tiling: serve/mcp have no per-call flag, so the config governs.
 	req.VAETiling = conf.VAETiling()
 
+	// Load-time weight quantization from config (serve/mcp have no per-call flag).
+	if err := validateWType(conf.WType()); err != nil {
+		return engine.Request{}, engine.OpenParams{}, "", 0, err
+	}
 	op := engine.OpenParams{
 		ModelPath:      res.Path,
 		DiffusionModel: res.Components.DiffusionModel,
@@ -166,6 +170,7 @@ func buildRender(r RenderRequest) (engine.Request, engine.OpenParams, string, in
 		// Flash attention is a process-global setting (config), constant across
 		// requests, so it stays out of reloadKey — it never triggers a reload.
 		FlashAttn: conf.FlashAttn(),
+		WType:     conf.WType(),
 	}
 	key := reloadKey(op)
 	return req, op, key, seed, nil
@@ -178,6 +183,9 @@ func reloadKey(op engine.OpenParams) string {
 	return strings.Join([]string{
 		op.ModelPath, op.DiffusionModel, op.ClipL, op.ClipG, op.T5XXL,
 		op.LLM, op.VAEPath, op.ControlNet, op.Prediction,
+		// WType changes the loaded weights, so it's part of the model's identity
+		// (unlike FlashAttn, a runtime attention mode that leaves the weights as-is).
+		op.WType,
 	}, "\x00")
 }
 

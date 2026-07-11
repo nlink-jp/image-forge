@@ -133,6 +133,12 @@ type OpenParams struct {
 	// encoders) at load time — a large attention-memory saving on the 16 GB
 	// baseline. Default-on is decided by the caller (config/flag).
 	FlashAttn bool
+
+	// WType quantizes the model's weights at load time to this type (e.g. "q4_k",
+	// "q8_0") — fitting a bigger f16 checkpoint into RAM without a pre-converted
+	// GGUF on disk. Empty keeps the checkpoint's original weights. Must be one of
+	// engine.QuantTypes(); the caller validates.
+	WType string
 }
 
 // Session is a loaded model, ready to render one or more requests. Open (defined

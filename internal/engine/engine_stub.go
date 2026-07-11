@@ -29,3 +29,18 @@ func Schedulers() []string { return nil }
 // validate against, and this build cannot render anyway).
 func ValidSampler(string) bool   { return true }
 func ValidScheduler(string) bool { return true }
+
+// QuantTypes / ValidWType: the scaffold build has no quantTypes map; mirror the
+// canonical list so CLI help/validation still works without the sd.cpp runtime.
+func QuantTypes() []string {
+	return []string{"f16", "f32", "q2_k", "q3_k", "q4_0", "q4_1", "q4_k", "q5_0", "q5_1", "q5_k", "q6_k", "q8_0"}
+}
+
+func ValidWType(name string) bool {
+	for _, t := range QuantTypes() {
+		if t == name {
+			return true
+		}
+	}
+	return false
+}

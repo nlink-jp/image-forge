@@ -41,6 +41,11 @@ type PerformanceConfig struct {
 	// baseline can finish. Off by default because it costs a little speed and
 	// introduces near-invisible tile seams; native-resolution output is unaffected.
 	VAETiling *bool `toml:"vae_tiling"`
+
+	// WType quantizes model weights at load time (e.g. "q4_k", "q8_0") so a big
+	// f16 checkpoint fits in RAM without a pre-converted GGUF on disk. Empty keeps
+	// the checkpoint's original weights. `gen --wtype` overrides per run.
+	WType string `toml:"wtype"`
 }
 
 // FlashAttn reports whether flash attention should be enabled at model load.
@@ -62,6 +67,10 @@ func (c Config) VAETiling() bool {
 	}
 	return *c.Performance.VAETiling
 }
+
+// WType returns the configured load-time weight-quantization type ("" = keep the
+// checkpoint's original weights). `gen --wtype` overrides it per run.
+func (c Config) WType() string { return c.Performance.WType }
 
 // MetadataConfig controls embedding generation metadata (prompt/params/model)
 // into generated PNGs as text chunks. Embed is a pointer so absence (nil) means

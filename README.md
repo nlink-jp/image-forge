@@ -300,6 +300,12 @@ Downloads come from Hugging Face / Civitai / direct URLs. Provide tokens via
   out of memory during VAE decode — the usual failure point on 16 GB — can finish.
   Costs a little speed and adds near-invisible seams, so it is off by default; turn
   it on if a high-res render dies at the decode step.
+- **Load-time weight quantization**: `[performance] wtype = "q4_k"` (or `gen --wtype
+  q4_k`). Quantizes an f16 checkpoint's weights **as they load** — fitting a bigger
+  model into 16/32 GB without a pre-converted GGUF on disk or a second copy. Any
+  `models quantize` type works (`q8_0` … `q4_0`; `f16`/`f32` keep full precision).
+  Empty = keep the checkpoint's original weights. Trades a little quality for the
+  memory saving; changing it reloads the model.
 - **Tokens**: `HF_TOKEN` (gated HF repos), `CIVITAI_TOKEN` (Civitai downloads).
   Environment variables take precedence over the config file. **Never commit tokens.**
 
