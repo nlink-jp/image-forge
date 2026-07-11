@@ -134,7 +134,16 @@ image-forge models pull lcm-lora-sdxl          # a LoRA, like any other model
 image-forge models list --kind lora --json     # what a front-end enumerates
 image-forge gen -p "a red apple" -m animagine-xl-4 \
   --lora lcm-lora-sdxl:1.0 --steps 6 --cfg 1.5 --sampler lcm
+
+image-forge models pull controlnet-canny-sd15  # a ControlNet (SD1.5)
+image-forge gen -p "a house at night, snow" -m sd15-emaonly \
+  --control-net controlnet-canny-sd15 --control photo.png --canny
 ```
+
+**ControlNet** ships only for **SD1.5** (`controlnet-canny-sd15`): sd.cpp loads
+only the original ControlNet format, and every public SDXL ControlNet is
+diffusers-format, which it can't load. Any format works via `models import
+<path> --kind controlnet` once you've confirmed it renders.
 
 Many LoRAs need **trigger words** in the prompt to take effect — without them the
 LoRA loads and silently does nothing. They are recorded in the catalog, kept on

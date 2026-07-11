@@ -129,6 +129,37 @@ func TestUpscalerEntries(t *testing.T) {
 	}
 }
 
+func TestControlNetEntries(t *testing.T) {
+	// The verified SD1.5 canny ControlNet must be present, marked as controlnet
+	// kind, arch-bound (unlike upscalers), and carry no diffusion VAE/prediction.
+	// (No SDXL ControlNet ships: sd.cpp cannot load diffusers-format SDXL weights.)
+	e, ok := Find("controlnet-canny-sd15")
+	if !ok {
+		t.Fatal("expected controlnet-canny-sd15 in the catalog")
+	}
+	if !e.IsControlNet() {
+		t.Errorf("controlnet-canny-sd15: IsControlNet() should be true (kind=%q)", e.Kind)
+	}
+	if e.Arch != profile.ArchSD15 {
+		t.Errorf("controlnet-canny-sd15: arch = %q, want SD15 (ControlNet is arch-bound)", e.Arch)
+	}
+	if e.Source.HF == "" {
+		t.Error("controlnet-canny-sd15: must have an HF source")
+	}
+	if e.Source.VAE != "" || e.Prediction != "" {
+		t.Error("controlnet-canny-sd15: a ControlNet must not carry a VAE or prediction type")
+	}
+	if e.License == "" {
+		t.Error("controlnet-canny-sd15: must surface a license")
+	}
+	// No SDXL ControlNet until one actually renders in sd.cpp.
+	for _, cn := range Default() {
+		if cn.IsControlNet() && cn.Arch == profile.ArchSDXL {
+			t.Errorf("%s: an SDXL ControlNet was added — verify it renders in sd.cpp first (diffusers format does not load)", cn.Name)
+		}
+	}
+}
+
 func TestHiresDefaultsPropagate(t *testing.T) {
 	// prefect-pony-xl ships hires on by default (its Civitai page recommends it);
 	// the flag and values must flow into the built profile.

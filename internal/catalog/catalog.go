@@ -352,6 +352,24 @@ func Default() []Entry {
 			Notes:  "Real-ESRGAN x4 anime-tuned upscaler (ESRGAN, 6B). For `image-forge upscale` and `gen --hires-upscaler model --hires-model realesrgan-x4-anime`.",
 		},
 
+		// ControlNet models (ADR-0006). Bound to a base architecture and loaded
+		// alongside it — changing the ControlNet reloads the base model (it is in
+		// the engine's reload key), unlike LoRAs which apply per render. Drive with
+		// `gen --control-net <name> --control <image>`; add --canny to preprocess a
+		// normal image into an edge map.
+		{
+			Name: "controlnet-canny-sd15", Kind: KindControlNet, Arch: profile.ArchSD15,
+			Rating: profile.RatingSafe, License: "CreativeML OpenRAIL-M (lllyasviel/ControlNet-v1-1)",
+			MinRAMGB: 8, RecRAMGB: 16,
+			Source: Source{HF: "comfyanonymous/ControlNet-v1-1_fp16_safetensors/control_v11p_sd15_canny_fp16.safetensors"},
+			Notes:  "Canny-edge ControlNet for SD1.5. `gen -m <sd15> --control-net controlnet-canny-sd15 --control edge.png` (add --canny to derive edges from a normal image).",
+		},
+		// NOTE: No SDXL ControlNet yet. sd.cpp's loader only understands the original
+		// (`control_model.` / `input_blocks`) format; every public SDXL canny ControlNet
+		// (xinsir, lllyasviel/sd_control_collection) ships in *diffusers* format
+		// (`down_blocks` / `controlnet_down_blocks`), which sd.cpp cannot convert — it
+		// fails with "failed to load model". Add one only after it renders (ADR-0006).
+
 		// LoRA adapters (ADR-0006). Bound to a base architecture; applied per
 		// render with `gen --lora <name>:<weight>` (no model reload).
 		{

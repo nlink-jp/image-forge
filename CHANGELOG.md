@@ -4,6 +4,22 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.16.0] - unreleased
+
+### Added
+- **First ControlNet catalog entry: `controlnet-canny-sd15`.** A canny-edge
+  ControlNet for SD1.5 (`comfyanonymous/ControlNet-v1-1_fp16_safetensors`, OpenRAIL),
+  now pullable with `models pull controlnet-canny-sd15` and usable via
+  `gen -m <sd15> --control-net controlnet-canny-sd15 --control <img> --canny`.
+  **Verified end-to-end** — the output follows the control image's edges.
+
+### Notes
+- **No SDXL ControlNet yet.** sd.cpp's loader only understands the original
+  ControlNet format (`control_model.` / `input_blocks.` keys); every public SDXL
+  canny ControlNet (xinsir, lllyasviel/sd_control_collection) ships in *diffusers*
+  format (`down_blocks` / `controlnet_down_blocks`), which sd.cpp cannot convert and
+  fails to load. An SDXL entry will be added only once one actually renders.
+
 ## [0.15.1] - 2026-07-11
 
 ### Fixed
