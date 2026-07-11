@@ -53,6 +53,15 @@ type RenderRequest struct {
 	Mask      string // absolute path (verified regular) or empty
 	Strength  *float64
 
+	// LoRA / ControlNet. LoRAs are "<name-or-path>:<weight>"; ControlNet is an
+	// installed name or path — both resolved by the impl (buildRender). Control is
+	// the absolute control-image path (verified regular) or empty.
+	LoRAs           []string
+	ControlNet      string
+	Control         string
+	ControlStrength *float64
+	Canny           bool
+
 	// hires.fix. Hires is the mode: "" / "auto" (follow the profile), "on", "off".
 	Hires         string
 	HiresScale    *float64

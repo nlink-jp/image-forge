@@ -447,6 +447,58 @@ func TestGenerateThreadsHires(t *testing.T) {
 	}
 }
 
+func TestGenerateThreadsLoRAAndControlNet(t *testing.T) {
+	rend := &fakeRenderer{seed: 3}
+	h := newHarness(t, rend)
+	root := seedWorkspace(t, "proj")
+	// The control image is a workspace file (like init/mask).
+	if err := os.WriteFile(filepath.Join(root, "proj", "edge.png"), []byte("img"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := h.call("generate", map[string]any{
+		"workspace_id": "proj", "workspace_root": root, "prompt": "x", "model": "sd15",
+		"loras":       []any{"lcm-lora-sd15:0.8", "/m/extra.safetensors:1"},
+		"control_net": "controlnet-canny-sd15", "control": "edge.png",
+		"control_strength": 0.7, "canny": true,
+	})
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	h.pollDone(out.(map[string]any)["job_id"].(string))
+
+	// LoRAs pass through verbatim (buildRender resolves names→paths downstream).
+	if len(rend.lastReq.LoRAs) != 2 || rend.lastReq.LoRAs[0] != "lcm-lora-sd15:0.8" {
+		t.Errorf("loras not threaded: %v", rend.lastReq.LoRAs)
+	}
+	// The ControlNet model ref passes through; the control image is resolved to an
+	// absolute in-workspace path (verified regular).
+	if rend.lastReq.ControlNet != "controlnet-canny-sd15" {
+		t.Errorf("control_net = %q", rend.lastReq.ControlNet)
+	}
+	if rend.lastReq.Control != filepath.Join(root, "proj", "edge.png") {
+		t.Errorf("control image = %q (want absolute in-workspace path)", rend.lastReq.Control)
+	}
+	if rend.lastReq.ControlStrength == nil || *rend.lastReq.ControlStrength != 0.7 {
+		t.Errorf("control_strength not threaded: %v", rend.lastReq.ControlStrength)
+	}
+	if !rend.lastReq.Canny {
+		t.Error("canny not threaded")
+	}
+}
+
+func TestGenerateControlRequiresControlNet(t *testing.T) {
+	h := newHarness(t, nil)
+	root := seedWorkspace(t, "proj")
+	_, err := h.call("generate", map[string]any{
+		"workspace_id": "proj", "workspace_root": root, "prompt": "x", "model": "sd15",
+		"control": "edge.png", // no control_net
+	})
+	var te *toolerr.Error
+	if !errors.As(err, &te) || te.Code != toolerr.CodeInvalidArguments {
+		t.Fatalf("want invalid_arguments (control requires control_net), got %v", err)
+	}
+}
+
 func TestUpscaleThenCheckJob(t *testing.T) {
 	h := newHarness(t, nil)
 	root := seedWorkspace(t, "proj")

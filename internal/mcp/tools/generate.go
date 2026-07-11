@@ -17,29 +17,34 @@ import (
 
 // generateArgs is the decoded generate tool input.
 type generateArgs struct {
-	WorkspaceID   string   `json:"workspace_id"`
-	WorkspaceRoot string   `json:"workspace_root"`
-	Prompt        string   `json:"prompt"`
-	Model         string   `json:"model"`
-	Negative      *string  `json:"negative"`
-	Seed          *int64   `json:"seed"`
-	Steps         *int     `json:"steps"`
-	CFG           *float64 `json:"cfg"`
-	Width         *int     `json:"width"`
-	Height        *int     `json:"height"`
-	Sampler       *string  `json:"sampler"`
-	Scheduler     *string  `json:"scheduler"`
-	ClipSkip      *int     `json:"clip_skip"`
-	Batch         *int     `json:"batch"`
-	Init          string   `json:"init"`
-	Mask          string   `json:"mask"`
-	Strength      *float64 `json:"strength"`
-	OutputName    string   `json:"output_name"`
-	Hires         string   `json:"hires"`
-	HiresScale    *float64 `json:"hires_scale"`
-	HiresDenoise  *float64 `json:"hires_denoise"`
-	HiresUpscaler *string  `json:"hires_upscaler"`
-	HiresModel    string   `json:"hires_model"`
+	WorkspaceID     string   `json:"workspace_id"`
+	WorkspaceRoot   string   `json:"workspace_root"`
+	Prompt          string   `json:"prompt"`
+	Model           string   `json:"model"`
+	Negative        *string  `json:"negative"`
+	Seed            *int64   `json:"seed"`
+	Steps           *int     `json:"steps"`
+	CFG             *float64 `json:"cfg"`
+	Width           *int     `json:"width"`
+	Height          *int     `json:"height"`
+	Sampler         *string  `json:"sampler"`
+	Scheduler       *string  `json:"scheduler"`
+	ClipSkip        *int     `json:"clip_skip"`
+	Batch           *int     `json:"batch"`
+	Init            string   `json:"init"`
+	Mask            string   `json:"mask"`
+	Strength        *float64 `json:"strength"`
+	LoRAs           []string `json:"loras"`
+	ControlNet      string   `json:"control_net"`
+	Control         string   `json:"control"`
+	ControlStrength *float64 `json:"control_strength"`
+	Canny           bool     `json:"canny"`
+	OutputName      string   `json:"output_name"`
+	Hires           string   `json:"hires"`
+	HiresScale      *float64 `json:"hires_scale"`
+	HiresDenoise    *float64 `json:"hires_denoise"`
+	HiresUpscaler   *string  `json:"hires_upscaler"`
+	HiresModel      string   `json:"hires_model"`
 }
 
 // Output is one produced image, returned on job done.
@@ -63,9 +68,9 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
 		Description: "Enqueue an image-generation job and return a job_id immediately. The image is rendered in the " +
 			"background by the embedded diffusion engine (renders are serialized) and written to the workspace's " +
 			"output/ directory as a PNG. Poll check_job with the returned job_id for progress and, on done, the " +
-			"output path(s) and seed(s). Reference init/mask images by workspace-relative paths (place them in the " +
-			"workspace first). If no model is given and no default is configured, returns model_required — call " +
-			"list_models to pick one.",
+			"output path(s) and seed(s). Reference init/mask/control images by workspace-relative paths (place them " +
+			"in the workspace first); apply LoRAs with loras and a ControlNet with control_net + control. If no model " +
+			"is given and no default is configured, returns model_required — call list_models to pick one.",
 		InputSchema: json.RawMessage(`{
   "type": "object",
   "required": ["workspace_id", "prompt"],
@@ -87,6 +92,11 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
     "init": {"type": "string", "description": "img2img init image, workspace-relative path (place it in the workspace first)"},
     "mask": {"type": "string", "description": "inpaint mask, workspace-relative path; requires init (white=regenerate, black=keep)"},
     "strength": {"type": "number", "description": "img2img denoise strength 0..1 (with init)"},
+    "loras": {"type": "array", "items": {"type": "string"}, "description": "LoRAs to apply, each \"<installed-name-or-path>:<weight>\" (see list_models). Applied per render, no model reload"},
+    "control_net": {"type": "string", "description": "ControlNet installed name or path (see list_models --kind controlnet). Loaded with the base model — changing it reloads the base. SD1.5 only for now"},
+    "control": {"type": "string", "description": "ControlNet control image, workspace-relative path (place it in the workspace first); requires control_net"},
+    "control_strength": {"type": "number", "description": "ControlNet strength 0..1 (default 0.9; with control_net)"},
+    "canny": {"type": "boolean", "description": "edge-preprocess the control image with canny (off = it is already an edge/structure map)"},
     "output_name": {"type": "string", "description": "Base name for the PNG (default: gen); final file output/<output_name>-<seed>.png"},
     "hires": {"type": "string", "enum": ["auto", "on", "off"], "description": "hires.fix (a second higher-res pass that adds detail): auto (default; follow the model profile) | on | off"},
     "hires_scale": {"type": "number", "description": "hires upscale factor (default: profile or 1.5)"},
@@ -109,6 +119,9 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
 		}
 		if in.Mask != "" && in.Init == "" {
 			return nil, toolerr.New(toolerr.CodeInvalidArguments, "mask requires init (inpaint needs a base image)")
+		}
+		if in.Control != "" && in.ControlNet == "" {
+			return nil, toolerr.New(toolerr.CodeInvalidArguments, "control requires control_net (a ControlNet needs a model)")
 		}
 
 		model := in.Model
@@ -144,6 +157,12 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
 		if err != nil {
 			return nil, err
 		}
+		// The control image is a workspace file (like init/mask); the ControlNet
+		// model is a registry name / path, resolved downstream by buildRender.
+		controlAbs, err := resolveInput(ws, in.Control)
+		if err != nil {
+			return nil, err
+		}
 
 		req := RenderRequest{
 			Prompt:    in.Prompt,
@@ -161,6 +180,12 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
 			Init:      initAbs,
 			Mask:      maskAbs,
 			Strength:  in.Strength,
+
+			LoRAs:           in.LoRAs,
+			ControlNet:      in.ControlNet,
+			Control:         controlAbs,
+			ControlStrength: in.ControlStrength,
+			Canny:           in.Canny,
 
 			Hires:         in.Hires,
 			HiresScale:    in.HiresScale,

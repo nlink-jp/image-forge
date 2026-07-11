@@ -16,8 +16,11 @@ on M2 Max (SD1.5 + Animagine XL / SDXL, q8_0, LCM-LoRA, NoobAI v-pred). v-predic
 is wired via the profile (`--prediction eps|v|auto` overrides). Civitai downloads,
 **multi-component models** (FLUX; resumable/retrying downloads), and **ControlNet**
 (`--control-net`/`--control`/`--canny` via `preprocess_canny`) are all wired and
-verified E2E. Phase 1 + Phase 2 features are complete. Full design:
-`docs/{ja,en}/image-forge-rfp*`.
+verified E2E. ControlNet is verified with **SD1.5 only** (`controlnet-canny-sd15`
+in the catalog); **SDXL ControlNet does not load** — sd.cpp only takes the original
+`control_model.` format, and public SDXL ControlNets are diffusers-format. `gen`,
+`serve`, **and the MCP `generate` tool** all expose LoRA + ControlNet. Phase 1 +
+Phase 2 features are complete. Full design: `docs/{ja,en}/image-forge-rfp*`.
 
 ## Build & test
 

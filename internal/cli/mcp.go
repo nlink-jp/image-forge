@@ -118,6 +118,10 @@ func (a *residentRenderer) Render(ctx context.Context, req tools.RenderRequest, 
 		Width: req.Width, Height: req.Height, Sampler: req.Sampler, Scheduler: req.Scheduler,
 		ClipSkip: req.ClipSkip, Batch: req.Batch,
 		Init: req.Init, Mask: req.Mask, Strength: req.Strength,
+		// LoRA/ControlNet names→paths are resolved downstream by buildRender
+		// (parseLoras + resolveAuxRefs); pass them through verbatim here.
+		LoRAs: req.LoRAs, ControlNet: req.ControlNet, Control: req.Control,
+		ControlStrength: req.ControlStrength, Canny: req.Canny,
 		Hires: req.Hires, HiresScale: req.HiresScale, HiresDenoise: req.HiresDenoise,
 		HiresUpscaler: req.HiresUpscaler, HiresModel: hiresModel,
 	}

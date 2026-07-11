@@ -14,8 +14,8 @@ Call `get_usage` once before your first generation.
 All output lives in a workspace: `<workspace_root>/<workspace_id>/`
 
 ```
-<init/mask images>   img2img / inpaint inputs   (you place these)
-output/              rendered PNGs              (server-written)
+<input images>       img2img / inpaint / control inputs   (you place these)
+output/              rendered PNGs                         (server-written)
 ```
 
 - `workspace_id`: `[a-zA-Z0-9_-]{1,64}`, one per generation project.
@@ -24,8 +24,8 @@ output/              rendered PNGs              (server-written)
   value on the call. Omit it to use the server's default root
   (`~/.local/share/image-forge/mcp-workspaces`), which requires the server and
   you to share an unrestricted filesystem view.
-- Input images (`init`, `mask`) are referenced by paths **relative to the
-  workspace root** — place them in the workspace first.
+- Input images (`init`, `mask`, `control`) are referenced by paths **relative to
+  the workspace root** — place them in the workspace first.
 - The server never reads or writes outside the workspace (kernel-enforced;
   symlinks inside the workspace that point outside fail with `path_not_allowed`).
 
@@ -58,6 +58,15 @@ Required: `workspace_id`, `prompt`.
 - `mask` — inpaint mask, a workspace-relative image path; **requires `init`**
   (white = regenerate, black = keep).
 - `strength` — img2img denoise strength `0..1` (with `init`).
+- `loras` — an array of LoRAs to apply, each `"<installed-name-or-path>:<weight>"`
+  (see `list_models`). Applied per render, no model reload. A LoRA's registry name
+  resolves to its file.
+- `control_net` — a ControlNet installed name or path (see
+  `list_models` scope with `kind` `controlnet`). Loaded with the base model, so
+  **changing it reloads the base**. Only **SD1.5** ships today.
+- `control` — the ControlNet control image, a workspace-relative image path;
+  **requires `control_net`**. `control_strength` (`0..1`, default `0.9`) sets its
+  influence; `canny` edge-preprocesses it (off = it is already an edge map).
 - `output_name` — base name for the PNG (default `gen`); the final file is
   `output/<output_name>-<seed>.png`.
 - `hires` — hires.fix, a second higher-res pass that adds detail: `auto`
