@@ -460,6 +460,7 @@ func TestGenerateThreadsLoRAAndControlNet(t *testing.T) {
 		"loras":       []any{"lcm-lora-sd15:0.8", "/m/extra.safetensors:1"},
 		"control_net": "controlnet-canny-sd15", "control": "edge.png",
 		"control_strength": 0.7, "canny": true,
+		"guidance": 3.5, "flow_shift": 3.0, "slg_scale": 2.5, "img_cfg": 1.5,
 	})
 	if err != nil {
 		t.Fatalf("generate: %v", err)
@@ -483,6 +484,21 @@ func TestGenerateThreadsLoRAAndControlNet(t *testing.T) {
 	}
 	if !rend.lastReq.Canny {
 		t.Error("canny not threaded")
+	}
+	// Flow-matching / distilled guidance knobs thread through to the render request.
+	for _, tc := range []struct {
+		name string
+		got  *float64
+		want float64
+	}{
+		{"guidance", rend.lastReq.Guidance, 3.5},
+		{"flow_shift", rend.lastReq.FlowShift, 3.0},
+		{"slg_scale", rend.lastReq.SLGScale, 2.5},
+		{"img_cfg", rend.lastReq.ImgCFG, 1.5},
+	} {
+		if tc.got == nil || *tc.got != tc.want {
+			t.Errorf("%s not threaded: %v (want %v)", tc.name, tc.got, tc.want)
+		}
 	}
 }
 

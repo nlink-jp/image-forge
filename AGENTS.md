@@ -148,6 +148,13 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   catalog entry sets the per-entry `Steps` override (also `CFG` available). sd.cpp's
   `distilled_guidance` default (3.5) is already the right Flux guidance, so nothing
   else is needed. Qwen-Image would need a new arch (`profile` has none) — deferred.
+- **Flow/DiT guidance knobs (`Request.Guidance`/`FlowShift`/`SLGScale`/`ImgCFG`).**
+  Map to `g.sample_params.guidance.distilled_guidance` / `.flow_shift` / `.slg` /
+  `.img_cfg`. Each 0 keeps sd.cpp's default; sd.cpp ignores knobs that don't apply to
+  the loaded arch (distilled/flow are no-ops for SDXL/SD1.5; SLG is DiT-only). SLG
+  needs a skip-layers array — a package-level `slgSD35Layers = [7,8,9]` (stable
+  address) is passed only while `generate_image` runs, which never retains it.
+  Exposed as `gen --guidance/--flow-shift/--slg-scale/--img-cfg`, serve JSON, and MCP.
 - **Catalog source ids are provisional** (RFP stage) — verify each HF/Civitai id
   before wiring `pull`.
 - **Secrets**: `HF_TOKEN` / `CIVITAI_TOKEN` via env/config only — never commit.

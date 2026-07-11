@@ -62,6 +62,12 @@ type RenderRequest struct {
 	ControlStrength *float64
 	Canny           bool
 
+	// Flow-matching / distilled guidance knobs (Flux & SD3.5); nil => sd.cpp default.
+	Guidance  *float64
+	FlowShift *float64
+	SLGScale  *float64
+	ImgCFG    *float64
+
 	// hires.fix. Hires is the mode: "" / "auto" (follow the profile), "on", "off".
 	Hires         string
 	HiresScale    *float64

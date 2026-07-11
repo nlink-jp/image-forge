@@ -45,6 +45,17 @@ type Request struct {
 	Scheduler string
 	ClipSkip  int
 	Batch     int
+
+	// Flow-matching / distilled guidance knobs for Flux & SD3.5. Each is 0 = leave
+	// sd.cpp's default. Guidance is Flux-dev's distilled guidance (sd.cpp default
+	// 3.5 — the most important knob for flux1-dev); FlowShift is the flow-matching
+	// timestep shift (SD3.5 / Flux); SLGScale enables skip-layer guidance at the
+	// standard SD3.5 skip layers (a quality knob, ~2.5 is good for SD3.5); ImgCFG is
+	// a separate image CFG for img2img / instruct edits.
+	Guidance  float64
+	FlowShift float64
+	SLGScale  float64
+	ImgCFG    float64
 	ModelPath string
 	VAEPath   string
 	LoRAs     []LoRA

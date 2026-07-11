@@ -4,6 +4,18 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Flux / SD3.5 guidance controls** (#10): `--guidance` (Flux distilled guidance —
+  the key knob for `flux1-dev`, default 3.5), `--flow-shift` (flow-matching timestep
+  shift), `--slg-scale` (skip-layer guidance for DiT models; ~2.5 for SD3.5, skips
+  layers 7–9), and `--img-cfg` (separate image CFG for img2img). Previously `Render`
+  only set `txt_cfg`, so these flow-matching knobs were unreachable. Each is 0/absent
+  = keep sd.cpp's default, and irrelevant knobs are ignored per arch. Wired through
+  `gen`, `serve` (JSON `guidance`/`flow_shift`/`slg_scale`/`img_cfg`), and the MCP
+  `generate` tool.
+
 ## [0.19.0] - 2026-07-11
 
 ### Added

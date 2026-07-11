@@ -46,6 +46,11 @@ import (
 )
 
 // quantTypes maps CLI quant names to sd.cpp weight types.
+// slgSD35Layers is the standard set of transformer layers skip-layer guidance
+// skips for SD3.5 ([7,8,9]). A package-level array so its address is stable when
+// passed to sd.cpp during a Render (generate_image reads it, never retains it).
+var slgSD35Layers = [3]C.int{7, 8, 9}
+
 var quantTypes = map[string]C.enum_sd_type_t{
 	"q8_0": C.SD_TYPE_Q8_0, "q5_0": C.SD_TYPE_Q5_0, "q5_1": C.SD_TYPE_Q5_1,
 	"q4_0": C.SD_TYPE_Q4_0, "q4_1": C.SD_TYPE_Q4_1,
@@ -214,6 +219,25 @@ func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event
 	}
 	if req.CFG > 0 {
 		g.sample_params.guidance.txt_cfg = C.float(req.CFG)
+	}
+	// Flow-matching / distilled guidance knobs (Flux & SD3.5). Each 0 leaves sd.cpp's
+	// default; sd.cpp ignores whichever don't apply to the loaded arch (distilled
+	// guidance & flow_shift are no-ops for SDXL/SD1.5; SLG is DiT-only).
+	if req.Guidance > 0 {
+		g.sample_params.guidance.distilled_guidance = C.float(req.Guidance)
+	}
+	if req.FlowShift > 0 {
+		g.sample_params.flow_shift = C.float(req.FlowShift)
+	}
+	if req.ImgCFG > 0 {
+		g.sample_params.guidance.img_cfg = C.float(req.ImgCFG)
+	}
+	if req.SLGScale > 0 {
+		// Skip-layer guidance: enable at the standard SD3.5 skip layers [7,8,9];
+		// keep sd.cpp's layer_start/end defaults (0.01 / 0.2).
+		g.sample_params.guidance.slg.scale = C.float(req.SLGScale)
+		g.sample_params.guidance.slg.layers = &slgSD35Layers[0]
+		g.sample_params.guidance.slg.layer_count = C.size_t(len(slgSD35Layers))
 	}
 	if req.Sampler != "" {
 		cs := C.CString(req.Sampler)

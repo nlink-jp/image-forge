@@ -34,6 +34,11 @@ func runGen(args []string) error {
 		scheduler = fs.String("scheduler", "", "scheduler: discrete|karras|exponential|ays|... (default: sd.cpp default)")
 		clipSkip  = fs.Int("clip-skip", 0, "CLIP skip (overrides the profile)")
 		batch     = fs.Int("batch", 1, "images per run (sd.cpp batch, sequential seeds)")
+
+		guidance  = fs.Float64("guidance", 0, "Flux distilled guidance scale (flux1-dev; default 3.5). Higher = closer to the prompt")
+		flowShift = fs.Float64("flow-shift", 0, "flow-matching timestep shift (Flux / SD3.5; default: model)")
+		slgScale  = fs.Float64("slg-scale", 0, "skip-layer guidance scale, DiT models (SD3.5): 0=off, ~2.5 is good for SD3.5")
+		imgCFG    = fs.Float64("img-cfg", 0, "separate image CFG for img2img / instruct edits (default: same as --cfg)")
 		initImg   = fs.String("init", "", "init image for img2img (PNG/JPEG)")
 		strength  = fs.Float64("strength", 0.6, "img2img denoise strength, 0..1 (with --init)")
 		maskImg   = fs.String("mask", "", "inpaint mask, same size as --init (white=regenerate, black=keep)")
@@ -130,6 +135,11 @@ func runGen(args []string) error {
 	req.ControlStrength = *ctrlStr
 	req.Canny = *canny
 	req.Scheduler = *scheduler
+	// Flow-matching / distilled guidance knobs (Flux & SD3.5); 0 = keep the default.
+	req.Guidance = *guidance
+	req.FlowShift = *flowShift
+	req.SLGScale = *slgScale
+	req.ImgCFG = *imgCFG
 	if err := validateSamplerScheduler(req.Sampler, req.Scheduler); err != nil {
 		return fmt.Errorf("gen: %w", err)
 	}

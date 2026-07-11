@@ -75,6 +75,10 @@ fp16-fix VAE.
 | `--mask` | inpaint (with `--init`): regenerate only the white region of the mask (same size as the init) |
 | `--lora <name\|path>:<weight>` | apply a LoRA (repeatable). An installed LoRA's registry name resolves to its file; a path also works. Applied per render — no model reload |
 | `--control-net <name\|path>` `--control <image>` | ControlNet: steer generation by a control image (add `--control-strength`, and `--canny` to edge-preprocess). **Changing the ControlNet reloads the base model** |
+| `--guidance` | Flux distilled guidance scale (**flux1-dev**; default 3.5). Higher = closer to the prompt. The single most important knob for flux1-dev |
+| `--flow-shift` | flow-matching timestep shift (Flux / SD3.5; default: model) |
+| `--slg-scale` | skip-layer guidance for DiT models (**SD3.5**): 0 = off, ~2.5 is a good SD3.5 value (skips layers 7–9) |
+| `--img-cfg` | separate image CFG for img2img / instruct edits (default: same as `--cfg`) |
 | `--hires auto\|on\|off` | hires.fix (generate → upscale → a 2nd img2img pass for detail). `auto` (default) follows the model profile; `on`/`off` force it |
 | `--hires-scale` `--hires-denoise` `--hires-upscaler latent\|lanczos\|nearest\|model` `--hires-model <name\|path>` | fine-tune hires (defaults: latent, scale 1.5, denoise 0.5) |
 | `--no-metadata` | do not embed the prompt/parameters/model into the PNG |

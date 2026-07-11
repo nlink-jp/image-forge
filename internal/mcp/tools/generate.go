@@ -39,6 +39,10 @@ type generateArgs struct {
 	Control         string   `json:"control"`
 	ControlStrength *float64 `json:"control_strength"`
 	Canny           bool     `json:"canny"`
+	Guidance        *float64 `json:"guidance"`
+	FlowShift       *float64 `json:"flow_shift"`
+	SLGScale        *float64 `json:"slg_scale"`
+	ImgCFG          *float64 `json:"img_cfg"`
 	OutputName      string   `json:"output_name"`
 	Hires           string   `json:"hires"`
 	HiresScale      *float64 `json:"hires_scale"`
@@ -97,6 +101,10 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
     "control": {"type": "string", "description": "ControlNet control image, workspace-relative path (place it in the workspace first); requires control_net"},
     "control_strength": {"type": "number", "description": "ControlNet strength 0..1 (default 0.9; with control_net)"},
     "canny": {"type": "boolean", "description": "edge-preprocess the control image with canny (off = it is already an edge/structure map)"},
+    "guidance": {"type": "number", "description": "Flux distilled guidance scale (flux1-dev; default 3.5). Higher = closer to the prompt"},
+    "flow_shift": {"type": "number", "description": "flow-matching timestep shift (Flux / SD3.5; default: model)"},
+    "slg_scale": {"type": "number", "description": "skip-layer guidance scale for DiT models (SD3.5): 0=off, ~2.5 is good for SD3.5"},
+    "img_cfg": {"type": "number", "description": "separate image CFG for img2img / instruct edits (default: same as cfg)"},
     "output_name": {"type": "string", "description": "Base name for the PNG (default: gen); final file output/<output_name>-<seed>.png"},
     "hires": {"type": "string", "enum": ["auto", "on", "off"], "description": "hires.fix (a second higher-res pass that adds detail): auto (default; follow the model profile) | on | off"},
     "hires_scale": {"type": "number", "description": "hires upscale factor (default: profile or 1.5)"},
@@ -186,6 +194,10 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
 			Control:         controlAbs,
 			ControlStrength: in.ControlStrength,
 			Canny:           in.Canny,
+			Guidance:        in.Guidance,
+			FlowShift:       in.FlowShift,
+			SLGScale:        in.SLGScale,
+			ImgCFG:          in.ImgCFG,
 
 			Hires:         in.Hires,
 			HiresScale:    in.HiresScale,

@@ -122,6 +122,7 @@ func (a *residentRenderer) Render(ctx context.Context, req tools.RenderRequest, 
 		// (parseLoras + resolveAuxRefs); pass them through verbatim here.
 		LoRAs: req.LoRAs, ControlNet: req.ControlNet, Control: req.Control,
 		ControlStrength: req.ControlStrength, Canny: req.Canny,
+		Guidance: req.Guidance, FlowShift: req.FlowShift, SLGScale: req.SLGScale, ImgCFG: req.ImgCFG,
 		Hires: req.Hires, HiresScale: req.HiresScale, HiresDenoise: req.HiresDenoise,
 		HiresUpscaler: req.HiresUpscaler, HiresModel: hiresModel,
 	}

@@ -39,6 +39,12 @@ type RenderRequest struct {
 	ControlStrength *float64
 	Canny           bool
 
+	// Flow-matching / distilled guidance knobs (Flux & SD3.5); nil => sd.cpp default.
+	Guidance  *float64
+	FlowShift *float64
+	SLGScale  *float64
+	ImgCFG    *float64
+
 	// hires.fix. Hires is the mode: "" / "auto" (follow the profile), "on", "off".
 	// The pointer/Model fields are fine-grained overrides (nil => use the profile
 	// or the opinionated default). HiresModel is a resolved ESRGAN path.
@@ -103,6 +109,19 @@ func buildRender(r RenderRequest) (engine.Request, engine.OpenParams, string, in
 	req.ControlStrength = 0.9
 	if r.ControlStrength != nil {
 		req.ControlStrength = *r.ControlStrength
+	}
+	// Flow-matching / distilled guidance knobs (Flux & SD3.5); nil => sd.cpp default.
+	if r.Guidance != nil {
+		req.Guidance = *r.Guidance
+	}
+	if r.FlowShift != nil {
+		req.FlowShift = *r.FlowShift
+	}
+	if r.SLGScale != nil {
+		req.SLGScale = *r.SLGScale
+	}
+	if r.ImgCFG != nil {
+		req.ImgCFG = *r.ImgCFG
 	}
 
 	hiresModelPath, herr := resolveHiresModel(r.HiresModel)

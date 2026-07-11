@@ -41,6 +41,12 @@ type serveRequest struct {
 	ControlStrength *float64 `json:"control_strength,omitempty"`
 	Canny           bool     `json:"canny,omitempty"`
 
+	// Flow-matching / distilled guidance knobs (Flux & SD3.5); omit => sd.cpp default.
+	Guidance  *float64 `json:"guidance,omitempty"`
+	FlowShift *float64 `json:"flow_shift,omitempty"`
+	SLGScale  *float64 `json:"slg_scale,omitempty"`
+	ImgCFG    *float64 `json:"img_cfg,omitempty"`
+
 	Hires         string   `json:"hires,omitempty"` // "auto" | "on" | "off"
 	HiresScale    *float64 `json:"hires_scale,omitempty"`
 	HiresDenoise  *float64 `json:"hires_denoise,omitempty"`
@@ -57,6 +63,7 @@ func (r serveRequest) renderRequest() RenderRequest {
 		Prediction: r.Prediction, ClipSkip: r.ClipSkip, Batch: r.Batch,
 		Init: r.Init, Mask: r.Mask, Strength: r.Strength, LoRAs: r.LoRAs,
 		ControlNet: r.ControlNet, Control: r.Control, ControlStrength: r.ControlStrength, Canny: r.Canny,
+		Guidance: r.Guidance, FlowShift: r.FlowShift, SLGScale: r.SLGScale, ImgCFG: r.ImgCFG,
 		Hires: r.Hires, HiresScale: r.HiresScale, HiresDenoise: r.HiresDenoise,
 		HiresUpscaler: r.HiresUpscaler, HiresModel: r.HiresModel,
 	}
