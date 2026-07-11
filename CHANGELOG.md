@@ -4,7 +4,7 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.18.1] - unreleased
+## [0.18.1] - 2026-07-11
 
 ### Changed
 - **Destructive deletes now require an interactive confirmation (HITL).** `models
