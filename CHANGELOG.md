@@ -4,7 +4,7 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.15.1] - unreleased
+## [0.15.1] - 2026-07-11
 
 ### Fixed
 - **`z-image-turbo`'s license was mislabeled** `review-license` ("source repo
