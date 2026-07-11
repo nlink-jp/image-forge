@@ -45,7 +45,7 @@ internal/mcp/               `image-forge mcp` MCP stdio server (ADR-0003): jsonr
                             job (async FIFO worker), workspace (os.Root containment), tools
                             (get_usage/generate/check_job/list_models/upscale)
 internal/profile/           model profiles, per-arch defaults, arch Detect (the gotcha-hiding core)
-internal/catalog/           curated model catalog (content_rating, license, RAM tier, source) + Profile()
+internal/catalog/           curated model catalog (kind, content_rating, license + license_flags/attribution, trigger_words, RAM tier, source) + Profile()
 internal/store/             installed-model registry (JSON) at $IMAGE_FORGE_HOME/registry.json;
                             ModelsDir relocatable via config models_dir / $IMAGE_FORGE_MODELS_DIR
                             (store.SetModelsDir, set from config in cli.Run — store stays config-free)
@@ -90,7 +90,9 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   pointer". LoRA validated via LCM-LoRA (coherent 4-step gen only with the LoRA).
 - **Adding a catalog model**: follow [`docs/en/adding-a-model.md`](docs/en/adding-a-model.md)
   (JA: [`docs/ja/adding-a-model.ja.md`](docs/ja/adding-a-model.ja.md)) — the source
-  lookup, the per-arch/Pony/realistic gotchas, and the mandatory pull+render E2E.
+  lookup, the per-arch/Pony/realistic gotchas, the entry's `Kind` + `LicenseFlags` /
+  `Attribution` / `TriggerWords` (each backed by a test to keep it honest), and the
+  mandatory pull+render E2E.
 - **Upscaling & hires.fix** (ADR-0004): sd.cpp does both. Standalone
   `image-forge upscale` uses `new_upscaler_ctx`/`upscale` with an ESRGAN model
   (catalog `Kind: "upscaler"`, e.g. `realesrgan-x4plus`). hires.fix is set in the

@@ -112,6 +112,27 @@ Start from the architecture defaults and override only the gotchas.
   time, printed after `pull`, and exposed as `trigger_words` in
   `models list --json`. Leave empty for LoRAs that need none (LCM, sliders).
 
+  **Verify a LoRA's format and effect before adding it.** sd.cpp wants kohya-style
+  keys (`lora_unet_*.lora_down.weight` / `.lora_up.weight` / `.alpha`). Read the
+  safetensors header — you don't need the whole file:
+
+  ```sh
+  python3 -c "
+  import struct, json, sys
+  with open(sys.argv[1],'rb') as f:
+      hdr = json.loads(f.read(struct.unpack('<Q', f.read(8))[0]))
+  keys = [k for k in hdr if k != '__metadata__']
+  print('kohya:', any(k.startswith('lora_unet') for k in keys), '| tensors:', len(keys))
+  print('has text-encoder tensors:', any(k.startswith('lora_te') for k in keys))
+  " some-lora.safetensors
+  ```
+
+  Then **render once with it** (`gen --lora <name>:1.0`) and compare against the
+  same seed without it. A LoRA that loads but does nothing, or one that crashes
+  sd.cpp, must not ship in the catalog. (UNet-only LoRAs — no `lora_te*` — used to
+  segfault sd.cpp's up-front merge path; image-forge pins `lora_apply_mode =
+  at_runtime` to avoid it. See ADR-0006.)
+
 - **`LicenseFlags`** record notable usage restrictions as machine-readable
   identifiers (`catalog.LicenseNonCommercial` / `LicenseNoDerivatives` /
   `LicenseAttribution` / `LicenseShareAlike` / `LicenseReview`), so a front-end can
@@ -144,27 +165,6 @@ Start from the architecture defaults and override only the gotchas.
   image — nothing is burned into the pixels). It is also surfaced as
   `attribution` in `models list --json` so a front-end can show and copy it.
 
-  **Verify the format before adding an entry.** sd.cpp wants kohya-style keys
-  (`lora_unet_*.lora_down.weight` / `.lora_up.weight` / `.alpha`). Read the
-  safetensors header — you don't need the whole file:
-
-  ```sh
-  python3 -c "
-  import struct, json, sys
-  with open(sys.argv[1],'rb') as f:
-      hdr = json.loads(f.read(struct.unpack('<Q', f.read(8))[0]))
-  keys = [k for k in hdr if k != '__metadata__']
-  print('kohya:', any(k.startswith('lora_unet') for k in keys), '| tensors:', len(keys))
-  print('has text-encoder tensors:', any(k.startswith('lora_te') for k in keys))
-  " some-lora.safetensors
-  ```
-
-  Then **render once with it** (`gen --lora <name>:1.0`) and compare against the
-  same seed without it. A LoRA that loads but does nothing, or one that crashes
-  sd.cpp, must not ship in the catalog. (UNet-only LoRAs — no `lora_te*` — used to
-  segfault sd.cpp's up-front merge path; image-forge pins `lora_apply_mode =
-  at_runtime` to avoid it. See ADR-0006.)
-
 - **ControlNet entries** use `Kind: catalog.KindControlNet` and likewise **must set
   `Arch`**. None ship yet: sd.cpp is picky about the ControlNet format, and we do
   not add an entry we haven't rendered with. Until one is verified, register a
@@ -193,8 +193,10 @@ Pony) — see the real entries around `prefect-pony-xl` / `realvisxl-v5`:
 ```go
 {
     Name: "prefect-pony-xl", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
-    Rating: profile.RatingQuestionable, License: "Pony-derived; see Civitai listing",
-    MinRAMGB: 16, RecRAMGB: 32,
+    Rating: profile.RatingQuestionable, License: "Civitai listing: images non-commercial (rent-only), NO derivatives, credit required",
+    LicenseFlags: []string{LicenseNonCommercial, LicenseNoDerivatives, LicenseAttribution},
+    Attribution:  "Prefect Pony XL by Goofy_Ai (Civitai)", // required because LicenseAttribution is set
+    MinRAMGB:     16, RecRAMGB: 32,
     Source: Source{
         Civitai: "2114187", // https://civitai.com/models/439889 (v6)
         VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -214,13 +216,26 @@ Tests are mandatory. In [`internal/catalog/catalog_test.go`](../../internal/cata
 - The base invariants (non-empty name, unique, license present, prediction
   propagates) already cover every entry — keep them green.
 
+**If the entry carries `LicenseFlags` and/or `Attribution`**, also update the
+license tests in
+[`internal/cli/licenseflags_test.go`](../../internal/cli/licenseflags_test.go):
+
+- Add the entry's expected flags to the `want` map in **`TestBaseModelLicenseFlags`**
+  (a spot-check so a wrong or dropped flag is caught, not just an unknown-identifier
+  typo). Permissive models map to `nil`.
+- These are automatically enforced and need no per-entry edit, but know they run:
+  **`TestAttributionFlagMatchesText`** fails if an `attribution`-flagged entry has
+  no `Attribution` text (or vice-versa); **`TestLicenseFlagsAreKnownAndConsistentWithText`**
+  fails on an unknown flag or a `non-commercial` flag the `License` prose doesn't
+  reflect. A LoRA's `TriggerWords` likewise surface through the view tests.
+
 ## 5. Build & check
 
 ```sh
 make build          # scaffold compiles
 make test           # go test (third_party excluded)
 make vet
-./dist/image-forge models list --catalog   # your entry shows up
+./dist/image-forge models list --catalog --json   # your entry, incl. license_flags / attribution / trigger_words
 ```
 
 ## 6. Verify E2E on the real engine (mandatory before release)
