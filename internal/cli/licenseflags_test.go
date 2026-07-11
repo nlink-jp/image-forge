@@ -91,8 +91,8 @@ func TestBaseModelLicenseFlags(t *testing.T) {
 		"noobai-xl-vpred":     {catalog.LicenseShareAlike},
 		"sd35-medium":         {catalog.LicenseAttribution},
 		"anima-turbo":         {catalog.LicenseAttribution},
-		"z-image-turbo":       {catalog.LicenseReview},
 		// Permissive base models carry no flags.
+		"z-image-turbo":    nil, // Apache-2.0 (Tongyi-MAI/Z-Image)
 		"flux1-schnell":    nil,
 		"realvisxl-v5":     nil,
 		"juggernaut-xl-v9": nil,

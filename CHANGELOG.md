@@ -4,6 +4,15 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.15.1] - unreleased
+
+### Fixed
+- **`z-image-turbo`'s license was mislabeled** `review-license` ("source repo
+  declares none"). The weights are **Apache-2.0** — the upstream
+  [`Tongyi-MAI/Z-Image`](https://github.com/Tongyi-MAI/Z-Image) repo and the
+  `Tongyi-MAI/Z-Image-Turbo` model card both declare it. Reclassified as
+  permissive (no flags), so it's no longer needlessly flagged for review.
+
 ## [0.15.0] - 2026-07-11
 
 ### Added

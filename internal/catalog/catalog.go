@@ -298,9 +298,8 @@ func Default() []Entry {
 		},
 		{
 			Name: "z-image-turbo", Arch: profile.ArchZImage, Prediction: profile.PredEps,
-			Rating: profile.RatingSafe, License: "License not declared on the source repo (Comfy-Org/z_image_turbo) — verify before commercial use",
-			LicenseFlags: []string{LicenseReview},
-			MinRAMGB:     16, RecRAMGB: 32,
+			Rating: profile.RatingSafe, License: "Apache-2.0 (Tongyi-MAI/Z-Image)",
+			MinRAMGB: 16, RecRAMGB: 32,
 			Source: Source{
 				DiffusionModel: "Comfy-Org/z_image_turbo/split_files/diffusion_models/z_image_turbo_bf16.safetensors",
 				LLM:            "Comfy-Org/z_image_turbo/split_files/text_encoders/qwen_3_4b.safetensors",
