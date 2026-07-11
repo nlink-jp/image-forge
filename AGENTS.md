@@ -129,7 +129,9 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   wires `stdinConfirm` → `confirmDestructive`, which requires an interactive TTY
   (`isInteractive`, a dependency-free `ModeCharDevice` check) and an exact `yes`
   (`affirmative`). **A non-TTY (script / pipe / `go test`) can never confirm, so it
-  can never delete** — there is no `--yes` bypass by design. This exists because a
+  can never delete.** The only escape hatch is `--confirmed-by-frontend`
+  (`resolveConfirm`): a trusted front-end (the GUI) passes it *after* its own
+  confirmation dialog, so `ServeClient.removeArgs` appends it for `rm --purge`. This exists because a
   `gc --force` run against the wrong ModelsDir once deleted real models. Test the
   delete logic via the `runGc` / `runRm` cores with an injected confirmer on a
   throwaway dir; regression tests (`*_NoTTY_DeletesNothing`) assert the real command

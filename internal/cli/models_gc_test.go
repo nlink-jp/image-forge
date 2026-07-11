@@ -84,6 +84,25 @@ func TestModelsRmPurge_NoTTY_DeletesNothing(t *testing.T) {
 	}
 }
 
+// The GUI's path: --confirmed-by-frontend grants confirmation without a TTY
+// (the GUI already confirmed with the user via its own dialog), so the real
+// command deletes even from a non-terminal subprocess.
+func TestModelsGcForce_FrontendConfirmed_Deletes(t *testing.T) {
+	_, md := gcTestDirs(t)
+	orphan := filepath.Join(md, "orphan.safetensors")
+	touch(t, orphan, 100)
+	reg, _ := store.Load() // empty registry → orphan is unreferenced
+	if err := reg.Save(); err != nil {
+		t.Fatal(err)
+	}
+	if err := modelsGc([]string{"--force", "--confirmed-by-frontend"}); err != nil {
+		t.Fatalf("modelsGc --force --confirmed-by-frontend: %v", err)
+	}
+	if exists(orphan) {
+		t.Error("--confirmed-by-frontend should have deleted the orphan without a TTY")
+	}
+}
+
 func TestRunGc_DeletesOnlyOnConfirm(t *testing.T) {
 	_, md := gcTestDirs(t)
 	keep := filepath.Join(md, "keep.safetensors")

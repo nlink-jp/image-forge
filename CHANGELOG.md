@@ -9,14 +9,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 - **Destructive deletes now require an interactive confirmation (HITL).** `models
   gc --force` and `models rm --purge` list the exact files and total size, then
-  require typing `yes` at a terminal before deleting anything. There is **no
-  unattended-delete flag**: when stdin is not a TTY (a script, a pipe, a test run),
-  they refuse and delete nothing. This makes it impossible for automation to wipe a
-  models directory — closing a foot-gun where `gc --force` run against the wrong
-  directory (e.g. a mis-scoped test) could delete real model files. The confirmer
-  is injected, so the delete logic stays unit-testable without ever touching a real
-  terminal or real files; regression tests assert the real `gc --force` / `rm
-  --purge` paths delete nothing without a TTY.
+  require typing `yes` at a terminal before deleting anything. When stdin is not a
+  TTY (a script, a pipe, a test run), they refuse and delete nothing — making it
+  impossible for automation to wipe a models directory, and closing a foot-gun
+  where `gc --force` run against the wrong directory (e.g. a mis-scoped test) could
+  delete real model files. The one escape hatch is `--confirmed-by-frontend`, for a
+  trusted front-end (the GUI) that has already confirmed with the user via its own
+  dialog — not for scripts. The confirmer is injected, so the delete logic stays
+  unit-testable without ever touching a real terminal or real files; regression
+  tests assert the real `gc --force` / `rm --purge` paths delete nothing without a
+  TTY (and that `--confirmed-by-frontend` deletes as intended).
 
 ## [0.18.0] - 2026-07-11
 

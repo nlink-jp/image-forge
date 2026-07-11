@@ -26,6 +26,20 @@ func stdinConfirm(summary string) bool {
 	return confirmDestructive(os.Stdout, os.Stdin, summary)
 }
 
+// resolveConfirm picks the confirmer for a destructive command. A trusted
+// front-end (the GUI) that has ALREADY obtained human confirmation through its
+// own dialog passes --confirmed-by-frontend, and confirmation is granted without
+// a terminal. Everything else falls back to the interactive TTY prompt. The
+// flag only matters once --force / --purge is set, and a caller must pass it
+// deliberately — the accidental in-process `gc --force` that caused data loss
+// passed no such flag, so it still refuses.
+func resolveConfirm(frontendConfirmed bool) confirmFunc {
+	if frontendConfirmed {
+		return func(string) bool { return true }
+	}
+	return stdinConfirm
+}
+
 // confirmDestructive prints summary + a prompt to out and reads one line from in,
 // returning true ONLY when in is an interactive terminal AND the reply is "yes".
 // A non-TTY in (script / pipe / test / cron) is refused without prompting, so an

@@ -734,6 +734,7 @@ func modelsRm(args []string) error {
 	name := args[0]
 	fs := flag.NewFlagSet("models rm", flag.ContinueOnError)
 	purge := fs.Bool("purge", false, "also delete the model's weight files from disk (files shared with another installed model, or outside the managed models dir, are kept)")
+	frontend := fs.Bool("confirmed-by-frontend", false, "skip the interactive prompt because a trusted front-end (the GUI) already confirmed with the user; for front-ends only, not interactive use")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -741,7 +742,7 @@ func modelsRm(args []string) error {
 	if err != nil {
 		return err
 	}
-	return runRm(os.Stdout, reg, name, *purge, filepath.Clean(store.ModelsDir()), stdinConfirm)
+	return runRm(os.Stdout, reg, name, *purge, filepath.Clean(store.ModelsDir()), resolveConfirm(*frontend))
 }
 
 // runRm is the testable core of `models rm`. Without purge it just forgets the
@@ -828,6 +829,7 @@ func runRm(out io.Writer, reg *store.Registry, name string, purge bool, dir stri
 func modelsGc(args []string) error {
 	fs := flag.NewFlagSet("models gc", flag.ContinueOnError)
 	force := fs.Bool("force", false, "enter the delete flow (still asks for interactive confirmation); default: only report")
+	frontend := fs.Bool("confirmed-by-frontend", false, "skip the interactive prompt because a trusted front-end (the GUI) already confirmed with the user; for front-ends only, not interactive use")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -835,7 +837,7 @@ func modelsGc(args []string) error {
 	if err != nil {
 		return err
 	}
-	return runGc(os.Stdout, reg, filepath.Clean(store.ModelsDir()), *force, stdinConfirm)
+	return runGc(os.Stdout, reg, filepath.Clean(store.ModelsDir()), *force, resolveConfirm(*frontend))
 }
 
 // runGc is the testable core of `models gc`: it lists the orphaned files in dir,
