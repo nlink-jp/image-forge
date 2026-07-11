@@ -61,8 +61,10 @@ type Entry struct {
 	MinRAMGB     int // baseline RAM to run (with the recommended quantization)
 	RecRAMGB     int // RAM for a comfortable fp16 / large run
 	Source       Source
-	ClipSkip     int    // override on top of profile.ArchDefaults(Arch)
-	PromptPrefix string // e.g. Pony-family score tags
+	ClipSkip     int     // override on top of profile.ArchDefaults(Arch)
+	Steps        int     // sampling-steps override (0 = arch default); e.g. non-distilled FLUX.1-dev needs ~20, not schnell's 4
+	CFG          float64 // CFG override (0 = arch default)
+	PromptPrefix string  // e.g. Pony-family score tags
 	Notes        string
 	Experimental bool // e.g. v-pred models pending sd.cpp verification
 
@@ -119,6 +121,12 @@ func (e Entry) Profile() profile.Profile {
 	}
 	if e.ClipSkip != 0 {
 		p.ClipSkip = e.ClipSkip
+	}
+	if e.Steps != 0 {
+		p.Steps = e.Steps
+	}
+	if e.CFG != 0 {
+		p.CFG = e.CFG
 	}
 	if e.PromptPrefix != "" {
 		p.PromptPrefix = e.PromptPrefix
@@ -282,6 +290,22 @@ func Default() []Entry {
 			Notes: "Apache-2.0, fast. Multi-component (GGUF diffusion + CLIP-L + T5 + VAE), ~12 GB.",
 		},
 		{
+			Name: "flux1-dev", Arch: profile.ArchFlux, Prediction: profile.PredEps,
+			Rating: profile.RatingSafe, License: "FLUX.1 [dev] Non-Commercial License: the model weights are for non-commercial use; generated outputs may be used commercially",
+			LicenseFlags: []string{LicenseNonCommercial},
+			// Not distilled like schnell: needs ~20 steps (sd.cpp's distilled_guidance
+			// default of 3.5 is already the standard FLUX.1-dev guidance; CFG stays 1).
+			Steps:    20,
+			MinRAMGB: 16, RecRAMGB: 32,
+			Source: Source{
+				DiffusionModel: "city96/FLUX.1-dev-gguf/flux1-dev-Q4_K_S.gguf",
+				ClipL:          "comfyanonymous/flux_text_encoders/clip_l.safetensors",
+				T5XXL:          "comfyanonymous/flux_text_encoders/t5xxl_fp8_e4m3fn.safetensors",
+				VAE:            "camenduru/FLUX.1-dev/ae.safetensors", // ungated mirror (bfl repo is gated)
+			},
+			Notes: "FLUX.1 [dev] — higher-quality Flux than schnell (needs guidance, more steps, slower). Multi-component (GGUF diffusion + CLIP-L + T5 + VAE), ~12 GB; encoders shared with flux1-schnell. Non-commercial weights.",
+		},
+		{
 			Name: "sd35-medium", Arch: profile.ArchSD35, Prediction: profile.PredEps,
 			Rating: profile.RatingSafe, License: "Stability Community License: free incl. commercial under $1M annual revenue; attribution required; enterprise license above that",
 			LicenseFlags: []string{LicenseAttribution},
@@ -295,6 +319,21 @@ func Default() []Entry {
 				VAE:            "adamo1139/stable-diffusion-3.5-large-turbo-ungated/vae/diffusion_pytorch_model.safetensors",
 			},
 			Notes: "SD3.5 Medium (GGUF diffusion + CLIP-L/G + T5 + VAE), multi-component. ~2 GB new download (encoders shared with FLUX).",
+		},
+		{
+			Name: "sd35-large", Arch: profile.ArchSD35, Prediction: profile.PredEps,
+			Rating: profile.RatingSafe, License: "Stability Community License: free incl. commercial under $1M annual revenue; attribution required; enterprise license above that",
+			LicenseFlags: []string{LicenseAttribution},
+			Attribution:  "Powered by Stability AI",
+			MinRAMGB:     16, RecRAMGB: 32,
+			Source: Source{
+				DiffusionModel: "city96/stable-diffusion-3.5-large-gguf/sd3.5_large-Q4_0.gguf",
+				ClipL:          "Comfy-Org/stable-diffusion-3.5-fp8/text_encoders/clip_l.safetensors",
+				ClipG:          "Comfy-Org/stable-diffusion-3.5-fp8/text_encoders/clip_g.safetensors",
+				T5XXL:          "Comfy-Org/stable-diffusion-3.5-fp8/text_encoders/t5xxl_fp8_e4m3fn.safetensors",
+				VAE:            "adamo1139/stable-diffusion-3.5-large-turbo-ungated/vae/diffusion_pytorch_model.safetensors",
+			},
+			Notes: "SD3.5 Large — higher quality than Medium (larger diffusion, more compute). Multi-component (GGUF + CLIP-L/G + T5 + VAE); encoders/VAE shared with sd35-medium.",
 		},
 		{
 			Name: "z-image-turbo", Arch: profile.ArchZImage, Prediction: profile.PredEps,

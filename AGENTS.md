@@ -143,6 +143,11 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
 - **NSFW is opt-in.** `questionable`/`explicit` entries need `--allow-nsfw` / config.
 - **v-prediction is experimental.** sd.cpp v-pred/ZSNR support is maturing; NoobAI /
   Illustrious v2 are flagged `Experimental` until verified. eps models are reliable.
+- **Distilled vs non-distilled Flux.** `flux1-schnell` is guidance-distilled (4 steps,
+  CFG 1 — the ArchFlux default). `flux1-dev` is NOT: it needs ~20 steps, so its
+  catalog entry sets the per-entry `Steps` override (also `CFG` available). sd.cpp's
+  `distilled_guidance` default (3.5) is already the right Flux guidance, so nothing
+  else is needed. Qwen-Image would need a new arch (`profile` has none) — deferred.
 - **Catalog source ids are provisional** (RFP stage) — verify each HF/Civitai id
   before wiring `pull`.
 - **Secrets**: `HF_TOKEN` / `CIVITAI_TOKEN` via env/config only — never commit.

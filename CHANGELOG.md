@@ -4,6 +4,22 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Catalog: FLUX.1-dev and SD3.5-Large** (#12), rounding out the large-model tier.
+  Both are multi-component GGUF (Q4) and reuse the FLUX/SD3.5 text encoders already
+  shared by `flux1-schnell` / `sd35-medium`, so they add only the diffusion GGUF.
+  `flux1-dev` carries the **non-commercial** license flag (weights are
+  non-commercial; outputs may be used commercially) and, since it is not
+  guidance-distilled like schnell, uses a per-entry **step override** (~20 steps;
+  sd.cpp's `distilled_guidance` default of 3.5 is already correct). `sd35-large`
+  carries the Stability attribution flag. Both verified with a real pull + render.
+  (Qwen-Image needs a new architecture in the profile system and is tracked
+  separately.)
+- Catalog entries can now override the arch-default **`Steps` / `CFG`** (used by
+  `flux1-dev`).
+
 ## [0.18.1] - 2026-07-11
 
 ### Changed

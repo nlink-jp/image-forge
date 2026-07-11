@@ -49,6 +49,67 @@ func TestProfilePropagatesPrediction(t *testing.T) {
 	}
 }
 
+func hasFlag(flags []string, want string) bool {
+	for _, f := range flags {
+		if f == want {
+			return true
+		}
+	}
+	return false
+}
+
+func TestLargeModelTierEntries(t *testing.T) {
+	// FLUX.1-dev: flux arch, non-commercial license flag, and — because it is NOT
+	// guidance-distilled like schnell — a step override (~20, not schnell's 4).
+	dev, ok := Find("flux1-dev")
+	if !ok {
+		t.Fatal("flux1-dev missing from the catalog")
+	}
+	if dev.Arch != profile.ArchFlux {
+		t.Errorf("flux1-dev arch = %q, want flux", dev.Arch)
+	}
+	if !hasFlag(dev.LicenseFlags, LicenseNonCommercial) {
+		t.Error("flux1-dev must carry the non-commercial license flag")
+	}
+	if got := dev.Profile().Steps; got != 20 {
+		t.Errorf("flux1-dev profile steps = %d, want 20 (not distilled like schnell's 4)", got)
+	}
+	if dev.NeedsOptIn() {
+		t.Error("flux1-dev is safe-rated; it should not require an NSFW opt-in")
+	}
+
+	// SD3.5-Large: sd35 arch, attribution flag + a credit line, and it inherits the
+	// sd35 arch step default (28, no override needed).
+	lg, ok := Find("sd35-large")
+	if !ok {
+		t.Fatal("sd35-large missing from the catalog")
+	}
+	if lg.Arch != profile.ArchSD35 {
+		t.Errorf("sd35-large arch = %q, want sd35", lg.Arch)
+	}
+	if !hasFlag(lg.LicenseFlags, LicenseAttribution) {
+		t.Error("sd35-large must carry the attribution license flag")
+	}
+	if lg.Attribution == "" {
+		t.Error("sd35-large has the attribution flag but no credit text")
+	}
+}
+
+func TestProfileStepsCFGOverride(t *testing.T) {
+	// A per-entry Steps/CFG override replaces the arch default; zero leaves it.
+	base := (Entry{Arch: profile.ArchFlux}).Profile()
+	over := (Entry{Arch: profile.ArchFlux, Steps: 20, CFG: 3.5}).Profile()
+	if base.Steps == 20 {
+		t.Fatal("test assumes the flux arch default is not 20")
+	}
+	if over.Steps != 20 || over.CFG != 3.5 {
+		t.Errorf("override not applied: steps=%d cfg=%v", over.Steps, over.CFG)
+	}
+	if (Entry{Arch: profile.ArchFlux}).Profile().Steps != base.Steps {
+		t.Error("zero Steps should leave the arch default")
+	}
+}
+
 func TestFind(t *testing.T) {
 	if _, ok := Find("flux1-schnell"); !ok {
 		t.Error("expected to find flux1-schnell")
