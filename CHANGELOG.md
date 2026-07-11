@@ -4,19 +4,7 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.17.0] - unreleased
-
-### Added
-- **LoRA and ControlNet in the MCP `generate` tool.** The tool now accepts `loras`
-  (an array of `"<name-or-path>:<weight>"`), `control_net` (an installed ControlNet
-  name or path), `control` (a workspace-relative control image, verified inside the
-  workspace like `init`/`mask`), `control_strength`, and `canny` — the same
-  capabilities `gen`/`serve` already had. Name→path resolution is handled downstream
-  by the shared `buildRender`, so the MCP path adds no new resolution logic.
-- With LoRAs now reachable over MCP, MCP-rendered PNGs automatically get the
-  combined **`credit`** attribution metadata for the LoRAs in use (as CLI renders do).
-
-## [0.16.0] - unreleased
+## [0.16.0] - 2026-07-11
 
 ### Added
 - **First ControlNet catalog entry: `controlnet-canny-sd15`.** A canny-edge
@@ -24,6 +12,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   now pullable with `models pull controlnet-canny-sd15` and usable via
   `gen -m <sd15> --control-net controlnet-canny-sd15 --control <img> --canny`.
   **Verified end-to-end** — the output follows the control image's edges.
+- **LoRA and ControlNet in the MCP `generate` tool.** The tool now accepts `loras`
+  (an array of `"<name-or-path>:<weight>"`), `control_net` (an installed ControlNet
+  name or path), `control` (a workspace-relative control image, verified inside the
+  workspace like `init`/`mask`), `control_strength`, and `canny` — the same
+  capabilities `gen`/`serve` already had. Name→path resolution is handled downstream
+  by the shared `buildRender`, so the MCP path adds no new resolution logic. Verified
+  end-to-end (a LoRA render with combined `credit` metadata, and a ControlNet render
+  that follows the control edges).
 
 ### Notes
 - **No SDXL ControlNet yet.** sd.cpp's loader only understands the original
