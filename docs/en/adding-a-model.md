@@ -114,9 +114,11 @@ Start from the architecture defaults and override only the gotchas.
 
 - **`LicenseFlags`** record notable usage restrictions as machine-readable
   identifiers (`catalog.LicenseNonCommercial` / `LicenseNoDerivatives` /
-  `LicenseAttribution` / `LicenseShareAlike`), so a front-end can highlight them —
-  the free-text `License` alone is too varied to parse reliably. Derive them from
-  the listing, don't guess. For a Civitai model the terms are in the API's
+  `LicenseAttribution` / `LicenseShareAlike` / `LicenseReview`), so a front-end can
+  highlight them — the free-text `License` alone is too varied to parse reliably.
+  Apply them to **every kind** (base models included — commercial rights matter
+  most there), and derive them from the listing, don't guess. Use `LicenseReview`
+  when the terms are unclear or the source declares no license. For a Civitai model the terms are in the API's
   `allowCommercialUse` / `allowDerivatives` / `allowNoCredit`:
 
   ```sh

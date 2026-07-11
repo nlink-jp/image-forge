@@ -7,15 +7,29 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [0.15.0] - unreleased
 
 ### Added
-- **License restriction flags.** Catalog entries can carry machine-readable
-  `LicenseFlags` (`non-commercial` / `no-derivatives` / `attribution` /
-  `share-alike`) alongside the free-text `License`, so a front-end can highlight a
-  model's notable terms reliably instead of parsing prose. Carried onto the
-  registry entry at install and exposed as `license_flags` in `models list
-  --json`. Populated from each Civitai listing's terms — currently
-  `dmd2-sdxl-4step` (non-commercial + attribution, CC BY-NC), `genba-neko-*`
-  (non-commercial + no-derivatives + attribution), and `s1-dramatic-lighting-*`
-  (non-commercial). Permissive models carry none.
+- **License restriction flags across the whole catalog.** Every entry (base
+  models, LoRAs, upscalers) can carry machine-readable `LicenseFlags`
+  (`non-commercial` / `no-derivatives` / `attribution` / `share-alike` /
+  `review-license`) alongside the free-text `License`, so a front-end can
+  reliably highlight a model's notable terms instead of parsing prose. Exposed as
+  `license_flags` in both `models list --json` views, and backfilled from the
+  catalog for cataloged installed models (so entries installed before this — or
+  corrected in the catalog since — report accurately without a re-pull).
+
+  Flags are **derived, not guessed** — from each Civitai listing's
+  `allowCommercialUse` / `allowDerivatives` / `allowNoCredit`, or the HF license.
+  Notable base models: **`prefect-pony-xl`** (non-commercial + no-derivatives +
+  attribution), **`momoiro-pony`** (non-commercial + attribution — no commercial
+  use at all), **`akium-unmotivated`** (non-commercial), **`illustrious-xl-v1`/
+  `v1.1`** and **`t-ponynai3-*`** (no-derivatives), **`noobai-xl-vpred`**
+  (share-alike, Fair AI copyleft), **`sd35-medium`** / **`anima-turbo`**
+  (attribution), **`z-image-turbo`** (review-license — its source repo declares
+  none). Plus the LoRAs (`dmd2-sdxl-4step`, `genba-neko-*`,
+  `s1-dramatic-lighting-*`). Permissive models (Apache / OpenRAIL / BSD) carry none.
+
+### Fixed
+- **`animagine-xl-4`'s license was mislabeled** "Fair AI Public License 1.0-SD";
+  its HF model card declares **OpenRAIL++**. Corrected (permissive, no flags).
 
 ## [0.14.0] - 2026-07-11
 

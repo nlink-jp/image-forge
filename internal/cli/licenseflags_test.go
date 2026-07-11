@@ -45,6 +45,7 @@ func TestLicenseFlagsAreKnownAndConsistentWithText(t *testing.T) {
 	known := map[string]bool{
 		catalog.LicenseNonCommercial: true, catalog.LicenseNoDerivatives: true,
 		catalog.LicenseAttribution: true, catalog.LicenseShareAlike: true,
+		catalog.LicenseReview: true,
 	}
 	for _, e := range catalog.Default() {
 		for _, f := range e.LicenseFlags {
@@ -52,13 +53,62 @@ func TestLicenseFlagsAreKnownAndConsistentWithText(t *testing.T) {
 				t.Errorf("%s has unknown license flag %q", e.Name, f)
 			}
 		}
-		// A flagged entry must not claim to be permissive in its text, and vice
-		// versa — a cheap guard against the flags and the human License drifting.
+		// A non-commercial flag must be reflected in the License text — a cheap
+		// guard against the machine flags and the human License string drifting.
 		if contains(e.LicenseFlags, catalog.LicenseNonCommercial) &&
 			e.License != "" && !mentionsNonCommercial(e.License) {
 			t.Errorf("%s flagged non-commercial but License text doesn't reflect it: %q", e.Name, e.License)
 		}
 	}
+}
+
+// A spot-check of specific catalog entries so a wrong or dropped flag is caught,
+// not just an unknown-identifier typo. Base-model coverage (this feature's point).
+func TestBaseModelLicenseFlags(t *testing.T) {
+	want := map[string][]string{
+		"prefect-pony-xl":     {catalog.LicenseNonCommercial, catalog.LicenseNoDerivatives, catalog.LicenseAttribution},
+		"momoiro-pony":        {catalog.LicenseNonCommercial, catalog.LicenseAttribution},
+		"akium-unmotivated":   {catalog.LicenseNonCommercial},
+		"illustrious-xl-v1":   {catalog.LicenseNoDerivatives, catalog.LicenseAttribution},
+		"illustrious-xl-v1.1": {catalog.LicenseNoDerivatives, catalog.LicenseAttribution},
+		"t-ponynai3-v7":       {catalog.LicenseNoDerivatives},
+		"noobai-xl-vpred":     {catalog.LicenseShareAlike},
+		"sd35-medium":         {catalog.LicenseAttribution},
+		"anima-turbo":         {catalog.LicenseAttribution},
+		"z-image-turbo":       {catalog.LicenseReview},
+		// Permissive base models carry no flags.
+		"flux1-schnell":    nil,
+		"realvisxl-v5":     nil,
+		"juggernaut-xl-v9": nil,
+		"animagine-xl-4":   nil,
+		"sd15-emaonly":     nil,
+	}
+	byName := map[string]catalog.Entry{}
+	for _, e := range catalog.Default() {
+		byName[e.Name] = e
+	}
+	for name, exp := range want {
+		e, ok := byName[name]
+		if !ok {
+			t.Errorf("%s not in catalog", name)
+			continue
+		}
+		if !equalStrings(e.LicenseFlags, exp) {
+			t.Errorf("%s license flags = %v, want %v", name, e.LicenseFlags, exp)
+		}
+	}
+}
+
+func equalStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func contains(xs []string, x string) bool {
@@ -71,7 +121,7 @@ func contains(xs []string, x string) bool {
 }
 
 func mentionsNonCommercial(s string) bool {
-	for _, needle := range []string{"NC", "non-commercial", "rent-on-Civitai only", "rent on Civitai only"} {
+	for _, needle := range []string{"NC", "non-commercial", "no commercial", "rent-on-Civitai only", "rent on Civitai only", "rent-only"} {
 		if containsFold(s, needle) {
 			return true
 		}

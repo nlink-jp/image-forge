@@ -42,6 +42,7 @@ const (
 	LicenseNoDerivatives = "no-derivatives" // derivative works not permitted
 	LicenseAttribution   = "attribution"    // credit / attribution required
 	LicenseShareAlike    = "share-alike"    // derivatives must keep the same license
+	LicenseReview        = "review-license" // terms unclear / model-specific — check before relying on it
 )
 
 // Entry is a catalog record.
@@ -141,7 +142,7 @@ func Default() []Entry {
 		},
 		{
 			Name: "animagine-xl-4", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
-			Rating: profile.RatingQuestionable, License: "Fair AI Public License 1.0-SD",
+			Rating: profile.RatingQuestionable, License: "CreativeML OpenRAIL++-M (per the HF model card)",
 			MinRAMGB: 16, RecRAMGB: 32,
 			Source: Source{
 				HF:  "cagliostrolab/animagine-xl-4.0/animagine-xl-4.0.safetensors",
@@ -151,8 +152,9 @@ func Default() []Entry {
 		},
 		{
 			Name: "illustrious-xl-v1", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
-			Rating: profile.RatingQuestionable, License: "OnomaAI Illustrious license (verify)",
-			MinRAMGB: 16, RecRAMGB: 32,
+			Rating: profile.RatingQuestionable, License: "OnomaAI Illustrious License: no derivatives, credit required",
+			LicenseFlags: []string{LicenseNoDerivatives, LicenseAttribution},
+			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				HF:  "OnomaAIResearch/Illustrious-XL-v1.0/Illustrious-XL-v1.0.safetensors",
 				VAE: "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -161,8 +163,9 @@ func Default() []Entry {
 		},
 		{
 			Name: "illustrious-xl-v1.1", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
-			Rating: profile.RatingQuestionable, License: "OnomaAI Illustrious license (verify)",
-			MinRAMGB: 16, RecRAMGB: 32,
+			Rating: profile.RatingQuestionable, License: "OnomaAI Illustrious License: no derivatives, credit required",
+			LicenseFlags: []string{LicenseNoDerivatives, LicenseAttribution},
+			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "1411690", // https://civitai.com/models/1252206 (v1.1)
 				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -171,8 +174,9 @@ func Default() []Entry {
 		},
 		{
 			Name: "akium-unmotivated", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
-			Rating: profile.RatingQuestionable, License: "Illustrious-derived; see Civitai listing",
-			MinRAMGB: 16, RecRAMGB: 32,
+			Rating: profile.RatingQuestionable, License: "Civitai listing: images non-commercial (rent-only), derivatives allowed",
+			LicenseFlags: []string{LicenseNonCommercial},
+			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "3046291", // https://civitai.com/models/2711644 (v1.0)
 				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -181,8 +185,9 @@ func Default() []Entry {
 		},
 		{
 			Name: "t-ponynai3-v7", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
-			Rating: profile.RatingQuestionable, License: "Pony-derived; see Civitai listing",
-			MinRAMGB: 16, RecRAMGB: 32,
+			Rating: profile.RatingQuestionable, License: "Civitai listing: NO derivatives; images may be used commercially",
+			LicenseFlags: []string{LicenseNoDerivatives},
+			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "1392706", // https://civitai.com/models/317902 (v7)
 				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -193,8 +198,9 @@ func Default() []Entry {
 		},
 		{
 			Name: "t-ponynai3-v5.5", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
-			Rating: profile.RatingQuestionable, License: "Pony-derived; see Civitai listing",
-			MinRAMGB: 16, RecRAMGB: 32,
+			Rating: profile.RatingQuestionable, License: "Civitai listing: NO derivatives; images may be used commercially",
+			LicenseFlags: []string{LicenseNoDerivatives},
+			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "593760", // https://civitai.com/models/317902 (v5.5)
 				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -205,8 +211,9 @@ func Default() []Entry {
 		},
 		{
 			Name: "momoiro-pony", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
-			Rating: profile.RatingExplicit, License: "Pony-derived; see Civitai listing",
-			MinRAMGB: 16, RecRAMGB: 32,
+			Rating: profile.RatingExplicit, License: "Civitai listing: NO commercial use, credit required, derivatives allowed",
+			LicenseFlags: []string{LicenseNonCommercial, LicenseAttribution},
+			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "425904", // https://civitai.com/models/381535 (v1.0)
 				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -217,8 +224,9 @@ func Default() []Entry {
 		},
 		{
 			Name: "prefect-pony-xl", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
-			Rating: profile.RatingQuestionable, License: "Pony-derived; see Civitai listing",
-			MinRAMGB: 16, RecRAMGB: 32,
+			Rating: profile.RatingQuestionable, License: "Civitai listing: images non-commercial (rent-only), NO derivatives, credit required",
+			LicenseFlags: []string{LicenseNonCommercial, LicenseNoDerivatives, LicenseAttribution},
+			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "2114187", // https://civitai.com/models/439889 (v6)
 				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -267,8 +275,9 @@ func Default() []Entry {
 		},
 		{
 			Name: "sd35-medium", Arch: profile.ArchSD35, Prediction: profile.PredEps,
-			Rating: profile.RatingSafe, License: "Stability Community License",
-			MinRAMGB: 16, RecRAMGB: 32,
+			Rating: profile.RatingSafe, License: "Stability Community License: free incl. commercial under $1M annual revenue; attribution required; enterprise license above that",
+			LicenseFlags: []string{LicenseAttribution},
+			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				DiffusionModel: "city96/stable-diffusion-3.5-medium-gguf/sd3.5_medium-Q4_K_M.gguf",
 				ClipL:          "Comfy-Org/stable-diffusion-3.5-fp8/text_encoders/clip_l.safetensors",
@@ -280,8 +289,9 @@ func Default() []Entry {
 		},
 		{
 			Name: "z-image-turbo", Arch: profile.ArchZImage, Prediction: profile.PredEps,
-			Rating: profile.RatingSafe, License: "Apache-2.0 (verify)",
-			MinRAMGB: 16, RecRAMGB: 32,
+			Rating: profile.RatingSafe, License: "License not declared on the source repo (Comfy-Org/z_image_turbo) — verify before commercial use",
+			LicenseFlags: []string{LicenseReview},
+			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				DiffusionModel: "Comfy-Org/z_image_turbo/split_files/diffusion_models/z_image_turbo_bf16.safetensors",
 				LLM:            "Comfy-Org/z_image_turbo/split_files/text_encoders/qwen_3_4b.safetensors",
@@ -291,8 +301,9 @@ func Default() []Entry {
 		},
 		{
 			Name: "noobai-xl-vpred", Arch: profile.ArchSDXL, Prediction: profile.PredVPred,
-			Rating: profile.RatingExplicit, License: "Fair AI Public License 1.0-SD",
-			MinRAMGB: 16, RecRAMGB: 32,
+			Rating: profile.RatingExplicit, License: "Fair AI Public License 1.0-SD (copyleft: model derivatives must keep the same license)",
+			LicenseFlags: []string{LicenseShareAlike},
+			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				HF:  "Laxhar/noobai-XL-Vpred-1.0/NoobAI-XL-Vpred-v1.0.safetensors",
 				VAE: "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -307,8 +318,9 @@ func Default() []Entry {
 			// AnimaConditioner wants a Qwen3 LLM under `text_encoders.llm` plus the
 			// Qwen-Image VAE. The single-file Civitai download will NOT load.
 			Name: "anima-turbo", Arch: profile.ArchAnima, Prediction: profile.PredEps,
-			Rating: profile.RatingSafe, License: "NVIDIA Open Model License (see model card)",
-			MinRAMGB: 8, RecRAMGB: 16,
+			Rating: profile.RatingSafe, License: "NVIDIA Open Model License: commercial OK, attribution / notice retention required (see model card)",
+			LicenseFlags: []string{LicenseAttribution},
+			MinRAMGB:     8, RecRAMGB: 16,
 			Source: Source{
 				DiffusionModel: "circlestone-labs/Anima/split_files/diffusion_models/anima-turbo-v1.0.safetensors",
 				LLM:            "circlestone-labs/Anima/split_files/text_encoders/qwen_3_06b_base.safetensors",
