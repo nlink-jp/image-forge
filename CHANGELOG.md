@@ -4,7 +4,7 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.20.0] - 2026-07-11
 
 ### Added
 - **Flux / SD3.5 guidance controls** (#10): `--guidance` (Flux distilled guidance —
