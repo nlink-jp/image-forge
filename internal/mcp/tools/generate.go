@@ -93,7 +93,7 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
     "mask": {"type": "string", "description": "inpaint mask, workspace-relative path; requires init (white=regenerate, black=keep)"},
     "strength": {"type": "number", "description": "img2img denoise strength 0..1 (with init)"},
     "loras": {"type": "array", "items": {"type": "string"}, "description": "LoRAs to apply, each \"<installed-name-or-path>:<weight>\" (see list_models). Applied per render, no model reload"},
-    "control_net": {"type": "string", "description": "ControlNet installed name or path (see list_models --kind controlnet). Loaded with the base model — changing it reloads the base. SD1.5 only for now"},
+    "control_net": {"type": "string", "description": "ControlNet installed name or path (see list_models with kind controlnet). Loaded with the base model — changing it reloads the base. SD1.5 and SDXL both supported"},
     "control": {"type": "string", "description": "ControlNet control image, workspace-relative path (place it in the workspace first); requires control_net"},
     "control_strength": {"type": "number", "description": "ControlNet strength 0..1 (default 0.9; with control_net)"},
     "canny": {"type": "boolean", "description": "edge-preprocess the control image with canny (off = it is already an edge/structure map)"},

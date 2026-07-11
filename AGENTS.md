@@ -9,8 +9,8 @@ resolution, sampler, prediction type, quantization) inside **model profiles** so
 users never hand-tune them. Series: **util-series**. Local-diffusion counterpart to
 `gem-image` (cloud Gemini).
 
-Status: **v0.1.0 released** (public, signed + notarized). **Phase 2 in progress:**
-inpaint (`gen --init --mask`) wired + E2E-verified. `gen` txt2img/img2img/inpaint/
+Status: **v0.17.0 released** (public, signed + notarized). **Phase 1 + Phase 2
+complete.** inpaint (`gen --init --mask`) wired + E2E-verified. `gen` txt2img/img2img/inpaint/
 LoRA, `models` list/import/pull/quantize/rm, resident `serve`, config.toml — all E2E
 on M2 Max (SD1.5 + Animagine XL / SDXL, q8_0, LCM-LoRA, NoobAI v-pred). v-prediction
 is wired via the profile (`--prediction eps|v|auto` overrides). Civitai downloads,

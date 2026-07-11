@@ -68,7 +68,7 @@ already is**, and let name resolution (not raw paths) be the primary interface.
 
 ## Consequences
 
-- `image-forge models pull sdxl-lcm-lora` works; front-ends can enumerate and
+- `image-forge models pull lcm-lora-sdxl` works; front-ends can enumerate and
   arch-filter LoRAs/ControlNets from `models list --json` alone.
 - Existing `--lora /abs/path.safetensors:0.8` invocations keep working —
   resolution is name-first, path-fallback.

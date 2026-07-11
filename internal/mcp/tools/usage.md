@@ -63,7 +63,8 @@ Required: `workspace_id`, `prompt`.
   resolves to its file.
 - `control_net` — a ControlNet installed name or path (see
   `list_models` scope with `kind` `controlnet`). Loaded with the base model, so
-  **changing it reloads the base**. Only **SD1.5** ships today.
+  **changing it reloads the base**. Ships for SD1.5 (`controlnet-canny-sd15`) and
+  SDXL (`controlnet-canny-sdxl`).
 - `control` — the ControlNet control image, a workspace-relative image path;
   **requires `control_net`**. `control_strength` (`0..1`, default `0.9`) sets its
   influence; `canny` edge-preprocesses it (off = it is already an edge map).

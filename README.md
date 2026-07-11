@@ -16,9 +16,9 @@ Built on [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)
 ## Requirements
 
 - **macOS on Apple Silicon** (arm64) with Metal.
-- **RAM: 16 GB baseline (minimum), 32 GB+ recommended.** SDXL / Z-Image run well on
-  16 GB; FLUX / SD3.5 Large / Qwen-Image need Q4 quantization on 16 GB and are
-  comfortable on 32 GB+.
+- **RAM: 16 GB baseline (minimum), 32 GB+ recommended.** SDXL / Z-Image / Anima run
+  well on 16 GB; FLUX / SD3.5 need Q4 quantization on 16 GB and are comfortable on
+  32 GB+.
 - Build toolchain (engine build only): `cmake`, the Xcode **Metal Toolchain**, and
   a CGO-enabled Go 1.26+.
 
@@ -156,9 +156,9 @@ them). `--trigger "a,b"` sets them when importing a local file.
   license, path); pulled ESRGAN upscalers appear here too with arch `upscaler`.
   `--catalog` lists the curated catalog instead (with an `installed` column), and
   `--all` shows both as separate sections. Add `--json` to any of these for
-  machine-readable output (each entry carries a `kind`, `""`/diffusion or
-  `upscaler`; installed → array; catalog → array with an `installed` flag;
-  `--all` → an object with `installed` and `catalog` arrays).
+  machine-readable output (each entry carries a `kind` — `""`/diffusion, `lora`,
+  `controlnet`, or `upscaler`; installed → array; catalog → array with an
+  `installed` flag; `--all` → an object with `installed` and `catalog` arrays).
 - **pull** resolves a catalog name to its source, downloads the checkpoint and (for
   catalog entries) the dedicated VAE, and registers a profile. You can also pull a
   raw `hf:owner/repo/file` reference, a `civitai:<versionId>` reference (the number
@@ -225,7 +225,9 @@ Tools:
 - **`generate`** — enqueue a render: `workspace_id` + `prompt` (required), plus
   optional `model`, `negative`, `seed`, `steps`, `cfg`, `width`, `height`,
   `sampler`, `scheduler`, `clip_skip`, `batch`, `init`/`mask`/`strength`
-  (img2img/inpaint, workspace-relative paths), `hires` (auto/on/off) +
+  (img2img/inpaint, workspace-relative paths), `loras` (`["name-or-path:weight"]`),
+  `control_net` + `control` (a workspace-relative control image) +
+  `control_strength` + `canny`, `hires` (auto/on/off) +
   `hires_scale`/`hires_denoise`/`hires_upscaler`/`hires_model`, `output_name`.
   Returns a `job_id`.
 - **`upscale`** — enqueue a Real-ESRGAN upscale of a workspace image:

@@ -64,7 +64,7 @@ Start from the architecture defaults and override only the gotchas.
 
 | Field | How to pick it |
 | --- | --- |
-| `Arch` | `ArchSDXL` / `ArchSD15` / `ArchSD35` / `ArchFlux` / `ArchZImage`. Pony & Illustrious are `ArchSDXL`. |
+| `Arch` | `ArchSDXL` / `ArchSD15` / `ArchSD35` / `ArchFlux` / `ArchZImage` / `ArchAnima`. Pony & Illustrious are `ArchSDXL`. |
 | `Prediction` | `PredEps` for almost everything; `PredVPred` for v-prediction models (e.g. NoobAI v-pred). |
 | `Rating` | `RatingSafe` / `RatingQuestionable` / `RatingExplicit`. NSFW-capable anime/Pony → `Questionable`; NSFW-leaning → `Explicit`. `Questionable`/`Explicit` require `--allow-nsfw`. The flag is the gate; the rating is your honest signal. Judgment is left to the user. |
 | `License` | The upstream license; append `(verify)` / "see Civitai listing" when a community merge's terms are unclear. |
@@ -186,13 +186,12 @@ Start from the architecture defaults and override only the gotchas.
   and check whether it holds anything besides `model.diffusion_model.*`. If not, it
   needs its text encoder and VAE listed separately, or sd.cpp fails with
   `failed to load model`. (Anima: DiT + Qwen3-0.6B + Qwen-Image VAE.)
+  **Use standard fp8 (`t5xxl_fp8_e4m3fn`), bf16, or GGUF encoders only** — ComfyUI's
+  `fp8_scaled` / `fp8_mixed` builds are NOT sd.cpp-compatible (they load blank or fail).
 - **Beware architecture names that are substrings of each other.** `profile.Detect`
   matches on the model name, and `animagine` (SDXL) contains `anima` (a different
   architecture). Order the matches so the longer name wins, and add a test —
   otherwise a misdetected model silently gets the wrong profile defaults.
-  **Use standard fp8 (`t5xxl_fp8_e4m3fn`), bf16, or GGUF only** — ComfyUI's
-  `fp8_scaled` / `fp8_mixed` builds are NOT sd.cpp-compatible (they load blank or
-  fail).
 
 ## 3. Add the entry
 
