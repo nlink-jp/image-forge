@@ -62,6 +62,22 @@ func TestLicenseFlagsAreKnownAndConsistentWithText(t *testing.T) {
 	}
 }
 
+// Attribution flag and Attribution text must move together: a model that
+// requires credit needs the text to give, and text is pointless without the flag
+// that tells a front-end to surface it.
+func TestAttributionFlagMatchesText(t *testing.T) {
+	for _, e := range catalog.Default() {
+		flagged := contains(e.LicenseFlags, catalog.LicenseAttribution)
+		hasText := e.Attribution != ""
+		if flagged && !hasText {
+			t.Errorf("%s is flagged attribution but has no Attribution text", e.Name)
+		}
+		if hasText && !flagged {
+			t.Errorf("%s has Attribution text %q but is not flagged attribution", e.Name, e.Attribution)
+		}
+	}
+}
+
 // A spot-check of specific catalog entries so a wrong or dropped flag is caught,
 // not just an unknown-identifier typo. Base-model coverage (this feature's point).
 func TestBaseModelLicenseFlags(t *testing.T) {

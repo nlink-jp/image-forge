@@ -56,6 +56,7 @@ type catalogView struct {
 	Installed      bool     `json:"installed"`
 	Notes          string   `json:"notes,omitempty"`
 	LicenseFlags   []string `json:"license_flags,omitempty"`
+	Attribution    string   `json:"attribution,omitempty"`
 	TriggerWords   []string `json:"trigger_words,omitempty"`
 }
 
@@ -70,6 +71,7 @@ type installedView struct {
 	MultiComponent bool     `json:"multi_component"`
 	InCatalog      bool     `json:"in_catalog"`
 	LicenseFlags   []string `json:"license_flags,omitempty"`
+	Attribution    string   `json:"attribution,omitempty"`
 	TriggerWords   []string `json:"trigger_words,omitempty"`
 }
 
@@ -105,7 +107,7 @@ func catalogViews(reg *store.Registry) []catalogView {
 			MinRAMGB: e.MinRAMGB, RecRAMGB: e.RecRAMGB,
 			MultiComponent: e.IsMultiComponent(), NeedsOptIn: e.NeedsOptIn(),
 			Experimental: e.Experimental, Installed: installed, Notes: e.Notes,
-			LicenseFlags: e.LicenseFlags, TriggerWords: e.TriggerWords,
+			LicenseFlags: e.LicenseFlags, Attribution: e.Attribution, TriggerWords: e.TriggerWords,
 		})
 	}
 	return out
@@ -125,9 +127,9 @@ func installedViews(reg *store.Registry) []installedView {
 		// of the installed bytes. For a cataloged model the catalog is the current
 		// source of truth — use it so entries installed before these fields existed
 		// (or corrected in the catalog since) are still reported accurately.
-		license, flags, triggers := m.License, m.LicenseFlags, m.TriggerWords
+		license, flags, triggers, attribution := m.License, m.LicenseFlags, m.TriggerWords, m.Attribution
 		if inCat {
-			flags, triggers = e.LicenseFlags, e.TriggerWords
+			flags, triggers, attribution = e.LicenseFlags, e.TriggerWords, e.Attribution
 			if license == "" {
 				license = e.License
 			}
@@ -138,7 +140,7 @@ func installedViews(reg *store.Registry) []installedView {
 			// Only a base diffusion model can be assembled from components; an
 			// upscaler / LoRA / ControlNet with no Path would just be broken.
 			MultiComponent: m.Path == "" && m.IsDiffusion(), InCatalog: inCat,
-			LicenseFlags: flags, TriggerWords: triggers,
+			LicenseFlags: flags, Attribution: attribution, TriggerWords: triggers,
 		})
 	}
 	return out
@@ -438,15 +440,16 @@ func modelsPull(args []string) error {
 
 	srcRef := ref
 	var (
-		prof     profile.Profile
-		rating   profile.Rating
-		license  string
-		licFlags []string
-		vaeSrc   string
-		kind     string
-		triggers []string
-		regName  = *nameOverride
-		known    bool
+		prof        profile.Profile
+		rating      profile.Rating
+		license     string
+		licFlags    []string
+		attribution string
+		vaeSrc      string
+		kind        string
+		triggers    []string
+		regName     = *nameOverride
+		known       bool
 	)
 	if e, ok := catalog.Find(ref); ok {
 		known = true
@@ -473,7 +476,7 @@ func modelsPull(args []string) error {
 			return fmt.Errorf("models pull: catalog entry %q has no downloadable source", e.Name)
 		}
 		prof, rating, license, vaeSrc, kind = e.Profile(), e.Rating, e.License, e.Source.VAE, e.Kind
-		triggers, licFlags = e.TriggerWords, e.LicenseFlags
+		triggers, licFlags, attribution = e.TriggerWords, e.LicenseFlags, e.Attribution
 		switch {
 		case e.IsUpscaler():
 			// Upscalers are architecture-agnostic and carry no diffusion profile / VAE.
@@ -575,7 +578,7 @@ func modelsPull(args []string) error {
 	reg.Add(store.InstalledModel{
 		Name: regName, Kind: kind, Path: dest, VAEPath: vaePath,
 		Profile: prof, Rating: rating, License: license,
-		LicenseFlags: licFlags, TriggerWords: triggers,
+		LicenseFlags: licFlags, Attribution: attribution, TriggerWords: triggers,
 	})
 	if err := reg.Save(); err != nil {
 		return err
@@ -654,12 +657,15 @@ func pullMultiComponent(e catalog.Entry, regName string, conf config.Config) err
 		return err
 	}
 	reg.Add(store.InstalledModel{
-		Name:       regName,
-		VAEPath:    vae,
-		Components: store.Components{DiffusionModel: diff, ClipL: clipL, ClipG: clipG, T5XXL: t5, LLM: llm},
-		Profile:    e.Profile(),
-		Rating:     e.Rating,
-		License:    e.License,
+		Name:         regName,
+		VAEPath:      vae,
+		Components:   store.Components{DiffusionModel: diff, ClipL: clipL, ClipG: clipG, T5XXL: t5, LLM: llm},
+		Profile:      e.Profile(),
+		Rating:       e.Rating,
+		License:      e.License,
+		LicenseFlags: e.LicenseFlags,
+		Attribution:  e.Attribution,
+		TriggerWords: e.TriggerWords,
 	})
 	if err := reg.Save(); err != nil {
 		return err

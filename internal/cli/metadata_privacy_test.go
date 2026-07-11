@@ -41,7 +41,7 @@ func TestImageForgeJSON_NeverEmbedsPaths(t *testing.T) {
 		"/Volumes/Works/models/RealESRGAN_x4plus.pth":            "realesrgan-x4plus",
 	}
 
-	raw := imageForgeJSON(req, "animagine-xl-4", "", names)
+	raw := imageForgeJSON(req, "animagine-xl-4", "", names, nil)
 
 	// (a) The blunt guarantee: no absolute path, and nothing resembling one.
 	for _, leak := range []string{"/Volumes", "/Users", "alice", ".safetensors", ".pth", "private-photo", "edges.png"} {

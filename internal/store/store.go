@@ -38,6 +38,8 @@ type InstalledModel struct {
 	// / attribution / share-alike), recorded at install so a front-end can surface
 	// them for the installed model without consulting the catalog.
 	LicenseFlags []string `json:"license_flags,omitempty"`
+	// Attribution is the credit text to give when the license requires it.
+	Attribution string `json:"attribution,omitempty"`
 	// TriggerWords are the prompt tokens a LoRA needs to take effect. Recorded at
 	// install time so `models list` can tell the user what to type — a LoRA whose
 	// trigger is missing loads silently and does nothing.

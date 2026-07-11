@@ -134,6 +134,16 @@ Start from the architecture defaults and override only the gotchas.
   entry and into `models list --json` as `license_flags`. Leave empty for
   permissive models (OpenRAIL / Apache / commercial-OK Civitai listings).
 
+- **`Attribution`** is the credit text to give when the license requires it — set
+  it on **every** entry whose `LicenseFlags` includes `LicenseAttribution`, and
+  only those (a test enforces the pairing). Make it a self-contained, shareable
+  credit, e.g. `"Illustrious XL by ONOMAAI (Civitai)"` — no filesystem paths. At
+  generation time the `Attribution` of every model that shaped the render (base
+  model + LoRAs) is de-duplicated, joined, and written to the output PNG's
+  `image-forge` metadata under a `credit` field (a record for whoever shares the
+  image — nothing is burned into the pixels). It is also surfaced as
+  `attribution` in `models list --json` so a front-end can show and copy it.
+
   **Verify the format before adding an entry.** sd.cpp wants kohya-style keys
   (`lora_unet_*.lora_down.weight` / `.lora_up.weight` / `.alpha`). Read the
   safetensors header — you don't need the whole file:

@@ -94,6 +94,13 @@ reveals your directory layout or username, and `"loras": ["lcm-lora-sdxl:1"]` is
 directly re-runnable. Input images (img2img init, ControlNet control) are not
 recorded at all; only the parameters that shaped the render (`strength`, `canny`).
 
+**Attribution.** When a model in use requires credit, the `image-forge` JSON
+carries a `credit` field combining the attributions of every model that shaped
+the render (base model + LoRAs), so whoever shares the image has the credit the
+license calls for. It is a record only — nothing is burned into the pixels — and
+permissive renders write no `credit` at all. A model's own attribution is also in
+`models list --json` as `attribution`, next to its `license_flags`.
+
 ### `upscale` — super-resolve an image
 
 ```sh

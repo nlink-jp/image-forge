@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nlink-jp/image-forge/internal/catalog"
 	"github.com/nlink-jp/image-forge/internal/engine"
 	"github.com/nlink-jp/image-forge/internal/store"
 )
@@ -31,9 +32,10 @@ func buildImageMetadata(req engine.Request, modelName, prediction string, embed 
 		return nil
 	}
 	names := registryNameByPath()
+	credits := attributionByName()
 	return []engine.PNGText{
 		{Keyword: "parameters", Text: a1111Parameters(req, modelName)},
-		{Keyword: "image-forge", Text: imageForgeJSON(req, modelName, prediction, names)},
+		{Keyword: "image-forge", Text: imageForgeJSON(req, modelName, prediction, names, credits)},
 	}
 }
 
@@ -86,21 +88,26 @@ func a1111Parameters(req engine.Request, modelName string) string {
 // Input images (img2img init, ControlNet control) are not recorded at all; only
 // the parameters that shaped the render.
 type imgforgeMeta struct {
-	Version    string          `json:"version"`
-	Model      string          `json:"model"`
-	Prompt     string          `json:"prompt"`
-	Negative   string          `json:"negative"`
-	Seed       int64           `json:"seed"`
-	Steps      int             `json:"steps"`
-	CFG        float64         `json:"cfg"`
-	Width      int             `json:"width"`
-	Height     int             `json:"height"`
-	Sampler    string          `json:"sampler"`
-	Scheduler  string          `json:"scheduler,omitempty"`
-	ClipSkip   int             `json:"clip_skip"`
-	Prediction string          `json:"prediction,omitempty"`
-	VAE        string          `json:"vae,omitempty"` // identifier, never a path
-	LoRAs      []string        `json:"loras,omitempty"`
+	Version    string   `json:"version"`
+	Model      string   `json:"model"`
+	Prompt     string   `json:"prompt"`
+	Negative   string   `json:"negative"`
+	Seed       int64    `json:"seed"`
+	Steps      int      `json:"steps"`
+	CFG        float64  `json:"cfg"`
+	Width      int      `json:"width"`
+	Height     int      `json:"height"`
+	Sampler    string   `json:"sampler"`
+	Scheduler  string   `json:"scheduler,omitempty"`
+	ClipSkip   int      `json:"clip_skip"`
+	Prediction string   `json:"prediction,omitempty"`
+	VAE        string   `json:"vae,omitempty"` // identifier, never a path
+	LoRAs      []string `json:"loras,omitempty"`
+	// Credit is the attribution text a model's license requires, combined across
+	// every model that shaped the render (base model + LoRAs). Empty when nothing
+	// in use requires attribution. It is a record, not machine-readable state:
+	// it lets whoever shares the image give the credit the license calls for.
+	Credit     string          `json:"credit,omitempty"`
 	Img2Img    *img2imgMeta    `json:"img2img,omitempty"`
 	Hires      *hiresMeta      `json:"hires,omitempty"`
 	ControlNet *controlNetMeta `json:"controlnet,omitempty"`
@@ -138,7 +145,7 @@ type controlNetMeta struct {
 // imageForgeJSON marshals the generation record to compact JSON. `names` maps an
 // absolute model path back to its registry name; it is injected so this stays a
 // pure function. Every model reference is rendered as an identifier, never a path.
-func imageForgeJSON(req engine.Request, modelName, prediction string, names map[string]string) string {
+func imageForgeJSON(req engine.Request, modelName, prediction string, names, credits map[string]string) string {
 	m := imgforgeMeta{
 		Version:    binVersion,
 		Model:      modelName,
@@ -155,6 +162,7 @@ func imageForgeJSON(req engine.Request, modelName, prediction string, names map[
 		Prediction: prediction,
 		VAE:        modelIdent(req.VAEPath, names),
 		LoRAs:      lorasToStrings(req.LoRAs, names),
+		Credit:     buildCredit(req, modelName, names, credits),
 	}
 	// The init / control images are NOT recorded — only how they shaped the render.
 	if req.InitImage != "" {
@@ -207,6 +215,53 @@ func registryNameByPath() map[string]string {
 		}
 	}
 	return names
+}
+
+// attributionByName builds a model-identifier -> attribution lookup so embedded
+// metadata can record the credit a license requires. The catalog is the current
+// source of truth for cataloged models (attribution may be corrected there after
+// install); installed-only models contribute whatever was recorded at install.
+func attributionByName() map[string]string {
+	out := map[string]string{}
+	if reg, err := store.Load(); err == nil {
+		for _, im := range reg.Models {
+			if im.Attribution != "" {
+				out[im.Name] = im.Attribution
+			}
+		}
+	}
+	for _, e := range catalog.Default() {
+		if e.Attribution != "" {
+			out[e.Name] = e.Attribution
+		}
+	}
+	return out
+}
+
+// buildCredit assembles the attribution text a license requires: the credit
+// strings of every model that shaped the render (base model + LoRAs),
+// de-duplicated and joined. Returns "" when no model in use requires attribution.
+// `credits` maps a model identifier to its attribution text; `names` resolves a
+// LoRA's path back to that identifier. Injected for purity.
+func buildCredit(req engine.Request, modelName string, names, credits map[string]string) string {
+	if len(credits) == 0 {
+		return ""
+	}
+	var out []string
+	seen := map[string]bool{}
+	add := func(ident string) {
+		c := credits[ident]
+		if c == "" || seen[c] {
+			return
+		}
+		seen[c] = true
+		out = append(out, c)
+	}
+	add(modelName)
+	for _, l := range req.LoRAs {
+		add(modelIdent(l.Path, names))
+	}
+	return strings.Join(out, " · ")
 }
 
 // buildUpscaleMetadata builds the "image-forge" record embedded into a

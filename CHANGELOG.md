@@ -26,6 +26,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
   (attribution), **`z-image-turbo`** (review-license — its source repo declares
   none). Plus the LoRAs (`dmd2-sdxl-4step`, `genba-neko-*`,
   `s1-dramatic-lighting-*`). Permissive models (Apache / OpenRAIL / BSD) carry none.
+- **Credit / attribution recorded in image metadata.** Every catalog entry whose
+  license requires attribution now carries an `Attribution` string (the exact
+  credit to give — e.g. `"Illustrious XL by ONOMAAI (Civitai)"`). At generation
+  time the credits of every model that shaped the render (base model + LoRAs) are
+  de-duplicated, joined, and written to the output PNG's image-forge metadata
+  under a new `credit` field, so whoever shares the image has the attribution the
+  license calls for. **Non-destructive** — nothing is burned into the pixels.
+  Exposed as `attribution` in both `models list --json` views (backfilled from
+  the catalog like the flags), so a front-end can show and copy it. Permissive
+  renders write no `credit` field at all.
 
 ### Fixed
 - **`animagine-xl-4`'s license was mislabeled** "Fair AI Public License 1.0-SD";

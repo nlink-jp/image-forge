@@ -54,8 +54,12 @@ type Entry struct {
 	Rating       profile.Rating
 	License      string
 	LicenseFlags []string // notable restrictions (non-commercial / no-derivatives / …)
-	MinRAMGB     int      // baseline RAM to run (with the recommended quantization)
-	RecRAMGB     int      // RAM for a comfortable fp16 / large run
+	// Attribution is the credit text to give when a license requires it — written
+	// into the output PNG's metadata and shown by a front-end. Set it whenever
+	// LicenseFlags includes attribution.
+	Attribution  string
+	MinRAMGB     int // baseline RAM to run (with the recommended quantization)
+	RecRAMGB     int // RAM for a comfortable fp16 / large run
 	Source       Source
 	ClipSkip     int    // override on top of profile.ArchDefaults(Arch)
 	PromptPrefix string // e.g. Pony-family score tags
@@ -154,6 +158,7 @@ func Default() []Entry {
 			Name: "illustrious-xl-v1", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "OnomaAI Illustrious License: no derivatives, credit required",
 			LicenseFlags: []string{LicenseNoDerivatives, LicenseAttribution},
+			Attribution:  "Illustrious XL by ONOMAAI (Civitai)",
 			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				HF:  "OnomaAIResearch/Illustrious-XL-v1.0/Illustrious-XL-v1.0.safetensors",
@@ -165,6 +170,7 @@ func Default() []Entry {
 			Name: "illustrious-xl-v1.1", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "OnomaAI Illustrious License: no derivatives, credit required",
 			LicenseFlags: []string{LicenseNoDerivatives, LicenseAttribution},
+			Attribution:  "Illustrious XL by ONOMAAI (Civitai)",
 			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "1411690", // https://civitai.com/models/1252206 (v1.1)
@@ -213,6 +219,7 @@ func Default() []Entry {
 			Name: "momoiro-pony", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingExplicit, License: "Civitai listing: NO commercial use, credit required, derivatives allowed",
 			LicenseFlags: []string{LicenseNonCommercial, LicenseAttribution},
+			Attribution:  "T-ponynai MomoiroPony by superiorenby (Civitai)",
 			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "425904", // https://civitai.com/models/381535 (v1.0)
@@ -226,6 +233,7 @@ func Default() []Entry {
 			Name: "prefect-pony-xl", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: images non-commercial (rent-only), NO derivatives, credit required",
 			LicenseFlags: []string{LicenseNonCommercial, LicenseNoDerivatives, LicenseAttribution},
+			Attribution:  "Prefect Pony XL by Goofy_Ai (Civitai)",
 			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "2114187", // https://civitai.com/models/439889 (v6)
@@ -277,6 +285,7 @@ func Default() []Entry {
 			Name: "sd35-medium", Arch: profile.ArchSD35, Prediction: profile.PredEps,
 			Rating: profile.RatingSafe, License: "Stability Community License: free incl. commercial under $1M annual revenue; attribution required; enterprise license above that",
 			LicenseFlags: []string{LicenseAttribution},
+			Attribution:  "Powered by Stability AI",
 			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{
 				DiffusionModel: "city96/stable-diffusion-3.5-medium-gguf/sd3.5_medium-Q4_K_M.gguf",
@@ -320,6 +329,7 @@ func Default() []Entry {
 			Name: "anima-turbo", Arch: profile.ArchAnima, Prediction: profile.PredEps,
 			Rating: profile.RatingSafe, License: "NVIDIA Open Model License: commercial OK, attribution / notice retention required (see model card)",
 			LicenseFlags: []string{LicenseAttribution},
+			Attribution:  "Anima by CircleStone Labs / Comfy Org (NVIDIA Open Model License)",
 			MinRAMGB:     8, RecRAMGB: 16,
 			Source: Source{
 				DiffusionModel: "circlestone-labs/Anima/split_files/diffusion_models/anima-turbo-v1.0.safetensors",
@@ -377,6 +387,7 @@ func Default() []Entry {
 			Name: "dmd2-sdxl-4step", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingSafe, License: "CC BY-NC 4.0 (non-commercial only)",
 			LicenseFlags: []string{LicenseNonCommercial, LicenseAttribution},
+			Attribution:  "DMD2 by Tianwei Yin et al. (CC BY-NC 4.0)",
 			MinRAMGB:     16, RecRAMGB: 32,
 			Source: Source{HF: "tianweiy/DMD2/dmd2_sdxl_4step_lora_fp16.safetensors"},
 			Notes:  "DMD2 (Improved Distribution Matching Distillation): 4-step sampling. Use `--steps 4 --cfg 1 --sampler euler`. NOTE: CC BY-NC 4.0 — non-commercial use only.",
@@ -397,6 +408,7 @@ func Default() []Entry {
 			Name: "genba-neko-illustrious", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingSafe, License: "Civitai listing: NO derivatives, credit required, commercial rent-on-Civitai only",
 			LicenseFlags: []string{LicenseNonCommercial, LicenseNoDerivatives, LicenseAttribution},
+			Attribution:  "Genba Neko Like by HypnotistDolphin (Civitai)",
 			MinRAMGB:     16, RecRAMGB: 32,
 			Source:       Source{Civitai: "1619987"}, // https://civitai.com/models/1128981 (v2.0 IL)
 			TriggerWords: []string{"genba_neko", "chibi", "pointing", "standing on one leg", ":3", "open mouth", "meme", "parody"},
@@ -450,6 +462,7 @@ func Default() []Entry {
 			Name: "genba-neko-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
 			Rating: profile.RatingSafe, License: "Civitai listing: NO derivatives, credit required, commercial rent-on-Civitai only",
 			LicenseFlags: []string{LicenseNonCommercial, LicenseNoDerivatives, LicenseAttribution},
+			Attribution:  "Genba Neko Like by HypnotistDolphin (Civitai)",
 			MinRAMGB:     8, RecRAMGB: 16,
 			Source:       Source{Civitai: "3029956"}, // https://civitai.com/models/1128981 (v1.0 Anima)
 			TriggerWords: []string{"genba_neko", "chibi", "pointing", "standing on one leg", ":3", "open mouth", "meme", "parody"},
