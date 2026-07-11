@@ -121,8 +121,15 @@ image-forge models list [--catalog|--all] [--json] [--kind K]   # installed (def
 image-forge models pull <name | hf:owner/repo/file | civitai:<versionId> | url> [--allow-nsfw] [--name N]
 image-forge models import <path> [--name N] [--arch A] [--vae V] [--kind K] [--trigger "a,b"]
 image-forge models quantize <name> --to <type> [--name N]
-image-forge models rm <name>
+image-forge models rm <name> [--purge]                          # --purge also deletes the weight files
+image-forge models gc [--force]                                 # reclaim orphaned files (dry-run without --force)
 ```
+
+`models rm --purge` deletes the model's weight files too, but keeps any file
+another installed model still shares (a common VAE / text encoder) and any file
+outside the managed models dir (imported in place). `models gc` reclaims files in
+the models dir that no installed model references — leftover `.part` downloads, or
+files left behind by a plain `rm`; it only reports until you pass `--force`.
 
 The registry holds four **kinds** (`--kind diffusion|lora|controlnet|upscaler`):
 a base diffusion model, plus three auxiliary kinds that aren't renderable on

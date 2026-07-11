@@ -11,7 +11,7 @@ users never hand-tune them. Series: **util-series**. Local-diffusion counterpart
 
 Status: **v0.17.0 released** (public, signed + notarized). **Phase 1 + Phase 2
 complete.** inpaint (`gen --init --mask`) wired + E2E-verified. `gen` txt2img/img2img/inpaint/
-LoRA, `models` list/import/pull/quantize/rm, resident `serve`, config.toml — all E2E
+LoRA, `models` list/import/pull/quantize/rm/gc, resident `serve`, config.toml — all E2E
 on M2 Max (SD1.5 + Animagine XL / SDXL, q8_0, LCM-LoRA, NoobAI v-pred). v-prediction
 is wired via the profile (`--prediction eps|v|auto` overrides). Civitai downloads,
 **multi-component models** (FLUX; resumable/retrying downloads), and **ControlNet**
@@ -52,7 +52,9 @@ internal/profile/           model profiles, per-arch defaults, arch Detect (the 
 internal/catalog/           curated model catalog (kind, content_rating, license + license_flags/attribution, trigger_words, RAM tier, source) + Profile()
 internal/store/             installed-model registry (JSON) at $IMAGE_FORGE_HOME/registry.json;
                             ModelsDir relocatable via config models_dir / $IMAGE_FORGE_MODELS_DIR
-                            (store.SetModelsDir, set from config in cli.Run — store stays config-free)
+                            (store.SetModelsDir, set from config in cli.Run — store stays config-free).
+                            InstalledModel.Files() lists a model's weight files;
+                            Registry.ReferencedFiles() is the in-use set for gc/purge
 internal/config/            optional config.toml (default_model/output/allow_nsfw/tokens/
                             [performance] flash_attn + vae_tiling; BurntSushi/toml)
 internal/download/          HF (hf:owner/repo/file) / URL fetch with progress; token from caller
@@ -115,6 +117,15 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   256px tile when `tile_size`/`rel_size` are 0). sd.cpp also has an `auto_fit` ctx mode that
   auto-tiles on actual OOM, but it bundles discrete-GPU param-offload logic and logs a scary
   "no usable GPU devices" on Metal, so we don't enable it.
+- **Disk reclamation (`rm --purge` / `gc`) is share-aware.** Files can be shared
+  across registry entries (a common VAE, text encoders reused by multi-component
+  models), and `import` registers files *in place* (Path can be outside ModelsDir).
+  So `--purge` deletes a file only when no *other* installed model references it
+  (ReferencedFiles computed after removal) AND it's under ModelsDir; `gc` only
+  touches unreferenced top-level files in ModelsDir, never directories, never files
+  elsewhere. `gc` is dry-run until `--force`. When testing anything that depends on
+  `store.ModelsDir()`, pin it with `store.SetModelsDir(dir)` — `cli.Run()` leaks the
+  real config's models_dir into that global (see models_gc_test.go's `gcTestDirs`).
 - **Models are never bundled/redistributed.** Users download; the catalog only
   points at sources and surfaces license + content rating.
 - **NSFW is opt-in.** `questionable`/`explicit` entries need `--allow-nsfw` / config.

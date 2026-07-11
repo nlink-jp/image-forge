@@ -20,7 +20,7 @@ import (
 
 func runModels(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("models: expected a subcommand (list|import|pull|quantize|rm)")
+		return fmt.Errorf("models: expected a subcommand (list|import|pull|quantize|rm|gc)")
 	}
 	switch args[0] {
 	case "list":
@@ -31,6 +31,8 @@ func runModels(args []string) error {
 		return modelsPull(args[1:])
 	case "rm":
 		return modelsRm(args[1:])
+	case "gc":
+		return modelsGc(args[1:])
 	case "quantize":
 		return modelsQuantize(args[1:])
 	default:
@@ -725,19 +727,161 @@ func modelsQuantize(args []string) error {
 }
 
 func modelsRm(args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("models rm: <name> required")
+	if len(args) < 1 || strings.HasPrefix(args[0], "-") {
+		return fmt.Errorf("models rm: usage: models rm <name> [--purge]")
+	}
+	name := args[0]
+	fs := flag.NewFlagSet("models rm", flag.ContinueOnError)
+	purge := fs.Bool("purge", false, "also delete the model's weight files from disk (files shared with another installed model, or outside the managed models dir, are kept)")
+	if err := fs.Parse(args[1:]); err != nil {
+		return err
 	}
 	reg, err := store.Load()
 	if err != nil {
 		return err
 	}
-	if !reg.Remove(args[0]) {
-		return fmt.Errorf("models rm: %q is not installed", args[0])
+	m, ok := reg.Get(name)
+	if !ok {
+		return fmt.Errorf("models rm: %q is not installed", name)
 	}
+	reg.Remove(name)
 	if err := reg.Save(); err != nil {
 		return err
 	}
-	fmt.Printf("removed %q (the model file, if any, was left on disk)\n", args[0])
+	if !*purge {
+		fmt.Printf("removed %q (the model file, if any, was left on disk; use --purge to delete)\n", name)
+		return nil
+	}
+	// Purge the removed model's files, but only ones it exclusively owned and that
+	// live under the managed models dir. ReferencedFiles is computed after the
+	// removal, so a file another installed model still needs stays in the set.
+	referenced := reg.ReferencedFiles()
+	dir := filepath.Clean(store.ModelsDir())
+	var freed int64
+	for _, f := range m.Files() {
+		switch {
+		case referenced[f]:
+			fmt.Printf("  kept %s (shared with another installed model)\n", f)
+		case !underDir(f, dir):
+			fmt.Printf("  kept %s (outside the managed models dir; delete it yourself if intended)\n", f)
+		default:
+			n, err := removeFile(f)
+			if err != nil {
+				fmt.Printf("  could not delete %s: %v\n", f, err)
+				continue
+			}
+			freed += n
+			fmt.Printf("  deleted %s (%s)\n", f, humanBytes(n))
+		}
+	}
+	fmt.Printf("removed %q; freed %s\n", name, humanBytes(freed))
 	return nil
+}
+
+// modelsGc reclaims orphaned files in the models dir — files no installed model
+// references (leftover .part downloads, files whose model was `rm`'d without
+// --purge, quantize/convert intermediates). Dry-run by default; --force deletes.
+func modelsGc(args []string) error {
+	fs := flag.NewFlagSet("models gc", flag.ContinueOnError)
+	force := fs.Bool("force", false, "actually delete the orphaned files (default: only report what would be reclaimed)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	reg, err := store.Load()
+	if err != nil {
+		return err
+	}
+	referenced := reg.ReferencedFiles()
+	dir := filepath.Clean(store.ModelsDir())
+	entries, err := os.ReadDir(dir)
+	if os.IsNotExist(err) {
+		fmt.Printf("models gc: no models dir yet (%s); nothing to reclaim\n", dir)
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var orphans []string
+	var total int64
+	for _, e := range entries {
+		if e.IsDir() {
+			continue // gc handles top-level files only; never removes directories
+		}
+		p := filepath.Join(dir, e.Name())
+		if referenced[filepath.Clean(p)] {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		orphans = append(orphans, p)
+		total += info.Size()
+	}
+	if len(orphans) == 0 {
+		fmt.Printf("models gc: no orphaned files in %s\n", dir)
+		return nil
+	}
+	sort.Strings(orphans)
+	for _, p := range orphans {
+		info, err := os.Stat(p)
+		size := int64(0)
+		if err == nil {
+			size = info.Size()
+		}
+		if !*force {
+			fmt.Printf("  %s (%s)\n", p, humanBytes(size))
+			continue
+		}
+		if _, err := removeFile(p); err != nil {
+			fmt.Printf("  could not delete %s: %v\n", p, err)
+			continue
+		}
+		fmt.Printf("  deleted %s (%s)\n", p, humanBytes(size))
+	}
+	if !*force {
+		fmt.Printf("models gc: %d orphaned file(s), %s reclaimable. Re-run with --force to delete.\n", len(orphans), humanBytes(total))
+		return nil
+	}
+	fmt.Printf("models gc: freed %s across %d file(s)\n", humanBytes(total), len(orphans))
+	return nil
+}
+
+// underDir reports whether file p lies within directory dir (both cleaned).
+func underDir(p, dir string) bool {
+	rel, err := filepath.Rel(dir, filepath.Clean(p))
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+// removeFile deletes a file and returns the bytes freed (0 if it was already gone).
+func removeFile(p string) (int64, error) {
+	info, err := os.Stat(p)
+	if os.IsNotExist(err) {
+		return 0, nil
+	}
+	var size int64
+	if err == nil {
+		size = info.Size()
+	}
+	if err := os.Remove(p); err != nil {
+		return 0, err
+	}
+	return size, nil
+}
+
+// humanBytes formats a byte count as a human-readable size (e.g. "6.5 GB").
+func humanBytes(n int64) string {
+	const unit = 1024
+	if n < unit {
+		return fmt.Sprintf("%d B", n)
+	}
+	div, exp := int64(unit), 0
+	for m := n / unit; m >= unit; m /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %ciB", float64(n)/float64(div), "KMGTPE"[exp])
 }

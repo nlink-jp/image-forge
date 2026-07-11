@@ -103,3 +103,40 @@ func TestModelsDirOverride(t *testing.T) {
 		t.Errorf("override ModelsDir = %q, want /big/disk/models", got)
 	}
 }
+
+func TestInstalledModelFiles(t *testing.T) {
+	// Single-file checkpoint with an external VAE.
+	m := InstalledModel{Path: "/models/sdxl.safetensors", VAEPath: "/models/sdxl.vae.safetensors"}
+	if got := m.Files(); len(got) != 2 || got[0] != "/models/sdxl.safetensors" || got[1] != "/models/sdxl.vae.safetensors" {
+		t.Errorf("single-file Files() = %v", got)
+	}
+	// Multi-component model: every part is listed, empties dropped.
+	mc := InstalledModel{Components: Components{
+		DiffusionModel: "/models/flux.safetensors",
+		ClipL:          "/models/clip_l.safetensors",
+		T5XXL:          "/models/t5xxl.safetensors",
+	}}
+	if got := mc.Files(); len(got) != 3 {
+		t.Errorf("multi-component Files() = %v, want 3 files", got)
+	}
+	// No files.
+	if got := (InstalledModel{}).Files(); len(got) != 0 {
+		t.Errorf("empty Files() = %v, want none", got)
+	}
+}
+
+func TestReferencedFilesDedupesShared(t *testing.T) {
+	r := &Registry{Models: map[string]InstalledModel{
+		"a": {Name: "a", Path: "/m/a.safetensors", VAEPath: "/m/shared.vae"},
+		"b": {Name: "b", Path: "/m/b.safetensors", VAEPath: "/m/shared.vae"}, // same VAE
+	}}
+	ref := r.ReferencedFiles()
+	for _, want := range []string{"/m/a.safetensors", "/m/b.safetensors", "/m/shared.vae"} {
+		if !ref[want] {
+			t.Errorf("ReferencedFiles missing %q; got %v", want, ref)
+		}
+	}
+	if len(ref) != 3 { // shared.vae counted once
+		t.Errorf("ReferencedFiles = %v, want 3 distinct", ref)
+	}
+}

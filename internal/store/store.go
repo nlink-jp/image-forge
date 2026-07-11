@@ -46,6 +46,39 @@ type InstalledModel struct {
 	TriggerWords []string `json:"trigger_words,omitempty"`
 }
 
+// Files returns every weight file this model references — the single-file
+// checkpoint (Path), an external VAE (VAEPath), and each multi-component part.
+// Empty fields are omitted. Used by `rm --purge` and `gc` to map a model to the
+// files it owns and to build the set of files still in use.
+func (m InstalledModel) Files() []string {
+	var fs []string
+	for _, p := range []string{
+		m.Path, m.VAEPath,
+		m.Components.DiffusionModel, m.Components.ClipL, m.Components.ClipG,
+		m.Components.T5XXL, m.Components.LLM,
+	} {
+		if p != "" {
+			fs = append(fs, filepath.Clean(p))
+		}
+	}
+	return fs
+}
+
+// ReferencedFiles is the set of all files (cleaned absolute paths) referenced by
+// any installed model. A file shared by several models — a common VAE, or text
+// encoders reused across multi-component models — appears once. `gc` treats a
+// file in the models dir that is absent from this set as orphaned; `rm --purge`
+// keeps a file still present here (another model needs it).
+func (r *Registry) ReferencedFiles() map[string]bool {
+	set := map[string]bool{}
+	for _, m := range r.Models {
+		for _, f := range m.Files() {
+			set[f] = true
+		}
+	}
+	return set
+}
+
 // IsUpscaler reports whether this installed model is a standalone ESRGAN
 // upscaler rather than a diffusion model.
 func (m InstalledModel) IsUpscaler() bool { return m.Kind == "upscaler" }

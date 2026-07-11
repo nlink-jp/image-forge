@@ -22,6 +22,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   seams (0.5 overlap), so it is opt-in; native-resolution output is unaffected while
   it stays off. Turn it on if a high-res render dies during VAE decode. Wired
   through `gen`, `serve`, and `mcp`.
+- **`models gc` and `models rm --purge`** reclaim disk (#4). Models are multi-GB, so
+  `rm` alone (which only forgets the registry entry) leaves the files behind. `rm
+  <name> --purge` now also deletes the model's weight files — while keeping any file
+  another installed model still shares (a common VAE / text encoder) and any file
+  outside the managed models dir (imported in place). `models gc` reclaims files in
+  the models dir that no installed model references (leftover `.part` downloads,
+  files orphaned by a plain `rm`); it reports what it would free and only deletes
+  with `--force`.
 
 ## [0.17.1] - 2026-07-11
 

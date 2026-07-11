@@ -63,7 +63,7 @@ func usage(w io.Writer) {
 Usage:
   image-forge gen     -p "<prompt>" [flags]             generate (txt2img / img2img; --hires auto|on|off)
   image-forge upscale <in> -o <out> [--model <name>]    ESRGAN super-resolution of an existing image
-  image-forge models  <list|pull|import|quantize|rm>    manage models
+  image-forge models  <list|pull|import|quantize|rm|gc> manage models (rm --purge / gc reclaim disk)
   image-forge serve   [flags]                           resident JSON-line API (Phase 2)
   image-forge mcp     [--workspace-root <dir>]          MCP stdio server (AI image generation)
   image-forge version                                   print version
