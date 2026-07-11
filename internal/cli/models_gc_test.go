@@ -18,6 +18,22 @@ func touch(t *testing.T, path string, size int) {
 
 func exists(path string) bool { _, err := os.Stat(path); return err == nil }
 
+// pinNonTTYStdin replaces os.Stdin with the read end of a pipe whose write end is
+// closed (immediate EOF), so a test that exercises the real stdin-reading delete
+// path is deterministically non-interactive — it never blocks waiting for input,
+// regardless of whether `go test` was launched from a terminal.
+func pinNonTTYStdin(t *testing.T) {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.Close() // reads see EOF
+	old := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = old; r.Close() })
+}
+
 // confirmers for the destructive-core tests. A real terminal is never involved.
 var (
 	confirmYes = func(string) bool { return true }
@@ -47,6 +63,7 @@ func gcTestDirs(t *testing.T) (home, md string) {
 // a terminal. This calls the REAL command path (as the buggy test once did) with
 // an orphan present and an empty registry — the maximally dangerous case.
 func TestModelsGcForce_NoTTY_DeletesNothing(t *testing.T) {
+	pinNonTTYStdin(t)
 	_, md := gcTestDirs(t)
 	orphan := filepath.Join(md, "would-be-deleted.safetensors")
 	touch(t, orphan, 100)
@@ -65,6 +82,7 @@ func TestModelsGcForce_NoTTY_DeletesNothing(t *testing.T) {
 // TestModelsRmPurge_NoTTY_DeletesNothing: the real `rm --purge` path also refuses
 // without a terminal, leaving both the file and the registry entry intact.
 func TestModelsRmPurge_NoTTY_DeletesNothing(t *testing.T) {
+	pinNonTTYStdin(t)
 	_, md := gcTestDirs(t)
 	ckpt := filepath.Join(md, "keeper.safetensors")
 	touch(t, ckpt, 100)
