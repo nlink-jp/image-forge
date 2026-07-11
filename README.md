@@ -131,6 +131,12 @@ outside the managed models dir (imported in place). `models gc` reclaims files i
 the models dir that no installed model references — leftover `.part` downloads, or
 files left behind by a plain `rm`; it only reports until you pass `--force`.
 
+**Both deletes ask before removing anything.** `gc --force` and `rm --purge` list
+the exact files and total size, then require you to type `yes` at an interactive
+terminal. There is no unattended-delete flag: if stdin is not a terminal (a script,
+a pipe, a test), they refuse and delete nothing. So these commands can never wipe
+your models from automation.
+
 The registry holds four **kinds** (`--kind diffusion|lora|controlnet|upscaler`):
 a base diffusion model, plus three auxiliary kinds that aren't renderable on
 their own. LoRA and ControlNet entries record the base **architecture** they were

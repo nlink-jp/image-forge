@@ -117,15 +117,25 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   256px tile when `tile_size`/`rel_size` are 0). sd.cpp also has an `auto_fit` ctx mode that
   auto-tiles on actual OOM, but it bundles discrete-GPU param-offload logic and logs a scary
   "no usable GPU devices" on Metal, so we don't enable it.
-- **Disk reclamation (`rm --purge` / `gc`) is share-aware.** Files can be shared
-  across registry entries (a common VAE, text encoders reused by multi-component
-  models), and `import` registers files *in place* (Path can be outside ModelsDir).
-  So `--purge` deletes a file only when no *other* installed model references it
-  (ReferencedFiles computed after removal) AND it's under ModelsDir; `gc` only
-  touches unreferenced top-level files in ModelsDir, never directories, never files
-  elsewhere. `gc` is dry-run until `--force`. When testing anything that depends on
-  `store.ModelsDir()`, pin it with `store.SetModelsDir(dir)` — `cli.Run()` leaks the
-  real config's models_dir into that global (see models_gc_test.go's `gcTestDirs`).
+- **Disk reclamation (`rm --purge` / `gc`) is share-aware AND HITL-gated.** Files
+  can be shared across registry entries (a common VAE, text encoders reused by
+  multi-component models), and `import` registers files *in place* (Path can be
+  outside ModelsDir). So `--purge` deletes a file only when no *other* installed
+  model references it (usedByOthers computed *before* removal, so a declined purge
+  is a full no-op) AND it's under ModelsDir; `gc` only touches unreferenced
+  top-level files in ModelsDir, never directories, never files elsewhere.
+- **Every destructive delete goes through `confirmFunc` (confirm.go).** `gc --force`
+  and `rm --purge` list the files + size, then call `confirm(summary)`. Production
+  wires `stdinConfirm` → `confirmDestructive`, which requires an interactive TTY
+  (`isInteractive`, a dependency-free `ModeCharDevice` check) and an exact `yes`
+  (`affirmative`). **A non-TTY (script / pipe / `go test`) can never confirm, so it
+  can never delete** — there is no `--yes` bypass by design. This exists because a
+  `gc --force` run against the wrong ModelsDir once deleted real models. Test the
+  delete logic via the `runGc` / `runRm` cores with an injected confirmer on a
+  throwaway dir; regression tests (`*_NoTTY_DeletesNothing`) assert the real command
+  paths delete nothing without a TTY. Still also pin `store.SetModelsDir(dir)` in
+  such tests — `cli.Run()` leaks the real config's models_dir into that global
+  (see `gcTestDirs`); the TTY gate is the second line of defense.
 - **Models are never bundled/redistributed.** Users download; the catalog only
   points at sources and surfaces license + content rating.
 - **NSFW is opt-in.** `questionable`/`explicit` entries need `--allow-nsfw` / config.

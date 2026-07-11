@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -740,50 +741,93 @@ func modelsRm(args []string) error {
 	if err != nil {
 		return err
 	}
+	return runRm(os.Stdout, reg, name, *purge, filepath.Clean(store.ModelsDir()), stdinConfirm)
+}
+
+// runRm is the testable core of `models rm`. Without purge it just forgets the
+// registry entry. With purge it works out which of the model's files it may
+// delete — excluding files another installed model still references and files
+// outside the managed dir — then asks confirm BEFORE changing anything, so a
+// declined `rm --purge` is a complete no-op (the entry stays too).
+func runRm(out io.Writer, reg *store.Registry, name string, purge bool, dir string, confirm confirmFunc) error {
 	m, ok := reg.Get(name)
 	if !ok {
 		return fmt.Errorf("models rm: %q is not installed", name)
+	}
+	if !purge {
+		reg.Remove(name)
+		if err := reg.Save(); err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "removed %q (the model file, if any, was left on disk; use --purge to delete)\n", name)
+		return nil
+	}
+	// Files still referenced by *other* installed models must be kept. Compute
+	// that set without removing this entry yet, so declining leaves everything.
+	usedByOthers := map[string]bool{}
+	for n, mm := range reg.Models {
+		if n == name {
+			continue
+		}
+		for _, f := range mm.Files() {
+			usedByOthers[f] = true
+		}
+	}
+	var deletable []string
+	sizes := map[string]int64{}
+	var total int64
+	for _, f := range m.Files() {
+		switch {
+		case usedByOthers[f]:
+			fmt.Fprintf(out, "  keep %s (shared with another installed model)\n", f)
+		case !underDir(f, dir):
+			fmt.Fprintf(out, "  keep %s (outside the managed models dir; delete it yourself if intended)\n", f)
+		default:
+			deletable = append(deletable, f)
+			if info, err := os.Stat(f); err == nil {
+				sizes[f] = info.Size()
+				total += info.Size()
+			}
+			fmt.Fprintf(out, "  delete %s (%s)\n", f, humanBytes(sizes[f]))
+		}
+	}
+	if len(deletable) == 0 {
+		// Nothing to purge; still drop the registry entry (non-destructive).
+		reg.Remove(name)
+		if err := reg.Save(); err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "removed %q (no owned files to delete)\n", name)
+		return nil
+	}
+	summary := fmt.Sprintf("models rm --purge: about to permanently delete %d file(s) totaling %s for %q.", len(deletable), humanBytes(total), name)
+	if !confirm(summary) {
+		fmt.Fprintf(out, "Aborted; %q is untouched (still installed, files kept).\n", name)
+		return nil
 	}
 	reg.Remove(name)
 	if err := reg.Save(); err != nil {
 		return err
 	}
-	if !*purge {
-		fmt.Printf("removed %q (the model file, if any, was left on disk; use --purge to delete)\n", name)
-		return nil
-	}
-	// Purge the removed model's files, but only ones it exclusively owned and that
-	// live under the managed models dir. ReferencedFiles is computed after the
-	// removal, so a file another installed model still needs stays in the set.
-	referenced := reg.ReferencedFiles()
-	dir := filepath.Clean(store.ModelsDir())
 	var freed int64
-	for _, f := range m.Files() {
-		switch {
-		case referenced[f]:
-			fmt.Printf("  kept %s (shared with another installed model)\n", f)
-		case !underDir(f, dir):
-			fmt.Printf("  kept %s (outside the managed models dir; delete it yourself if intended)\n", f)
-		default:
-			n, err := removeFile(f)
-			if err != nil {
-				fmt.Printf("  could not delete %s: %v\n", f, err)
-				continue
-			}
-			freed += n
-			fmt.Printf("  deleted %s (%s)\n", f, humanBytes(n))
+	for _, f := range deletable {
+		if _, err := removeFile(f); err != nil {
+			fmt.Fprintf(out, "  could not delete %s: %v\n", f, err)
+			continue
 		}
+		freed += sizes[f]
 	}
-	fmt.Printf("removed %q; freed %s\n", name, humanBytes(freed))
+	fmt.Fprintf(out, "removed %q; freed %s\n", name, humanBytes(freed))
 	return nil
 }
 
 // modelsGc reclaims orphaned files in the models dir — files no installed model
 // references (leftover .part downloads, files whose model was `rm`'d without
-// --purge, quantize/convert intermediates). Dry-run by default; --force deletes.
+// --purge, quantize/convert intermediates). Dry-run by default; `--force` enters
+// the delete flow, which ALWAYS asks for an interactive "yes" first.
 func modelsGc(args []string) error {
 	fs := flag.NewFlagSet("models gc", flag.ContinueOnError)
-	force := fs.Bool("force", false, "actually delete the orphaned files (default: only report what would be reclaimed)")
+	force := fs.Bool("force", false, "enter the delete flow (still asks for interactive confirmation); default: only report")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -791,17 +835,25 @@ func modelsGc(args []string) error {
 	if err != nil {
 		return err
 	}
+	return runGc(os.Stdout, reg, filepath.Clean(store.ModelsDir()), *force, stdinConfirm)
+}
+
+// runGc is the testable core of `models gc`: it lists the orphaned files in dir,
+// and when force is set, deletes them ONLY after confirm approves. Stdin/TTY is
+// kept out via the injected confirm, so a test can exercise the delete path on a
+// throwaway dir without ever risking a real terminal or real files.
+func runGc(out io.Writer, reg *store.Registry, dir string, force bool, confirm confirmFunc) error {
 	referenced := reg.ReferencedFiles()
-	dir := filepath.Clean(store.ModelsDir())
 	entries, err := os.ReadDir(dir)
 	if os.IsNotExist(err) {
-		fmt.Printf("models gc: no models dir yet (%s); nothing to reclaim\n", dir)
+		fmt.Fprintf(out, "models gc: no models dir yet (%s); nothing to reclaim\n", dir)
 		return nil
 	}
 	if err != nil {
 		return err
 	}
 	var orphans []string
+	sizes := map[string]int64{}
 	var total int64
 	for _, e := range entries {
 		if e.IsDir() {
@@ -816,34 +868,36 @@ func modelsGc(args []string) error {
 			continue
 		}
 		orphans = append(orphans, p)
+		sizes[p] = info.Size()
 		total += info.Size()
 	}
 	if len(orphans) == 0 {
-		fmt.Printf("models gc: no orphaned files in %s\n", dir)
+		fmt.Fprintf(out, "models gc: no orphaned files in %s\n", dir)
 		return nil
 	}
 	sort.Strings(orphans)
 	for _, p := range orphans {
-		info, err := os.Stat(p)
-		size := int64(0)
-		if err == nil {
-			size = info.Size()
-		}
-		if !*force {
-			fmt.Printf("  %s (%s)\n", p, humanBytes(size))
-			continue
-		}
-		if _, err := removeFile(p); err != nil {
-			fmt.Printf("  could not delete %s: %v\n", p, err)
-			continue
-		}
-		fmt.Printf("  deleted %s (%s)\n", p, humanBytes(size))
+		fmt.Fprintf(out, "  %s (%s)\n", p, humanBytes(sizes[p]))
 	}
-	if !*force {
-		fmt.Printf("models gc: %d orphaned file(s), %s reclaimable. Re-run with --force to delete.\n", len(orphans), humanBytes(total))
+	if !force {
+		fmt.Fprintf(out, "models gc: %d orphaned file(s), %s reclaimable. Re-run with --force to delete (you'll be asked to confirm).\n", len(orphans), humanBytes(total))
 		return nil
 	}
-	fmt.Printf("models gc: freed %s across %d file(s)\n", humanBytes(total), len(orphans))
+	summary := fmt.Sprintf("models gc: about to permanently delete %d file(s) totaling %s from %s.", len(orphans), humanBytes(total), dir)
+	if !confirm(summary) {
+		fmt.Fprintln(out, "Aborted; no files deleted.")
+		return nil
+	}
+	var freed int64
+	for _, p := range orphans {
+		if _, err := removeFile(p); err != nil {
+			fmt.Fprintf(out, "  could not delete %s: %v\n", p, err)
+			continue
+		}
+		freed += sizes[p]
+		fmt.Fprintf(out, "  deleted %s (%s)\n", p, humanBytes(sizes[p]))
+	}
+	fmt.Fprintf(out, "models gc: freed %s\n", humanBytes(freed))
 	return nil
 }
 
