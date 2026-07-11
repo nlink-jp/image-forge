@@ -364,11 +364,16 @@ func Default() []Entry {
 			Source: Source{HF: "comfyanonymous/ControlNet-v1-1_fp16_safetensors/control_v11p_sd15_canny_fp16.safetensors"},
 			Notes:  "Canny-edge ControlNet for SD1.5. `gen -m <sd15> --control-net controlnet-canny-sd15 --control edge.png` (add --canny to derive edges from a normal image).",
 		},
-		// NOTE: No SDXL ControlNet yet. sd.cpp's loader only understands the original
-		// (`control_model.` / `input_blocks`) format; every public SDXL canny ControlNet
-		// (xinsir, lllyasviel/sd_control_collection) ships in *diffusers* format
-		// (`down_blocks` / `controlnet_down_blocks`), which sd.cpp cannot convert — it
-		// fails with "failed to load model". Add one only after it renders (ADR-0006).
+		{
+			Name: "controlnet-canny-sdxl", Kind: KindControlNet, Arch: profile.ArchSDXL,
+			Rating: profile.RatingSafe, License: "Apache-2.0 (xinsir/controlnet-canny-sdxl-1.0)",
+			MinRAMGB: 16, RecRAMGB: 32,
+			// A diffusers-format ControlNet. sd.cpp converts its names on load and now
+			// sizes the ControlNet graph for SDXL's deep transformers (upstream #1752),
+			// so it loads directly — no pre-conversion needed.
+			Source: Source{HF: "xinsir/controlnet-canny-sdxl-1.0/diffusion_pytorch_model.safetensors"},
+			Notes:  "Canny-edge ControlNet for SDXL (xinsir). `gen -m <sdxl> --control-net controlnet-canny-sdxl --control edge.png` (add --canny to derive edges).",
+		},
 
 		// LoRA adapters (ADR-0006). Bound to a base architecture; applied per
 		// render with `gen --lora <name>:<weight>` (no model reload).

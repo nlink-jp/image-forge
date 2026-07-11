@@ -4,6 +4,26 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.17.0] - unreleased
+
+### Added
+- **SDXL ControlNet now works** — catalog entry **`controlnet-canny-sdxl`** (xinsir,
+  Apache-2.0). The vendored **stable-diffusion.cpp was updated** to include upstream
+  [#1752](https://github.com/leejet/stable-diffusion.cpp/pull/1752), which converts
+  diffusers-format ControlNet tensor names on load and sizes the ControlNet graph for
+  SDXL's deep transformers — so the diffusers file loads **directly, no pre-conversion**.
+  Verified end-to-end (an SDXL base + canny control preserves the control image's
+  geometry under a completely different prompt). This supersedes the v0.16.0 "No SDXL
+  ControlNet yet" note.
+
+### Fixed
+- **Pulled model files are named after the registry name.** Previously a pull saved the
+  file under its upstream basename, so models that share a generic name — the two LCM
+  LoRAs (`pytorch_lora_weights.safetensors`) or a diffusers ControlNet
+  (`diffusion_pytorch_model.safetensors`) — collided in the models dir and silently
+  reused each other's bytes. Now each pull writes `<registry-name><ext>`. Existing
+  installs keep their recorded paths; only new pulls are affected.
+
 ## [0.16.0] - 2026-07-11
 
 ### Added

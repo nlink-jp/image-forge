@@ -530,7 +530,11 @@ func modelsPull(args []string) error {
 	if err := os.MkdirAll(store.ModelsDir(), 0o755); err != nil {
 		return err
 	}
-	dest := filepath.Join(store.ModelsDir(), filename)
+	// Store under the registry name (keeping the extension), so two models that share
+	// a generic upstream basename — e.g. diffusion_pytorch_model.safetensors (xinsir
+	// ControlNet) or pytorch_lora_weights.safetensors (the LCM LoRAs) — don't collide
+	// in the models dir and silently reuse each other's bytes.
+	dest := filepath.Join(store.ModelsDir(), regName+filepath.Ext(filename))
 	if haveFile(dest) {
 		// Already downloaded (possibly under another registered name) — reuse it
 		// instead of re-fetching several GB.

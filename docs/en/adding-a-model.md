@@ -166,21 +166,20 @@ Start from the architecture defaults and override only the gotchas.
   `attribution` in `models list --json` so a front-end can show and copy it.
 
 - **ControlNet entries** use `Kind: catalog.KindControlNet` and likewise **must set
-  `Arch`**. `controlnet-canny-sd15` ships (verified with `sd15-emaonly`). Changing
-  the ControlNet **reloads the base model** (it is part of the engine's reload key),
-  unlike LoRAs which apply per render.
+  `Arch`**. `controlnet-canny-sd15` (SD1.5) and `controlnet-canny-sdxl` (SDXL) ship.
+  Changing the ControlNet **reloads the base model** (it is part of the engine's
+  reload key), unlike LoRAs which apply per render.
 
-  **sd.cpp only loads the original ControlNet format** (`control_model.` /
-  `input_blocks.` keys, as in the comfyanonymous SD1.5 repackages). It has **no
-  diffusers→ControlNet conversion**, so a **diffusers-format** file (keys under
-  `down_blocks` / `controlnet_down_blocks` / `controlnet_cond_embedding`) fails with
-  "failed to load model". This is why **no SDXL ControlNet ships** — every public
-  SDXL canny ControlNet (xinsir, lllyasviel/sd_control_collection) is diffusers-only.
-  Screen a candidate before adding it (the safetensors header — you can fetch it with
-  an HTTP `Range` request, no full download): it must have `control_model.` /
-  `input_blocks.` keys, not `down_blocks`. Then render (`gen --control-net <name>
-  --control <img> --canny`) and confirm the output follows the control edges. Until
-  one renders, register a local file with `models import <path> --kind controlnet`.
+  sd.cpp loads **both** the original ControlNet format (`control_model.` /
+  `input_blocks.` keys, as in the comfyanonymous SD1.5 repackages) **and
+  diffusers-format SDXL ControlNets** (keys under `down_blocks` /
+  `controlnet_down_blocks` / `controlnet_cond_embedding`) — it converts the names on
+  load and sizes the ControlNet graph for SDXL's deep transformers (upstream #1752,
+  in the vendored sd.cpp). So a diffusers SDXL ControlNet (xinsir,
+  lllyasviel/sd_control_collection) can be listed with its `HF` source directly, no
+  pre-conversion. **Still render it before adding** (`gen --control-net <name>
+  --control <img> --canny`) and confirm the output follows the control edges — the
+  "don't ship what you haven't rendered" rule stands.
 - **Multi-component** (FLUX / SD3.5 / Z-Image / **Anima**) — leave `HF`/`Civitai`
   empty and set `DiffusionModel` + the encoders (`ClipL` / `ClipG` / `T5XXL` / `LLM`) + `VAE`.
   A "checkpoint" on Civitai is often the DiT **only**: inspect the safetensors header

@@ -130,32 +130,34 @@ func TestUpscalerEntries(t *testing.T) {
 }
 
 func TestControlNetEntries(t *testing.T) {
-	// The verified SD1.5 canny ControlNet must be present, marked as controlnet
-	// kind, arch-bound (unlike upscalers), and carry no diffusion VAE/prediction.
-	// (No SDXL ControlNet ships: sd.cpp cannot load diffusers-format SDXL weights.)
-	e, ok := Find("controlnet-canny-sd15")
-	if !ok {
-		t.Fatal("expected controlnet-canny-sd15 in the catalog")
+	// The verified canny ControlNets must be present, marked as controlnet kind,
+	// arch-bound (unlike upscalers), and carry no diffusion VAE/prediction. Both
+	// SD1.5 and SDXL now render (SDXL loads a diffusers-format file directly since
+	// the sd.cpp update — upstream #1752).
+	want := map[string]profile.Arch{
+		"controlnet-canny-sd15": profile.ArchSD15,
+		"controlnet-canny-sdxl": profile.ArchSDXL,
 	}
-	if !e.IsControlNet() {
-		t.Errorf("controlnet-canny-sd15: IsControlNet() should be true (kind=%q)", e.Kind)
-	}
-	if e.Arch != profile.ArchSD15 {
-		t.Errorf("controlnet-canny-sd15: arch = %q, want SD15 (ControlNet is arch-bound)", e.Arch)
-	}
-	if e.Source.HF == "" {
-		t.Error("controlnet-canny-sd15: must have an HF source")
-	}
-	if e.Source.VAE != "" || e.Prediction != "" {
-		t.Error("controlnet-canny-sd15: a ControlNet must not carry a VAE or prediction type")
-	}
-	if e.License == "" {
-		t.Error("controlnet-canny-sd15: must surface a license")
-	}
-	// No SDXL ControlNet until one actually renders in sd.cpp.
-	for _, cn := range Default() {
-		if cn.IsControlNet() && cn.Arch == profile.ArchSDXL {
-			t.Errorf("%s: an SDXL ControlNet was added — verify it renders in sd.cpp first (diffusers format does not load)", cn.Name)
+	for name, arch := range want {
+		e, ok := Find(name)
+		if !ok {
+			t.Errorf("expected %s in the catalog", name)
+			continue
+		}
+		if !e.IsControlNet() {
+			t.Errorf("%s: IsControlNet() should be true (kind=%q)", name, e.Kind)
+		}
+		if e.Arch != arch {
+			t.Errorf("%s: arch = %q, want %q (ControlNet is arch-bound)", name, e.Arch, arch)
+		}
+		if e.Source.HF == "" {
+			t.Errorf("%s: must have an HF source", name)
+		}
+		if e.Source.VAE != "" || e.Prediction != "" {
+			t.Errorf("%s: a ControlNet must not carry a VAE or prediction type", name)
+		}
+		if e.License == "" {
+			t.Errorf("%s: must surface a license", name)
 		}
 	}
 }

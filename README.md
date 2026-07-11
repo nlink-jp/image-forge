@@ -135,15 +135,16 @@ image-forge models list --kind lora --json     # what a front-end enumerates
 image-forge gen -p "a red apple" -m animagine-xl-4 \
   --lora lcm-lora-sdxl:1.0 --steps 6 --cfg 1.5 --sampler lcm
 
-image-forge models pull controlnet-canny-sd15  # a ControlNet (SD1.5)
-image-forge gen -p "a house at night, snow" -m sd15-emaonly \
-  --control-net controlnet-canny-sd15 --control photo.png --canny
+image-forge models pull controlnet-canny-sdxl  # a ControlNet (SDXL)
+image-forge gen -p "a house at night, snow" -m juggernaut-xl-v9 \
+  --control-net controlnet-canny-sdxl --control photo.png --canny
 ```
 
-**ControlNet** ships only for **SD1.5** (`controlnet-canny-sd15`): sd.cpp loads
-only the original ControlNet format, and every public SDXL ControlNet is
-diffusers-format, which it can't load. Any format works via `models import
-<path> --kind controlnet` once you've confirmed it renders.
+**ControlNet** ships for both **SD1.5** (`controlnet-canny-sd15`) and **SDXL**
+(`controlnet-canny-sdxl`). The engine loads both the original ControlNet format
+and **diffusers-format SDXL ControlNets** (converting the names on load), so most
+canny/depth/etc. ControlNets work via `models import <path> --kind controlnet`
+once you've confirmed they render.
 
 Many LoRAs need **trigger words** in the prompt to take effect — without them the
 LoRA loads and silently does nothing. They are recorded in the catalog, kept on
