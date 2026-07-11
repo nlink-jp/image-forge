@@ -39,6 +39,19 @@ func buildImageMetadata(req engine.Request, modelName, prediction string, embed 
 	}
 }
 
+// metadataBuilder returns the per-image metadata function the engine calls once
+// per output image. A batch of N produces seeds base..base+N-1 (sd.cpp uses
+// base+b for the b-th image), so each image must record *its own* seed — this
+// rebuilds the metadata with the given seed rather than baking in one seed for
+// the whole batch. Returns nil chunks when embed is false.
+func metadataBuilder(base engine.Request, modelName, prediction string, embed bool) func(seed int64) []engine.PNGText {
+	return func(seed int64) []engine.PNGText {
+		m := base
+		m.Seed = seed
+		return buildImageMetadata(m, modelName, prediction, embed)
+	}
+}
+
 // a1111Parameters renders the AUTOMATIC1111 "parameters" string: the prompt, an
 // optional negative-prompt line, then a comma-joined line of key:value settings.
 func a1111Parameters(req engine.Request, modelName string) string {

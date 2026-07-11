@@ -127,6 +127,9 @@ func runGen(args []string) error {
 	req.ControlStrength = *ctrlStr
 	req.Canny = *canny
 	req.Scheduler = *scheduler
+	if err := validateSamplerScheduler(req.Sampler, req.Scheduler); err != nil {
+		return fmt.Errorf("gen: %w", err)
+	}
 
 	// hires.fix: --hires auto|on|off drives whether it runs; the fine-grained
 	// flags override the profile / opinionated defaults only when set.
@@ -193,7 +196,8 @@ func runGen(args []string) error {
 			r.Seed = *seed + int64(i) // sequential variations for a fixed seed
 		}
 		r.Output = seededOutput(outPath, r.Seed, n)
-		r.Metadata = buildImageMetadata(r, metaModelName, pred, embed)
+		// Per-image metadata so a --batch records each image's own seed (base+b).
+		r.Metadata = metadataBuilder(r, metaModelName, pred, embed)
 
 		events := make(chan engine.Event, 8)
 		errc := make(chan error, 1)

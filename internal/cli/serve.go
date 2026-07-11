@@ -6,6 +6,8 @@ import (
 	"errors"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/nlink-jp/image-forge/internal/engine"
 )
@@ -70,6 +72,14 @@ func runServe(args []string) error {
 	enc := json.NewEncoder(os.Stdout)
 	emit := func(ev engine.Event) { _ = enc.Encode(ev) }
 
+	// SIGINT/SIGTERM cancels the in-flight render (the engine honors ctx) and then
+	// serve exits, rather than the render running to completion or dying mid-op.
+	// Closing stdin on shutdown also unblocks a Decode that is idle between
+	// requests, so a single signal exits promptly.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	go func() { <-ctx.Done(); _ = os.Stdin.Close() }()
+
 	re := NewResidentEngine()
 	defer re.Close()
 
@@ -77,8 +87,8 @@ func runServe(args []string) error {
 	for {
 		var r serveRequest
 		if err := dec.Decode(&r); err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
+			if errors.Is(err, io.EOF) || ctx.Err() != nil {
+				return nil // EOF, or shutdown (the signal handler closed stdin)
 			}
 			emit(engine.Event{Kind: "error", Message: "bad request: " + err.Error()})
 			return err // the JSON stream position is unreliable after a decode error
@@ -96,12 +106,15 @@ func runServe(args []string) error {
 			}
 			close(done)
 		}()
-		_, _, rerr := re.Render(context.Background(), r.renderRequest(), events)
+		_, _, rerr := re.Render(ctx, r.renderRequest(), events)
 		if rerr != nil {
 			// Render may have already emitted events; surface the failure too.
 			events <- engine.Event{Kind: "error", Message: rerr.Error()}
 		}
 		close(events)
 		<-done
+		if ctx.Err() != nil {
+			return nil // shutdown signal: exit cleanly after the current render aborts
+		}
 	}
 }

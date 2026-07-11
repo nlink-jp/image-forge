@@ -4,6 +4,26 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.17.1] - unreleased
+
+### Fixed
+- **`--batch N` now records each image's real seed** (#1). sd.cpp uses `base+b` for
+  the b-th batch image, but image-forge reported the base seed for all of them and
+  reused one metadata blob — so images 2..N carried the wrong seed in the `done`
+  event and the PNG metadata and couldn't be reproduced. Metadata is now built per
+  image with its own seed (`base+i`), across `gen --batch`, `serve`, and `mcp`.
+- **Cancelling a render actually stops it** (#2). `Render` ignored its `ctx`, so an
+  in-flight `generate_image` ran to completion; only queued MCP jobs were dropped.
+  A watcher now calls sd.cpp's `sd_cancel_generation` when `ctx` is cancelled, so
+  the render aborts. `serve` gained SIGINT/SIGTERM handling (aborts the in-flight
+  render, then exits), and the MCP job manager's documented cancel-on-shutdown is
+  now real. Verified: a SIGINT mid-render exits in ~5 s instead of running the full
+  render, with no output written.
+- **Unknown sampler / scheduler names are rejected** (#3). A typo like
+  `--sampler eluer_a` used to hit sd.cpp's out-of-range enum and silently produce
+  bad output; it now errors with the full list of valid names (reflected from
+  sd.cpp, so it never drifts). Applies to `gen`, `serve`, and `mcp`.
+
 ## [0.17.0] - 2026-07-11
 
 ### Added

@@ -321,24 +321,87 @@ func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event
 	C.ifg_set_progress(unsafe.Pointer(h))
 	defer C.ifg_silence_progress() // detach goProgress (LIFO: before h.Delete) and stay silent
 
+	// Honor ctx: generate_image is a single blocking C call, so we wire ctx
+	// cancellation into sd.cpp's real cancel (a flag the sampler checks) from a
+	// watcher goroutine — otherwise an in-flight render runs to completion no
+	// matter the ctx. Reset first, in case a prior render left a stale request.
+	C.sd_cancel_generation(s.ctx, C.SD_CANCEL_RESET)
+	watchDone := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			C.sd_cancel_generation(s.ctx, C.SD_CANCEL_ALL)
+		case <-watchDone:
+		}
+	}()
+
 	var imgs *C.sd_image_t
 	var n C.int
-	if !bool(C.generate_image(s.ctx, &g, &imgs, &n)) || imgs == nil || n == 0 {
+	ok := bool(C.generate_image(s.ctx, &g, &imgs, &n))
+	close(watchDone) // stop the watcher before reporting the result
+	if err := ctx.Err(); err != nil {
+		return err // cancelled: report context.Canceled, not a generic failure
+	}
+	if !ok || imgs == nil || n == 0 {
 		return errors.New("sdcpp: generation failed")
 	}
 	defer C.free(unsafe.Pointer(imgs))
 
 	list := unsafe.Slice(imgs, int(n))
+	base := int64(g.seed) // sd.cpp uses request.seed + b for the b-th batch image
 	for i := 0; i < int(n); i++ {
+		seed := base + int64(i)
 		path := outputPath(req.Output, i, int(n))
-		err := saveImage(list[i], path, req.Metadata)
+		var meta []PNGText
+		if req.Metadata != nil {
+			meta = req.Metadata(seed) // per-image metadata records this image's seed
+		}
+		err := saveImage(list[i], path, meta)
 		C.free(unsafe.Pointer(list[i].data))
 		if err != nil {
 			return err
 		}
-		events <- Event{Kind: "done", Progress: 1, Output: path, Seed: req.Seed}
+		events <- Event{Kind: "done", Progress: 1, Output: path, Seed: seed}
 	}
 	return nil
+}
+
+// Samplers returns the sampler names sd.cpp accepts; Schedulers the schedulers.
+// Reflected from sd.cpp (not hard-coded) so they never drift from the runtime.
+// Used for validation error messages and CLI help.
+func Samplers() []string {
+	n := int(C.SAMPLE_METHOD_COUNT)
+	out := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		out = append(out, C.GoString(C.sd_sample_method_name(C.enum_sample_method_t(i))))
+	}
+	return out
+}
+
+// Schedulers returns the scheduler names sd.cpp accepts (plus the "normal" alias
+// for "discrete", which str_to_scheduler also accepts but sd_scheduler_name omits).
+func Schedulers() []string {
+	n := int(C.SCHEDULER_COUNT)
+	out := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		out = append(out, C.GoString(C.sd_scheduler_name(C.enum_scheduler_t(i))))
+	}
+	return out
+}
+
+// ValidSampler / ValidScheduler mirror sd.cpp's own str_to_* acceptance exactly
+// (an unknown name returns the out-of-range COUNT sentinel), so a typo is caught
+// with a clear error instead of silently producing undefined output.
+func ValidSampler(name string) bool {
+	cs := C.CString(name)
+	defer C.free(unsafe.Pointer(cs))
+	return C.str_to_sample_method(cs) != C.SAMPLE_METHOD_COUNT
+}
+
+func ValidScheduler(name string) bool {
+	cs := C.CString(name)
+	defer C.free(unsafe.Pointer(cs))
+	return C.str_to_scheduler(cs) != C.SCHEDULER_COUNT
 }
 
 // hiresUpscalerEnum maps image-forge's lowercase upscaler names to the sd.cpp

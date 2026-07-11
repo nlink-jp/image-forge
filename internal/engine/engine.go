@@ -66,10 +66,13 @@ type Request struct {
 	HiresSteps    int
 	HiresModel    string // ESRGAN model path, only used when HiresUpscaler == "model"
 
-	// Metadata is written into each generated PNG as text chunks (tEXt/iTXt)
-	// immediately after IHDR. Built by the CLI (which knows the friendly model
-	// name, prediction type, and binary version); empty => nothing embedded.
-	Metadata []PNGText
+	// Metadata builds the PNG text chunks (tEXt/iTXt) to embed in the generated
+	// image with the given seed, written immediately after IHDR. Built by the CLI
+	// (which knows the friendly model name, prediction type, and binary version).
+	// It is called once per output image — a batch of N produces seeds
+	// base..base+N-1 (sd.cpp uses request.seed + b for the b-th image), so each
+	// image records its *own* seed. nil, or a nil return, embeds nothing.
+	Metadata func(seed int64) []PNGText
 
 	Output string // output path; index is inserted before the extension for batches
 }

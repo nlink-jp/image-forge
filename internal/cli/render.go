@@ -94,6 +94,9 @@ func buildRender(r RenderRequest) (engine.Request, engine.OpenParams, string, in
 	if r.Scheduler != nil {
 		req.Scheduler = *r.Scheduler
 	}
+	if err := validateSamplerScheduler(req.Sampler, req.Scheduler); err != nil {
+		return engine.Request{}, engine.OpenParams{}, "", 0, err
+	}
 	req.Mask = r.Mask
 	req.ControlImage = r.Control
 	req.Canny = r.Canny
@@ -125,7 +128,7 @@ func buildRender(r RenderRequest) (engine.Request, engine.OpenParams, string, in
 	// Embed generation metadata into the PNG unless config [metadata] embed =
 	// false. serve/mcp have no per-call opt-out flag; the config governs.
 	if conf.EmbedMetadata() {
-		req.Metadata = buildImageMetadata(req, modelDisplayName(r.Model, r.ModelPath), pred, true)
+		req.Metadata = metadataBuilder(req, modelDisplayName(r.Model, r.ModelPath), pred, true)
 	}
 
 	op := engine.OpenParams{

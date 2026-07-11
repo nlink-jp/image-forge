@@ -27,6 +27,38 @@ func TestBuildImageMetadata_EmbedFalseNil(t *testing.T) {
 	}
 }
 
+// metadataBuilder is what the engine calls per output image so a --batch records
+// each image's own seed (sd.cpp uses base+b). Each call must re-embed the given
+// seed, not the base — this guards the reproducibility bug (#1).
+func TestMetadataBuilderRecordsPerImageSeed(t *testing.T) {
+	base := engine.Request{Prompt: "x", Seed: 100, Steps: 20, CFG: 7, Width: 512, Height: 512, Sampler: "euler"}
+	build := metadataBuilder(base, "m", "", true)
+	for _, seed := range []int64{100, 101, 142} {
+		chunks := build(seed)
+		var got int64 = -1
+		for _, c := range chunks {
+			if c.Keyword == "image-forge" {
+				var meta map[string]any
+				if err := json.Unmarshal([]byte(c.Text), &meta); err != nil {
+					t.Fatalf("bad json: %v", err)
+				}
+				got = int64(meta["seed"].(float64))
+			}
+		}
+		if got != seed {
+			t.Errorf("build(%d) recorded seed %d, want %d", seed, got, seed)
+		}
+	}
+	// The base request must be unchanged (the builder copies it per call).
+	if base.Seed != 100 {
+		t.Errorf("builder mutated the base request seed: %d", base.Seed)
+	}
+	// embed=false yields no chunks regardless of seed.
+	if got := metadataBuilder(base, "m", "", false)(999); got != nil {
+		t.Errorf("embed=false builder should return nil, got %v", got)
+	}
+}
+
 func TestBuildImageMetadata_Txt2Img(t *testing.T) {
 	withVersion(t, "v9.9.9")
 	req := engine.Request{
