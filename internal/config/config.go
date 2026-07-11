@@ -34,6 +34,13 @@ type PerformanceConfig struct {
 	// (numerically-equivalent attention, not bit-identical). Off by default keeps
 	// same-seed outputs stable; enable it for large / hires work.
 	FlashAttn *bool `toml:"flash_attn"`
+
+	// VAETiling opts into tiled VAE decoding (default off). It decodes the final
+	// latent in overlapping 256px tiles instead of one pass, capping VAE-decode
+	// memory so high-resolution / hires renders that would OOM the VAE on the 16 GB
+	// baseline can finish. Off by default because it costs a little speed and
+	// introduces near-invisible tile seams; native-resolution output is unaffected.
+	VAETiling *bool `toml:"vae_tiling"`
 }
 
 // FlashAttn reports whether flash attention should be enabled at model load.
@@ -44,6 +51,16 @@ func (c Config) FlashAttn() bool {
 		return false
 	}
 	return *c.Performance.FlashAttn
+}
+
+// VAETiling reports whether tiled VAE decoding should be enabled. Defaults to
+// false (opt-in); `[performance] vae_tiling = true` enables it, and
+// `gen --vae-tiling` composes on top for one invocation.
+func (c Config) VAETiling() bool {
+	if c.Performance.VAETiling == nil {
+		return false
+	}
+	return *c.Performance.VAETiling
 }
 
 // MetadataConfig controls embedding generation metadata (prompt/params/model)

@@ -53,7 +53,8 @@ internal/catalog/           curated model catalog (kind, content_rating, license
 internal/store/             installed-model registry (JSON) at $IMAGE_FORGE_HOME/registry.json;
                             ModelsDir relocatable via config models_dir / $IMAGE_FORGE_MODELS_DIR
                             (store.SetModelsDir, set from config in cli.Run — store stays config-free)
-internal/config/            optional config.toml (default_model/output/allow_nsfw/tokens; BurntSushi/toml)
+internal/config/            optional config.toml (default_model/output/allow_nsfw/tokens/
+                            [performance] flash_attn + vae_tiling; BurntSushi/toml)
 internal/download/          HF (hf:owner/repo/file) / URL fetch with progress; token from caller
 internal/engine/            Session interface (Open loads once, Render renders many); output.go
                             (pure, tested); pngmeta.go (pure: tEXt/iTXt writer for embedded
@@ -106,6 +107,14 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   `"auto"`/`[upscaler] default_model` pick a downloaded ESRGAN if present.
   `str_to_sd_hires_upscaler` is case-sensitive on display names — map lowercase
   names to the enum directly (see `hiresUpscalerEnum`).
+- **Performance flags are opt-in (`[performance]`).** `flash_attn` (`OpenParams.FlashAttn`,
+  set at load) and `vae_tiling` (`Request.VAETiling` → `g.vae_tiling_params.enabled`, set
+  per-render) both default OFF because they change same-seed output slightly; each has a
+  `gen --flash-attn` / `--vae-tiling` override and is also honored by `serve`/`mcp` via config.
+  `vae_tiling` is the escape hatch for high-res VAE-decode OOM on 16 GB (sd.cpp falls back to a
+  256px tile when `tile_size`/`rel_size` are 0). sd.cpp also has an `auto_fit` ctx mode that
+  auto-tiles on actual OOM, but it bundles discrete-GPU param-offload logic and logs a scary
+  "no usable GPU devices" on Metal, so we don't enable it.
 - **Models are never bundled/redistributed.** Users download; the catalog only
   points at sources and surfaces license + content rating.
 - **NSFW is opt-in.** `questionable`/`explicit` entries need `--allow-nsfw` / config.

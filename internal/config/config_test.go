@@ -114,6 +114,24 @@ func TestFlashAttn_DefaultFalseExplicitTrue(t *testing.T) {
 	}
 }
 
+func TestVAETiling_DefaultFalseExplicitTrue(t *testing.T) {
+	if (Config{}).VAETiling() {
+		t.Error("VAETiling should default to false (opt-in) when unset")
+	}
+	p := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(p, []byte("[performance]\nvae_tiling = true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("IMAGE_FORGE_CONFIG", p)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.VAETiling() {
+		t.Error("VAETiling should be true with [performance] vae_tiling = true")
+	}
+}
+
 func TestEmbedMetadata_ExplicitFalse(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "config.toml")
 	if err := os.WriteFile(p, []byte("[metadata]\nembed = false\n"), 0o644); err != nil {

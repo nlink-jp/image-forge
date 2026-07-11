@@ -14,6 +14,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
   ~120 MB less peak RSS at 1536²), and it changes outputs slightly
   (numerically-equivalent attention, not bit-identical) — so it is opt-in to keep
   same-seed outputs stable. Enable it for large / hires work.
+- **Tiled VAE decoding (opt-in)** — `[performance] vae_tiling = true` (or `gen
+  --vae-tiling`) decodes the final latent in overlapping 256px tiles instead of one
+  pass (#6). **Off by default.** It caps VAE-decode memory so high-resolution /
+  hires renders that would otherwise OOM the VAE — the usual failure point on the
+  16 GB baseline — can finish. It costs a little speed and adds near-invisible tile
+  seams (0.5 overlap), so it is opt-in; native-resolution output is unaffected while
+  it stays off. Turn it on if a high-res render dies during VAE decode. Wired
+  through `gen`, `serve`, and `mcp`.
 
 ## [0.17.1] - 2026-07-11
 

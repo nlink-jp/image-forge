@@ -275,6 +275,12 @@ Downloads come from Hugging Face / Civitai / direct URLs. Provide tokens via
   --flash-attn`). On Apple Silicon it is neutral at native resolution and a modest
   win only on **large / hires** renders; it changes outputs slightly, so it is off
   by default to keep same-seed outputs stable.
+- **Tiled VAE decoding** (opt-in): `[performance] vae_tiling = true` (or `gen
+  --vae-tiling`). Decodes the final latent in overlapping 256px tiles, capping
+  VAE-decode memory so **high-resolution / hires** renders that would otherwise run
+  out of memory during VAE decode — the usual failure point on 16 GB — can finish.
+  Costs a little speed and adds near-invisible seams, so it is off by default; turn
+  it on if a high-res render dies at the decode step.
 - **Tokens**: `HF_TOKEN` (gated HF repos), `CIVITAI_TOKEN` (Civitai downloads).
   Environment variables take precedence over the config file. **Never commit tokens.**
 

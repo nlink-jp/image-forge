@@ -232,6 +232,14 @@ func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event
 	}
 	g.batch_count = C.int(batch)
 
+	// VAE tiling: decode the final latent in overlapping tiles to cap VAE-decode
+	// memory at high resolution. sd_img_gen_params_init leaves tile_size/rel_size
+	// at 0 (sd.cpp then falls back to its built-in tile size) and target_overlap at
+	// 0.5, so flipping `enabled` is enough.
+	if req.VAETiling {
+		g.vae_tiling_params.enabled = C.bool(true)
+	}
+
 	// hires.fix: start from sd.cpp's documented defaults, then enable + override
 	// only when the request asks for it. sd.cpp derives the target size from
 	// scale when target_width/height are 0, so setting scale is sufficient.

@@ -50,6 +50,7 @@ func runGen(args []string) error {
 		hiresModel    = fs.String("hires-model", "", "ESRGAN model (installed upscaler name or path) for --hires-upscaler model")
 
 		flashAttn = fs.Bool("flash-attn", false, "flash attention: faster/leaner on large & hires renders (default off; also config [performance] flash_attn)")
+		vaeTiling = fs.Bool("vae-tiling", false, "tiled VAE decode: caps decode memory so high-res/hires renders don't OOM the VAE (default off; also config [performance] vae_tiling)")
 
 		noMetadata = fs.Bool("no-metadata", false, "do not embed generation metadata (prompt/params/model) into the PNG")
 	)
@@ -173,6 +174,12 @@ func runGen(args []string) error {
 	flashOn := conf.FlashAttn()
 	if set["flash-attn"] {
 		flashOn = *flashAttn
+	}
+
+	// VAE tiling defaults from config; --vae-tiling overrides for this run.
+	req.VAETiling = conf.VAETiling()
+	if set["vae-tiling"] {
+		req.VAETiling = *vaeTiling
 	}
 
 	sess, err := engine.Open(engine.OpenParams{

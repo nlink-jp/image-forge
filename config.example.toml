@@ -53,5 +53,13 @@ upscaler = "auto"
 # memory), and it changes outputs slightly (numerically equivalent, not
 # bit-identical). Off by default so same-seed outputs stay stable; enable it for
 # large / hires work. `gen --flash-attn` overrides per run.
+#
+# VAE tiling (opt-in). Decodes the final latent in overlapping 256px tiles
+# instead of one pass, capping VAE-decode memory so high-resolution / hires
+# renders that would otherwise OOM the VAE (common on 16 GB machines) can finish.
+# Costs a little speed and adds near-invisible seams at native resolution, so
+# it's off by default. Turn it on if a high-res render dies during VAE decode.
+# `gen --vae-tiling` overrides per run.
 [performance]
 # flash_attn = true
+# vae_tiling = true

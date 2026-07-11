@@ -56,6 +56,13 @@ type Request struct {
 	ControlStrength float64 // ControlNet strength
 	Canny           bool    // apply canny edge preprocessing to the control image
 
+	// VAETiling decodes the final latent in overlapping tiles instead of in one
+	// pass, trading a little speed (and near-invisible seams at the default 0.5
+	// overlap) for a large drop in VAE-decode memory. It only matters at high
+	// resolution / hires, where a full decode can OOM the 16 GB baseline. Off by
+	// default (opt-in); native-resolution output is unaffected when it stays off.
+	VAETiling bool
+
 	// hires.fix: a second img2img pass at higher resolution that adds detail.
 	// Disabled unless Hires is true. HiresScale/Denoise/Steps <= 0 leave sd.cpp's
 	// (or the caller's) default; HiresUpscaler "" defaults to "latent".

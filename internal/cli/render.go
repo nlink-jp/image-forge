@@ -131,6 +131,9 @@ func buildRender(r RenderRequest) (engine.Request, engine.OpenParams, string, in
 		req.Metadata = metadataBuilder(req, modelDisplayName(r.Model, r.ModelPath), pred, true)
 	}
 
+	// VAE tiling: serve/mcp have no per-call flag, so the config governs.
+	req.VAETiling = conf.VAETiling()
+
 	op := engine.OpenParams{
 		ModelPath:      res.Path,
 		DiffusionModel: res.Components.DiffusionModel,
