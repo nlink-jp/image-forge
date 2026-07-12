@@ -274,3 +274,51 @@ func TestCivitaiEntriesUsePullableVersionIDs(t *testing.T) {
 		}
 	}
 }
+
+func TestAnimaCivitaiComponentEntries(t *testing.T) {
+	// Anima "base" checkpoints sourced from Civitai: the DiT component is pulled
+	// via a `civitai:<versionId>` ref (a Civitai component inside a multi-component
+	// entry — resolved through download.CivitaiResolve at pull time), while the
+	// encoder and VAE reuse the shared HF-hosted Anima files. Unlike anima-turbo
+	// they are NOT guidance-distilled, so each carries a CFG/step override.
+	want := map[string]string{
+		"anima-yume":    "civitai:3065644",
+		"nova-anime-am": "civitai:3086321",
+	}
+	for name, dit := range want {
+		e, ok := Find(name)
+		if !ok {
+			t.Fatalf("expected to find %q", name)
+		}
+		if e.Arch != profile.ArchAnima {
+			t.Errorf("%s: arch = %q, want anima", name, e.Arch)
+		}
+		if !e.IsMultiComponent() {
+			t.Errorf("%s: should be multi-component (has a DiffusionModel)", name)
+		}
+		if e.Source.DiffusionModel != dit {
+			t.Errorf("%s: DiffusionModel = %q, want %q", name, e.Source.DiffusionModel, dit)
+		}
+		// The shared Anima encoder + VAE must be attached, or the DiT won't load.
+		if e.Source.LLM == "" || e.Source.VAE == "" {
+			t.Errorf("%s: anima DiT needs the shared Qwen3 LLM and Qwen-Image VAE (LLM=%q VAE=%q)", name, e.Source.LLM, e.Source.VAE)
+		}
+		// Non-distilled: the arch turbo defaults (CFG 1 / 10 steps) render
+		// incoherently, so the entry must override them.
+		p := e.Profile()
+		if p.CFG <= 1 {
+			t.Errorf("%s: CFG override = %v, want > 1 (not distilled like anima-turbo)", name, p.CFG)
+		}
+		if p.Steps < 20 {
+			t.Errorf("%s: Steps override = %d, want >= 20 (not distilled)", name, p.Steps)
+		}
+	}
+
+	// anima-yume is questionable, nova-anime-am is explicit — both need the opt-in.
+	for _, name := range []string{"anima-yume", "nova-anime-am"} {
+		e, _ := Find(name)
+		if !e.NeedsOptIn() {
+			t.Errorf("%s: NSFW-capable Civitai anime model should require the opt-in", name)
+		}
+	}
+}

@@ -7,6 +7,17 @@ project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Multi-component entries can source a component from Civitai** — a component
+  field (typically `DiffusionModel`) now accepts a `civitai:<versionId>` ref,
+  resolved via the Civitai API at pull time (needs `CIVITAI_TOKEN`) while the other
+  components stay Hugging Face refs. This pairs a Civitai-hosted DiT with shared
+  HF-hosted encoders/VAE.
+- **Catalog: two Anima-based anime checkpoints** — `anima-yume` (AnimaYume,
+  questionable) and `nova-anime-am` (Nova Anime AM, explicit). Both are Civitai
+  DiTs paired with the shared `circlestone-labs/Anima` Qwen3-0.6B encoder + Qwen-Image
+  VAE (need `CIVITAI_TOKEN`). Unlike `anima-turbo` these "base" checkpoints are NOT
+  guidance-distilled, so they set a CFG 5 / 24-step override (the arch turbo default of
+  CFG 1 / 10 steps renders washed-out). Verified with a real pull + render.
 - **Catalog: two Illustrious-based SDXL checkpoints** — `akium-ijin` (Akium IJIN,
   anime / 2.5D semi-real, questionable) and `akium-lumen` (Akium Lumen ILL base,
   anime, explicit). Both are Civitai-sourced (need `CIVITAI_TOKEN`), CLIP-skip 2,

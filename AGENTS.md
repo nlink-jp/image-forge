@@ -14,7 +14,9 @@ complete.** inpaint (`gen --init --mask`) wired + E2E-verified. `gen` txt2img/im
 LoRA, `models` list/import/pull/quantize/rm/gc, resident `serve`, config.toml — all E2E
 on M2 Max (SD1.5 + Animagine XL / SDXL, q8_0, LCM-LoRA, NoobAI v-pred). v-prediction
 is wired via the profile (`--prediction eps|v|auto` overrides). Civitai downloads,
-**multi-component models** (FLUX; resumable/retrying downloads), and **ControlNet**
+**multi-component models** (FLUX / SD3.5 / Z-Image / **Anima**; resumable/retrying
+downloads; a component field may use a `civitai:<versionId>` ref to pair a Civitai-hosted
+DiT with shared HF encoders/VAE — e.g. `anima-yume`, `nova-anime-am`), and **ControlNet**
 (`--control-net`/`--control`/`--canny` via `preprocess_canny`) are all wired and
 verified E2E. ControlNet is verified for **SD1.5** (`controlnet-canny-sd15`) **and
 SDXL** (`controlnet-canny-sdxl`) — the vendored sd.cpp (upstream #1752) converts

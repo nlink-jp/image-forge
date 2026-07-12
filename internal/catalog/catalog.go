@@ -14,7 +14,9 @@ type Source struct {
 	URL     string // direct URL
 	VAE     string // dedicated VAE source (e.g. madebyollin/sdxl-vae-fp16-fix)
 
-	// Multi-component: each is an hf owner/repo/file reference.
+	// Multi-component: each is an hf owner/repo/file reference. DiffusionModel also
+	// accepts a "civitai:<versionId>" ref (a Civitai-hosted DiT paired with the
+	// HF-hosted encoders/VAE below — e.g. an Anima checkpoint from Civitai).
 	DiffusionModel string
 	ClipL          string
 	ClipG          string
@@ -398,6 +400,37 @@ func Default() []Entry {
 				VAE:            "circlestone-labs/Anima/split_files/vae/qwen_image_vae.safetensors",
 			},
 			Notes: "Anima turbo (CircleStone Labs x Comfy Org, 2B): anime / illustration focused, explicitly not for realism. Distilled — CFG 1 and 8-12 steps (the profile sets 10, sampler euler, no negative prompt). Multi-component: DiT + Qwen3-0.6B text encoder + Qwen-Image VAE. Base for Anima LoRAs.",
+		},
+		{
+			Name: "anima-yume", Arch: profile.ArchAnima, Prediction: profile.PredEps,
+			Rating: profile.RatingQuestionable, License: "Civitai listing: images non-commercial (rent-only), derivatives allowed",
+			LicenseFlags: []string{LicenseNonCommercial},
+			MinRAMGB:     8, RecRAMGB: 16,
+			// Unlike anima-turbo, the AnimaYume "base final" checkpoint is NOT
+			// guidance-distilled: at the arch default (CFG 1, 10 steps) it renders
+			// washed-out and incoherent. It needs real CFG and step counts, so
+			// override the anima arch defaults here (verified E2E: CFG 5 / 24 steps
+			// produces clean output, CFG 1 / 10 does not).
+			Steps: 24, CFG: 5,
+			Source: Source{
+				DiffusionModel: "civitai:3065644", // https://civitai.com/models/2385278 (AnimaYume v1.0 base final)
+				LLM:            "circlestone-labs/Anima/split_files/text_encoders/qwen_3_06b_base.safetensors",
+				VAE:            "circlestone-labs/Anima/split_files/vae/qwen_image_vae.safetensors",
+			},
+			Notes: "Anima-based anime model (AnimaYume, Civitai). Multi-component: Civitai DiT + the shared Qwen3-0.6B encoder + Qwen-Image VAE. NOT distilled — the profile sets CFG 5 / 24 steps (overriding the anima arch turbo defaults). Needs CIVITAI_TOKEN.",
+		},
+		{
+			Name: "nova-anime-am", Arch: profile.ArchAnima, Prediction: profile.PredEps,
+			Rating: profile.RatingExplicit, License: "Civitai listing: commercial image use OK, derivatives OK, credit optional",
+			MinRAMGB: 8, RecRAMGB: 16,
+			// Not distilled — same as anima-yume, needs real CFG / steps (verified E2E).
+			Steps: 24, CFG: 5,
+			Source: Source{
+				DiffusionModel: "civitai:3086321", // https://civitai.com/models/2604424 (Nova Anime AM v3.0)
+				LLM:            "circlestone-labs/Anima/split_files/text_encoders/qwen_3_06b_base.safetensors",
+				VAE:            "circlestone-labs/Anima/split_files/vae/qwen_image_vae.safetensors",
+			},
+			Notes: "Anima-based anime model (Nova Anime AM by Crody, Civitai). Multi-component: single-file Civitai DiT + the shared Qwen3-0.6B encoder + Qwen-Image VAE. Explicit-capable. Needs CIVITAI_TOKEN.",
 		},
 		{
 			Name: "realesrgan-x4plus", Kind: KindUpscaler,

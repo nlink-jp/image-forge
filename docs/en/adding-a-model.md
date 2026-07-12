@@ -186,6 +186,13 @@ Start from the architecture defaults and override only the gotchas.
   and check whether it holds anything besides `model.diffusion_model.*`. If not, it
   needs its text encoder and VAE listed separately, or sd.cpp fails with
   `failed to load model`. (Anima: DiT + Qwen3-0.6B + Qwen-Image VAE.)
+  **A component can come from Civitai:** any of the component fields (typically
+  `DiffusionModel`) accepts a `civitai:<versionId>` ref, resolved via the Civitai API
+  at pull time (needs `CIVITAI_TOKEN`) — the rest stay Hugging Face refs. This is how a
+  Civitai-hosted DiT is paired with the shared HF-hosted encoders/VAE (e.g. `anima-yume`,
+  `nova-anime-am`: a Civitai Anima DiT + `circlestone-labs/Anima` Qwen3-0.6B + Qwen-Image VAE).
+  Note Anima's "base" checkpoints are **not** guidance-distilled like `anima-turbo`, so they
+  need a `Steps`/`CFG` override (CFG 1 / 10 steps renders washed-out; ~CFG 5 / 24 steps is clean).
   **Use standard fp8 (`t5xxl_fp8_e4m3fn`), bf16, or GGUF encoders only** — ComfyUI's
   `fp8_scaled` / `fp8_mixed` builds are NOT sd.cpp-compatible (they load blank or fail).
 - **Beware architecture names that are substrings of each other.** `profile.Detect`

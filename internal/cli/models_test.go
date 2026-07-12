@@ -92,3 +92,23 @@ func TestInstalledViews(t *testing.T) {
 		t.Error("my-local has a single Path; MultiComponent should be false")
 	}
 }
+
+func TestCivitaiComponentRef(t *testing.T) {
+	cases := []struct {
+		ref     string
+		wantVID string
+		wantOK  bool
+	}{
+		{"civitai:3065644", "3065644", true},                                             // Anima DiT from Civitai
+		{"circlestone-labs/Anima/split_files/vae/qwen_image_vae.safetensors", "", false}, // HF ref
+		{"leejet/FLUX.1-schnell-gguf/flux1-schnell-q4_k.gguf", "", false},                // HF ref
+		{"", "", false},        // empty
+		{"civitai:", "", true}, // prefix only — a malformed id, still routed to Civitai (which then errors)
+	}
+	for _, c := range cases {
+		gotVID, gotOK := civitaiComponentRef(c.ref)
+		if gotOK != c.wantOK || gotVID != c.wantVID {
+			t.Errorf("civitaiComponentRef(%q) = (%q, %v), want (%q, %v)", c.ref, gotVID, gotOK, c.wantVID, c.wantOK)
+		}
+	}
+}

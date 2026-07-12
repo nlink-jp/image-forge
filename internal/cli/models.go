@@ -601,18 +601,48 @@ func modelsPull(args []string) error {
 	return nil
 }
 
+// civitaiComponentRef classifies a multi-component source ref. A
+// "civitai:<versionId>" ref is a Civitai-hosted component (resolved via the
+// Civitai API and requiring a token); any other value is a Hugging Face
+// "owner/repo/file" ref. Returns the version id and true for a Civitai ref.
+func civitaiComponentRef(ref string) (versionID string, ok bool) {
+	const prefix = "civitai:"
+	if strings.HasPrefix(ref, prefix) {
+		return strings.TrimPrefix(ref, prefix), true
+	}
+	return "", false
+}
+
 // pullMultiComponent downloads each weight file of a multi-component model
 // (diffusion + encoders + VAE) and registers it with those component paths.
 func pullMultiComponent(e catalog.Entry, regName string, conf config.Config) error {
 	if err := os.MkdirAll(store.ModelsDir(), 0o755); err != nil {
 		return err
 	}
-	token := conf.ResolveHFToken()
-	get := func(hfRef string) (string, error) {
-		if hfRef == "" {
+	hfToken := conf.ResolveHFToken()
+	// get downloads one component. A plain "owner/repo/file" is a Hugging Face ref;
+	// a "civitai:<versionId>" ref is resolved via the Civitai API (used for a
+	// Civitai-hosted diffusion model paired with HF-hosted encoders/VAE, e.g. an
+	// Anima DiT from Civitai + the shared Qwen encoder + Qwen-Image VAE).
+	get := func(ref string) (string, error) {
+		if ref == "" {
 			return "", nil
 		}
-		url, name, err := download.Resolve("hf:" + hfRef)
+		var (
+			url, name string
+			err       error
+			fetchTok  = hfToken
+		)
+		if vid, ok := civitaiComponentRef(ref); ok {
+			ctok := conf.ResolveCivitaiToken()
+			if ctok == "" {
+				return "", fmt.Errorf("Civitai component requires a token — set CIVITAI_TOKEN or civitai_token in config")
+			}
+			url, name, err = download.CivitaiResolve(vid, ctok)
+			fetchTok = "" // the token is embedded in the URL
+		} else {
+			url, name, err = download.Resolve("hf:" + ref)
+		}
 		if err != nil {
 			return "", err
 		}
@@ -623,7 +653,7 @@ func pullMultiComponent(e catalog.Entry, regName string, conf config.Config) err
 		}
 		fmt.Fprintf(os.Stderr, "pulling %s\n", name)
 		last := -1
-		err = download.Fetch(url, dest, token, func(f float64) {
+		err = download.Fetch(url, dest, fetchTok, func(f float64) {
 			if b := int(f * 100); b/5 != last {
 				last = b / 5
 				fmt.Fprintf(os.Stderr, "\r  %3d%%", int(f*100))
