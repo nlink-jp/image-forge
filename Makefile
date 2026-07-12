@@ -73,3 +73,10 @@ clean:
 ## clean-deps: remove the sd.cpp build tree
 clean-deps:
 	rm -rf $(SD_BUILD)
+
+# Homebrew tap generation (see scripts/release-brew.mk). After `make package`,
+# `make brew` generates this formula from the built darwin-arm64 zip into the
+# local nlink-jp/homebrew-tap checkout. The package target is unchanged.
+BREW_KIND := formula
+BREW_DESC := Local diffusion image-generation engine and model manager
+include scripts/release-brew.mk
