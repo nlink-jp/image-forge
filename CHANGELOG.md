@@ -4,7 +4,7 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.23.0] - 2026-07-12
 
 ### Added
 - **Open a model's web page** — `image-forge models open <name>` opens the model's
