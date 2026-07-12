@@ -4,6 +4,15 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Catalog: two Illustrious-based SDXL checkpoints** — `akium-ijin` (Akium IJIN,
+  anime / 2.5D semi-real, questionable) and `akium-lumen` (Akium Lumen ILL base,
+  anime, explicit). Both are Civitai-sourced (need `CIVITAI_TOKEN`), CLIP-skip 2,
+  images non-commercial (rent-only) with derivatives allowed. Verified with a real
+  pull + render.
+
 ## [0.21.0] - 2026-07-12
 
 ### Added

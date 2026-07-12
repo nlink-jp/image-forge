@@ -251,6 +251,8 @@ func TestCivitaiEntriesUsePullableVersionIDs(t *testing.T) {
 	want := map[string]string{
 		"illustrious-xl-v1.1": "1411690",
 		"akium-unmotivated":   "3046291",
+		"akium-ijin":          "3081528",
+		"akium-lumen":         "2962026",
 		"t-ponynai3-v7":       "1392706",
 		"t-ponynai3-v5.5":     "593760",
 		"momoiro-pony":        "425904",

@@ -198,6 +198,29 @@ func Default() []Entry {
 			ClipSkip: 2, Notes: "Illustrious-based anime merge (Civitai). Needs CIVITAI_TOKEN.",
 		},
 		{
+			Name: "akium-ijin", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
+			Rating: profile.RatingQuestionable, License: "Civitai listing: images non-commercial (rent-only), derivatives allowed, credit required",
+			LicenseFlags: []string{LicenseNonCommercial, LicenseAttribution},
+			Attribution:  "Akium (Civitai)",
+			MinRAMGB:     16, RecRAMGB: 32,
+			Source: Source{
+				Civitai: "3081528", // https://civitai.com/models/2740167 (Akium IJIN v1.0)
+				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
+			},
+			ClipSkip: 2, Notes: "Illustrious-based anime / 2.5D semi-real SDXL (Akium IJIN, Civitai). Needs CIVITAI_TOKEN.",
+		},
+		{
+			Name: "akium-lumen", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
+			Rating: profile.RatingExplicit, License: "Civitai listing: images non-commercial (rent-only), derivatives allowed",
+			LicenseFlags: []string{LicenseNonCommercial},
+			MinRAMGB:     16, RecRAMGB: 32,
+			Source: Source{
+				Civitai: "2962026", // https://civitai.com/models/2385399 (Akium Lumen ILL - base v4.0)
+				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
+			},
+			ClipSkip: 2, Notes: "Illustrious-based anime SDXL base (Akium Lumen ILL, Civitai). Needs CIVITAI_TOKEN.",
+		},
+		{
 			Name: "t-ponynai3-v7", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: NO derivatives; images may be used commercially",
 			LicenseFlags: []string{LicenseNoDerivatives},
