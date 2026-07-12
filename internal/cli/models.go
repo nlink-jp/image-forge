@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -21,7 +22,7 @@ import (
 
 func runModels(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("models: expected a subcommand (list|import|pull|quantize|rm|gc)")
+		return fmt.Errorf("models: expected a subcommand (list|import|pull|open|quantize|rm|gc)")
 	}
 	switch args[0] {
 	case "list":
@@ -30,6 +31,8 @@ func runModels(args []string) error {
 		return modelsImport(args[1:])
 	case "pull":
 		return modelsPull(args[1:])
+	case "open":
+		return modelsOpen(args[1:])
 	case "rm":
 		return modelsRm(args[1:])
 	case "gc":
@@ -61,6 +64,9 @@ type catalogView struct {
 	LicenseFlags   []string `json:"license_flags,omitempty"`
 	Attribution    string   `json:"attribution,omitempty"`
 	TriggerWords   []string `json:"trigger_words,omitempty"`
+	// PageURL is the model's web home (Civitai model page / HF repo), for a
+	// front-end "open model page" link or `models open`. Empty when none applies.
+	PageURL string `json:"page_url,omitempty"`
 }
 
 type installedView struct {
@@ -76,6 +82,9 @@ type installedView struct {
 	LicenseFlags   []string `json:"license_flags,omitempty"`
 	Attribution    string   `json:"attribution,omitempty"`
 	TriggerWords   []string `json:"trigger_words,omitempty"`
+	// PageURL is the catalog model's web home (Civitai / HF); empty for a
+	// user-local model that isn't in the catalog.
+	PageURL string `json:"page_url,omitempty"`
 }
 
 // archCell renders the ARCH column: an upscaler has no diffusion architecture,
@@ -104,6 +113,7 @@ func catalogViews(reg *store.Registry) []catalogView {
 	out := make([]catalogView, 0, len(entries))
 	for _, e := range entries {
 		_, installed := reg.Get(e.Name)
+		pageURL, _ := e.PageURL()
 		out = append(out, catalogView{
 			Name: e.Name, Kind: e.Kind, Arch: string(e.Arch), Prediction: string(e.Prediction),
 			Rating: string(e.Rating), License: e.License,
@@ -111,6 +121,7 @@ func catalogViews(reg *store.Registry) []catalogView {
 			MultiComponent: e.IsMultiComponent(), NeedsOptIn: e.NeedsOptIn(),
 			Experimental: e.Experimental, Installed: installed, Notes: e.Notes,
 			LicenseFlags: e.LicenseFlags, Attribution: e.Attribution, TriggerWords: e.TriggerWords,
+			PageURL: pageURL,
 		})
 	}
 	return out
@@ -131,8 +142,10 @@ func installedViews(reg *store.Registry) []installedView {
 		// source of truth — use it so entries installed before these fields existed
 		// (or corrected in the catalog since) are still reported accurately.
 		license, flags, triggers, attribution := m.License, m.LicenseFlags, m.TriggerWords, m.Attribution
+		var pageURL string
 		if inCat {
 			flags, triggers, attribution = e.LicenseFlags, e.TriggerWords, e.Attribution
+			pageURL, _ = e.PageURL()
 			if license == "" {
 				license = e.License
 			}
@@ -144,6 +157,7 @@ func installedViews(reg *store.Registry) []installedView {
 			// upscaler / LoRA / ControlNet with no Path would just be broken.
 			MultiComponent: m.Path == "" && m.IsDiffusion(), InCatalog: inCat,
 			LicenseFlags: flags, Attribution: attribution, TriggerWords: triggers,
+			PageURL: pageURL,
 		})
 	}
 	return out
@@ -185,6 +199,51 @@ func printJSON(v any) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
+}
+
+// resolveModelPageURL returns the web page (Civitai model page / Hugging Face
+// repo) for a catalog model by name. It is the pure core of `models open`, so it
+// is unit-tested without touching a browser. An unknown name, or a model with no
+// known page, is an error.
+func resolveModelPageURL(name string) (string, error) {
+	e, ok := catalog.Find(name)
+	if !ok {
+		return "", fmt.Errorf("open: no catalog model named %q (see `image-forge models list --catalog`)", name)
+	}
+	url, ok := e.PageURL()
+	if !ok {
+		return "", fmt.Errorf("open: no web page is known for %q", name)
+	}
+	return url, nil
+}
+
+// modelsOpen opens a catalog model's source page (Civitai / Hugging Face) in the
+// default browser, so the model card can be read without searching for it. With
+// --print it writes the URL to stdout instead (for scripting / headless use).
+func modelsOpen(args []string) error {
+	if len(args) < 1 || strings.HasPrefix(args[0], "-") {
+		return fmt.Errorf("models open: usage: models open <name> [--print]")
+	}
+	name := args[0]
+	fs := flag.NewFlagSet("models open", flag.ContinueOnError)
+	printOnly := fs.Bool("print", false, "print the URL instead of opening a browser")
+	if err := fs.Parse(args[1:]); err != nil {
+		return err
+	}
+	url, err := resolveModelPageURL(name)
+	if err != nil {
+		return err
+	}
+	if *printOnly {
+		fmt.Println(url)
+		return nil
+	}
+	// darwin/arm64-only tool: `open` is the platform URL handler.
+	if err := exec.Command("open", url).Run(); err != nil {
+		return fmt.Errorf("open %s: %w", url, err)
+	}
+	fmt.Fprintf(os.Stderr, "opened %s\n", url)
+	return nil
 }
 
 func modelsList(args []string) error {
@@ -601,18 +660,6 @@ func modelsPull(args []string) error {
 	return nil
 }
 
-// civitaiComponentRef classifies a multi-component source ref. A
-// "civitai:<versionId>" ref is a Civitai-hosted component (resolved via the
-// Civitai API and requiring a token); any other value is a Hugging Face
-// "owner/repo/file" ref. Returns the version id and true for a Civitai ref.
-func civitaiComponentRef(ref string) (versionID string, ok bool) {
-	const prefix = "civitai:"
-	if strings.HasPrefix(ref, prefix) {
-		return strings.TrimPrefix(ref, prefix), true
-	}
-	return "", false
-}
-
 // pullMultiComponent downloads each weight file of a multi-component model
 // (diffusion + encoders + VAE) and registers it with those component paths.
 func pullMultiComponent(e catalog.Entry, regName string, conf config.Config) error {
@@ -633,7 +680,7 @@ func pullMultiComponent(e catalog.Entry, regName string, conf config.Config) err
 			err       error
 			fetchTok  = hfToken
 		)
-		if vid, ok := civitaiComponentRef(ref); ok {
+		if vid, ok := catalog.CivitaiRef(ref); ok {
 			ctok := conf.ResolveCivitaiToken()
 			if ctok == "" {
 				return "", fmt.Errorf("Civitai component requires a token — set CIVITAI_TOKEN or civitai_token in config")

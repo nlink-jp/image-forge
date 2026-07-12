@@ -118,11 +118,17 @@ stdout に表示。
 ```sh
 image-forge models list [--catalog|--all] [--json] [--kind K]   # インストール済み(既定)/カタログ/両方
 image-forge models pull <name | hf:owner/repo/file | civitai:<versionId> | url> [--allow-nsfw] [--name N]
+image-forge models open <name> [--print]                        # モデルの Civitai / HF ページを開く（--print は URL のみ）
 image-forge models import <path> [--name N] [--arch A] [--vae V] [--kind K] [--trigger "a,b"]
 image-forge models quantize <name> --to <type> [--name N]
 image-forge models rm <name> [--purge]                          # --purge は重みファイルも削除
 image-forge models gc [--force]                                 # 孤立ファイルを回収（--force 無しは dry-run）
 ```
+
+`models open <name>` はモデルのソースページ（Civitai モデルページ or Hugging Face リポジトリ）
+をブラウザで開くので、わざわざ検索しなくてもモデルカードを読める（`--print` は開かずに URL を出力）。
+同じ URL は `models list --json` に `page_url` として出るので、GUI の「モデルページを開く」導線も
+これを読んでいる。
 
 `models rm --purge` は重みファイルも削除するが、他のインストール済みモデルと共有する
 ファイル（共通 VAE / テキストエンコーダ）と、管理下のモデルディレクトリ外のファイル

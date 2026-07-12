@@ -4,6 +4,18 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Open a model's web page** — `image-forge models open <name>` opens the model's
+  source page (Civitai model page or Hugging Face repo) in the browser, so the model
+  card is one command away instead of a search (`--print` writes the URL instead).
+  The same URL is surfaced as `page_url` in `models list --json` (and the MCP
+  `list_models` tool), which a front-end reads for an "open model page" link. Derived
+  purely from the catalog `Source` — Civitai's `model-versions/<id>` URL 308-redirects
+  to the canonical model page, so the version id we already store is enough (no model
+  id, no API call).
+
 ## [0.22.0] - 2026-07-12
 
 ### Added

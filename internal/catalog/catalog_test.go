@@ -275,6 +275,69 @@ func TestCivitaiEntriesUsePullableVersionIDs(t *testing.T) {
 	}
 }
 
+func TestCivitaiRef(t *testing.T) {
+	cases := []struct {
+		ref     string
+		wantVID string
+		wantOK  bool
+	}{
+		{"civitai:3065644", "3065644", true},                                             // Anima DiT from Civitai
+		{"circlestone-labs/Anima/split_files/vae/qwen_image_vae.safetensors", "", false}, // HF ref
+		{"leejet/FLUX.1-schnell-gguf/flux1-schnell-q4_k.gguf", "", false},                // HF ref
+		{"", "", false},        // empty
+		{"civitai:", "", true}, // prefix only — a malformed id, still classified as Civitai
+	}
+	for _, c := range cases {
+		gotVID, gotOK := CivitaiRef(c.ref)
+		if gotOK != c.wantOK || gotVID != c.wantVID {
+			t.Errorf("CivitaiRef(%q) = (%q, %v), want (%q, %v)", c.ref, gotVID, gotOK, c.wantVID, c.wantOK)
+		}
+	}
+}
+
+func TestEntryPageURL(t *testing.T) {
+	cases := []struct {
+		name string
+		src  Source
+		want string // "" means expect ok=false
+	}{
+		{"civitai single-file", Source{Civitai: "3081528"}, "https://civitai.com/model-versions/3081528"},
+		{"civitai DiT component", Source{DiffusionModel: "civitai:3065644", VAE: "x/y/z", LLM: "a/b/c"}, "https://civitai.com/model-versions/3065644"},
+		{"hf single-file", Source{HF: "cagliostrolab/animagine-xl-4.0/file.safetensors"}, "https://huggingface.co/cagliostrolab/animagine-xl-4.0"},
+		{"hf org/repo only", Source{HF: "leejet/FLUX.1-schnell"}, "https://huggingface.co/leejet/FLUX.1-schnell"},
+		{"hf multi-component DiT", Source{DiffusionModel: "leejet/FLUX.1-schnell-gguf/flux1-schnell-q4_k.gguf"}, "https://huggingface.co/leejet/FLUX.1-schnell-gguf"},
+		{"civitai wins over hf-shaped encoders", Source{DiffusionModel: "civitai:999", VAE: "o/r/f"}, "https://civitai.com/model-versions/999"},
+		{"bare url has no page", Source{URL: "https://example.com/model.safetensors"}, ""},
+		{"empty source", Source{}, ""},
+		{"hf ref missing repo", Source{HF: "loneowner"}, ""},
+	}
+	for _, c := range cases {
+		got, ok := (Entry{Source: c.src}).PageURL()
+		if c.want == "" {
+			if ok {
+				t.Errorf("%s: PageURL() = %q, want no URL", c.name, got)
+			}
+			continue
+		}
+		if !ok || got != c.want {
+			t.Errorf("%s: PageURL() = (%q, %v), want %q", c.name, got, ok, c.want)
+		}
+	}
+
+	// Every non-auxiliary catalog entry that has a fetchable source should surface
+	// a page (this is the data the GUI/CLI "open model page" affordance reads).
+	for _, e := range Default() {
+		s := e.Source
+		hasSource := s.Civitai != "" || s.HF != "" || s.DiffusionModel != ""
+		if !hasSource {
+			continue
+		}
+		if _, ok := e.PageURL(); !ok {
+			t.Errorf("%s: has a source but PageURL() returned none", e.Name)
+		}
+	}
+}
+
 func TestAnimaCivitaiComponentEntries(t *testing.T) {
 	// Anima "base" checkpoints sourced from Civitai: the DiT component is pulled
 	// via a `civitai:<versionId>` ref (a Civitai component inside a multi-component

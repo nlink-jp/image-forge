@@ -11,7 +11,7 @@ users never hand-tune them. Series: **util-series**. Local-diffusion counterpart
 
 Status: **v0.17.0 released** (public, signed + notarized). **Phase 1 + Phase 2
 complete.** inpaint (`gen --init --mask`) wired + E2E-verified. `gen` txt2img/img2img/inpaint/
-LoRA, `models` list/import/pull/quantize/rm/gc, resident `serve`, config.toml — all E2E
+LoRA, `models` list/import/pull/open/quantize/rm/gc, resident `serve`, config.toml — all E2E
 on M2 Max (SD1.5 + Animagine XL / SDXL, q8_0, LCM-LoRA, NoobAI v-pred). v-prediction
 is wired via the profile (`--prediction eps|v|auto` overrides). Civitai downloads,
 **multi-component models** (FLUX / SD3.5 / Z-Image / **Anima**; resumable/retrying

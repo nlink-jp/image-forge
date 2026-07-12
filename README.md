@@ -123,11 +123,18 @@ printed to stdout.
 ```sh
 image-forge models list [--catalog|--all] [--json] [--kind K]   # installed (default), catalog, or both
 image-forge models pull <name | hf:owner/repo/file | civitai:<versionId> | url> [--allow-nsfw] [--name N]
+image-forge models open <name> [--print]                        # open the model's Civitai / HF page (--print = just the URL)
 image-forge models import <path> [--name N] [--arch A] [--vae V] [--kind K] [--trigger "a,b"]
 image-forge models quantize <name> --to <type> [--name N]
 image-forge models rm <name> [--purge]                          # --purge also deletes the weight files
 image-forge models gc [--force]                                 # reclaim orphaned files (dry-run without --force)
 ```
+
+`models open <name>` opens the model's source page — its Civitai model page or
+Hugging Face repo — in your browser, so you can read the model card without
+searching for it (`--print` writes the URL instead of opening). The same URL is
+exposed as `page_url` in `models list --json`, which is how the GUI offers its
+"open model page" link.
 
 `models rm --purge` deletes the model's weight files too, but keeps any file
 another installed model still shares (a common VAE / text encoder) and any file

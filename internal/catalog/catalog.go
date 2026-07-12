@@ -3,7 +3,11 @@
 // surface license and content rating and to build a profile on pull/import.
 package catalog
 
-import "github.com/nlink-jp/image-forge/internal/profile"
+import (
+	"strings"
+
+	"github.com/nlink-jp/image-forge/internal/profile"
+)
 
 // Source identifies where a model (and its dedicated VAE) is fetched from.
 // A single-file model sets HF / Civitai / URL; a multi-component model (FLUX,
@@ -111,6 +115,65 @@ func (e Entry) IsAuxiliary() bool { return e.Kind != KindDiffusion }
 // files (diffusion model + encoders + VAE) rather than a single checkpoint.
 func (e Entry) IsMultiComponent() bool {
 	return e.Source.DiffusionModel != ""
+}
+
+// CivitaiRef reports whether a component ref is a Civitai reference of the form
+// "civitai:<versionId>", returning the version id. The catalog owns this format
+// (a Source field convention), and both the download router (internal/cli) and
+// PageURL below rely on it.
+func CivitaiRef(ref string) (versionID string, ok bool) {
+	if id, found := strings.CutPrefix(ref, "civitai:"); found {
+		return id, true
+	}
+	return "", false
+}
+
+// PageURL returns the human-facing web page for this model's source — the
+// Civitai model page or the Hugging Face repo — derived from Source, plus true.
+// A front-end (or `models open`) can send the user straight there instead of
+// making them search. Returns ("", false) when no page can be formed (e.g. a
+// bare-URL source, or a model with no web home).
+//
+// Civitai stores only a version id, but https://civitai.com/model-versions/<id>
+// 308-redirects to the canonical model page (…/models/<modelId>?modelVersionId=<id>),
+// so the version id alone is enough — no model id or API call needed.
+func (e Entry) PageURL() (string, bool) {
+	s := e.Source
+	// A Civitai source wins: either the single-file Civitai id or a civitai: DiT.
+	if s.Civitai != "" {
+		return civitaiVersionURL(s.Civitai), true
+	}
+	if vid, ok := CivitaiRef(s.DiffusionModel); ok && vid != "" {
+		return civitaiVersionURL(vid), true
+	}
+	// Hugging Face: the repo page is owner/repo (any file path is dropped).
+	if u, ok := hfRepoURL(s.HF); ok {
+		return u, true
+	}
+	if u, ok := hfRepoURL(s.DiffusionModel); ok {
+		return u, true
+	}
+	return "", false
+}
+
+func civitaiVersionURL(versionID string) string {
+	return "https://civitai.com/model-versions/" + versionID
+}
+
+// hfRepoURL turns an "owner/repo[/file...]" ref into the repo's Hugging Face page.
+// A "civitai:" ref or a value without at least owner/repo yields no URL.
+func hfRepoURL(ref string) (string, bool) {
+	if ref == "" {
+		return "", false
+	}
+	if _, isCivitai := CivitaiRef(ref); isCivitai {
+		return "", false
+	}
+	parts := strings.SplitN(ref, "/", 3)
+	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
+		return "", false
+	}
+	return "https://huggingface.co/" + parts[0] + "/" + parts[1], true
 }
 
 // Profile builds the generation profile for this entry: architecture defaults
