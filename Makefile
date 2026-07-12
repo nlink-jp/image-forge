@@ -47,14 +47,15 @@ $(SD_LIB):
 ## (darwin/arm64) ONLY — cross-compilation is impossible (Metal has no
 ## Linux/Windows/amd64 target), a deliberate scope decision (see the RFP).
 build-all: build-engine
-	@scripts/codesign-darwin.sh $(DIST)/$(BINARY) "$(CODESIGN_IDENTITY)"
+	@scripts/codesign-darwin.sh $(DIST)/$(BINARY) "$(CODESIGN_IDENTITY)" "$(BINARY)"
 
 ## package: signed + notarized release zip
-## (image-forge-<version>-darwin-arm64.zip, canonical binary name inside).
+## (image-forge-v<version>-darwin-arm64.zip; canonical binary + README.md
+## + LICENSE inside, per the org Release Archive Standard).
 package: build-all
-	@cd $(DIST) && cp ../README.md . \
-		&& zip -j $(BINARY)-$(VERSION)-darwin-arm64.zip $(BINARY) README.md \
-		&& rm -f README.md
+	@cd $(DIST) && cp ../README.md ../LICENSE . \
+		&& zip -j $(BINARY)-$(VERSION)-darwin-arm64.zip $(BINARY) README.md LICENSE \
+		&& rm -f README.md LICENSE
 	@scripts/notarize-darwin.sh $(DIST)/$(BINARY)-$(VERSION)-darwin-arm64.zip "$(NOTARY_PROFILE)"
 
 test:

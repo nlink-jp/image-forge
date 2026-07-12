@@ -4,6 +4,21 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.23.1] - 2026-07-12
+
+### Changed
+- **`LICENSE` is now bundled** in the release archive alongside `README.md`,
+  per `nlink-jp/.github` CONVENTIONS.md §Release Archive Standard. The archive
+  name (`image-forge-vX.Y.Z-darwin-arm64.zip`) and the canonical in-archive
+  binary name (`image-forge`) were already compliant. image-forge is CGO +
+  Metal, so it ships **darwin/arm64 only** by design (no Intel / universal /
+  Linux / Windows target) — unchanged.
+- **darwin code-signature identifier** is now explicitly pinned to the
+  canonical `image-forge` via `codesign -i` (re-vendored
+  `scripts/codesign-darwin.sh` from the org template).
+
+No change to the binary's behaviour — a packaging / build-config release.
+
 ## [0.23.0] - 2026-07-12
 
 ### Added
