@@ -102,6 +102,12 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   lookup, the per-arch/Pony/realistic gotchas, the entry's `Kind` + `LicenseFlags` /
   `Attribution` / `TriggerWords` (each backed by a test to keep it honest), and the
   mandatory pull+render E2E.
+- **Non-catalog aux models via `pull`** (ADR-0007): `pull` reads kind/arch/triggers
+  from the matched catalog entry; a raw `hf:`/`civitai:`/URL ref has none, so it took
+  the base-diffusion default and a LoRA got mis-typed. `pull` now takes `--kind` /
+  `--arch` / `--trigger` (like `import`) for that `!known` path; catalog names ignore
+  them (with a stderr note). The kind→profile rule is the shared pure `auxProfile`
+  (cli/models.go), used by both `pull` and `import` — one home, unit-tested.
 - **Upscaling & hires.fix** (ADR-0004): sd.cpp does both. Standalone
   `image-forge upscale` uses `new_upscaler_ctx`/`upscale` with an ESRGAN model
   (catalog `Kind: "upscaler"`, e.g. `realesrgan-x4plus`). hires.fix is set in the

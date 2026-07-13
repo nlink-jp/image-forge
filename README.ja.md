@@ -117,7 +117,7 @@ stdout に表示。
 
 ```sh
 image-forge models list [--catalog|--all] [--json] [--kind K]   # インストール済み(既定)/カタログ/両方
-image-forge models pull <name | hf:owner/repo/file | civitai:<versionId> | url> [--allow-nsfw] [--name N]
+image-forge models pull <name | hf:owner/repo/file | civitai:<versionId> | url> [--allow-nsfw] [--name N] [--kind K] [--arch A] [--trigger "a,b"]
 image-forge models open <name> [--print]                        # モデルの Civitai / HF ページを開く（--print は URL のみ）
 image-forge models import <path> [--name N] [--arch A] [--vae V] [--kind K] [--trigger "a,b"]
 image-forge models quantize <name> --to <type> [--name N]
@@ -156,6 +156,10 @@ image-forge gen -p "a red apple" -m animagine-xl-4 \
 image-forge models pull controlnet-canny-sdxl  # ControlNet（SDXL）
 image-forge gen -p "a house at night, snow" -m juggernaut-xl-v9 \
   --control-net controlnet-canny-sdxl --control photo.png --canny
+
+# カタログ外の LoRA は kind を明示する。無いとベースモデルとして登録される（ADR-0007）
+image-forge models pull hf:owner/repo/lora.safetensors \
+  --kind lora --arch sdxl --trigger "trigger_word" --name my-lora
 ```
 
 **ControlNet** は **SD1.5**（`controlnet-canny-sd15`）と **SDXL**
@@ -167,8 +171,8 @@ canny/depth 等の ControlNet を `models import <path> --kind controlnet` で
 多くの LoRA は効果を出すために**トリガーワード**をプロンプトに含める必要がある
 （無いと LoRA はロードされるだけで**黙って何もしない**）。カタログに記録し、インストール時に
 レジストリへ引き継ぎ、`pull` / `import` の完了時に表示し、`models list --json` では
-`trigger_words` として公開する（フロントエンドが表示・自動挿入できる）。ローカルファイルを
-登録するときは `--trigger "a,b"` で指定する。
+`trigger_words` として公開する（フロントエンドが表示・自動挿入できる）。ローカルファイルの
+登録時、およびカタログ外 ref の `pull` 時は `--trigger "a,b"` で指定する。
 
 - **list**: 既定では**インストール済み**モデルを表示（名前・アーキ・格付け・
   ライセンス・パス）。pull した ESRGAN アップスケーラもアーキ `upscaler` として並ぶ。
@@ -182,9 +186,14 @@ canny/depth 等の ControlNet を `models import <path> --kind controlnet` で
   直 URL も可。**多コンポーネントモデル**（FLUX等）は diffusion + テキストエンコーダ +
   VAE の全ファイルを自動でDL。ダウンロードはレジューム＋リトライ対応（大容量DL中に接続が
   切れても最初からやり直さない）。既に手元にある同一ファイル（別名で登録済みでも）は
-  再ダウンロードせず再利用する。
+  再ダウンロードせず再利用する。カタログ名は kind・アーキ・トリガーワードを自前で持つが、
+  **カタログ外 ref**（生の `hf:`/`civitai:`/URL）は持たないため既定ではベース拡散モデル扱いになる。
+  `--kind lora|controlnet|upscaler`（必要に応じ `--arch` / `--trigger`）で正しく登録すること。
+  指定しないと LoRA が黙ってベースモデルとして入る（ADR-0007）。カタログ名に対する上書きは
+  無視され（その旨を通知）、カタログが常に正となる。
 - **import**: 手元のモデルファイルを登録。アーキは名前から自動判定（`--arch
-  sdxl|sd15|sd35|flux|zimage|anima` で上書き）。
+  sdxl|sd15|sd35|flux|zimage|anima` で上書き）。`--kind` / `--trigger` でローカルの
+  LoRA/ControlNet/upscaler に印を付けられる（`pull` と同じ）。
 - **quantize**: 登録済みモデルを `--to` ∈
   `q8_0 q5_0 q5_1 q4_0 q4_1 q2_k q3_k q4_k q5_k q6_k f16 f32` の GGUF に変換し、VAE を
   bake、`<name>-<type>` として登録。q8_0 ≈ ほぼ無劣化で約半分、q4_* ≈ 約1/3（省メモリ）。

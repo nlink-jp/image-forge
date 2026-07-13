@@ -122,7 +122,7 @@ printed to stdout.
 
 ```sh
 image-forge models list [--catalog|--all] [--json] [--kind K]   # installed (default), catalog, or both
-image-forge models pull <name | hf:owner/repo/file | civitai:<versionId> | url> [--allow-nsfw] [--name N]
+image-forge models pull <name | hf:owner/repo/file | civitai:<versionId> | url> [--allow-nsfw] [--name N] [--kind K] [--arch A] [--trigger "a,b"]
 image-forge models open <name> [--print]                        # open the model's Civitai / HF page (--print = just the URL)
 image-forge models import <path> [--name N] [--arch A] [--vae V] [--kind K] [--trigger "a,b"]
 image-forge models quantize <name> --to <type> [--name N]
@@ -164,6 +164,11 @@ image-forge gen -p "a red apple" -m animagine-xl-4 \
 image-forge models pull controlnet-canny-sdxl  # a ControlNet (SDXL)
 image-forge gen -p "a house at night, snow" -m juggernaut-xl-v9 \
   --control-net controlnet-canny-sdxl --control photo.png --canny
+
+# a LoRA that isn't in the catalog: tell pull what it is, or it registers as a
+# base diffusion model (ADR-0007)
+image-forge models pull hf:owner/repo/lora.safetensors \
+  --kind lora --arch sdxl --trigger "trigger_word" --name my-lora
 ```
 
 **ControlNet** ships for both **SD1.5** (`controlnet-canny-sd15`) and **SDXL**
@@ -176,7 +181,8 @@ Many LoRAs need **trigger words** in the prompt to take effect — without them 
 LoRA loads and silently does nothing. They are recorded in the catalog, kept on
 the registry entry at install time, printed after `pull` / `import`, and exposed
 as `trigger_words` in `models list --json` (so a front-end can show or insert
-them). `--trigger "a,b"` sets them when importing a local file.
+them). `--trigger "a,b"` sets them when importing a local file or pulling a
+non-catalog ref.
 
 - **list** shows your **installed** models by default (name, arch, rating,
   license, path); pulled ESRGAN upscalers appear here too with arch `upscaler`.
@@ -193,9 +199,15 @@ them). `--trigger "a,b"` sets them when importing a local file.
   model + text encoders + VAE — automatically. Downloads resume and retry, so a
   dropped connection during a large model doesn't start over, and a checkpoint or
   VAE you already have (even under another registered name) is reused rather than
-  re-downloaded.
+  re-downloaded. A catalog name carries its own kind, architecture, and trigger
+  words; a **non-catalog ref** (raw `hf:`/`civitai:`/URL) has none, so it defaults
+  to a base diffusion model. Pass `--kind lora|controlnet|upscaler` (with `--arch`
+  and `--trigger` as needed) to register it correctly — otherwise a LoRA is
+  silently installed as a base model (ADR-0007). Overrides are ignored (with a
+  note) for catalog names, which stay authoritative.
 - **import** registers a model file you already have; the architecture is
-  auto-detected from the name (override with `--arch sdxl|sd15|sd35|flux|zimage|anima`).
+  auto-detected from the name (override with `--arch sdxl|sd15|sd35|flux|zimage|anima`),
+  and `--kind` / `--trigger` tag a local LoRA/ControlNet/upscaler just as on `pull`.
 - **quantize** converts a registered model to a GGUF at `--to` ∈
   `q8_0 q5_0 q5_1 q4_0 q4_1 q2_k q3_k q4_k q5_k q6_k f16 f32`, baking in its VAE, and
   registers it as `<name>-<type>`. q8_0 ≈ half size at near-full quality; q4_* ≈ a

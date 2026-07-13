@@ -4,6 +4,20 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **`models pull` can tag a non-catalog model** — `--kind lora|controlnet|upscaler`,
+  `--arch`, and `--trigger` now work on `pull`, matching `import`. Pulling a raw
+  `hf:`/`civitai:`/URL ref used to always register it as a base diffusion model, so
+  a LoRA fetched this way was mis-typed (wrong `Kind`, a full diffusion profile, no
+  arch, no trigger words) and `--lora <name>` couldn't resolve it. You can now pull
+  and correctly type it in one step:
+  `models pull hf:owner/repo/lora.safetensors --kind lora --arch sdxl --trigger "…"`.
+  Catalog names remain authoritative — the overrides are ignored (with a note) for
+  them. Defaults are unchanged: a bare non-catalog pull is still a base diffusion
+  model with auto-detected arch. See ADR-0007 (supplements ADR-0006).
+
 ## [0.23.1] - 2026-07-12
 
 ### Changed

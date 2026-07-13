@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/nlink-jp/image-forge/internal/catalog"
+	"github.com/nlink-jp/image-forge/internal/profile"
 	"github.com/nlink-jp/image-forge/internal/store"
 )
 
@@ -69,6 +70,40 @@ func TestResolveAuxModelErrors(t *testing.T) {
 	_, err = resolveAuxModel("animagine-xl-4", catalog.KindLoRA, get)
 	if err == nil || !strings.Contains(err.Error(), "not a LoRA") {
 		t.Errorf("wrong-kind err = %v, want 'not a LoRA'", err)
+	}
+}
+
+// auxProfile is the single kind→profile mapping shared by `models import` and
+// `models pull` (ADR-0007). It must reproduce ADR-0006's rule: base models get
+// full render defaults, upscalers are name-only, LoRA/ControlNet carry arch only.
+func TestAuxProfile(t *testing.T) {
+	// Diffusion: full architecture defaults, with the name stamped on.
+	d := auxProfile(catalog.KindDiffusion, "my-base", profile.ArchSDXL)
+	if d.Name != "my-base" || d.Arch != profile.ArchSDXL {
+		t.Errorf("diffusion name/arch = %q/%q", d.Name, d.Arch)
+	}
+	if d.Steps == 0 || d.CFG == 0 || d.Sampler == "" {
+		t.Errorf("diffusion should carry render defaults, got %+v", d)
+	}
+
+	// Upscaler: architecture-agnostic, name only — no arch, no render fields.
+	u := auxProfile(catalog.KindUpscaler, "esrgan-x4", profile.ArchSDXL)
+	if u.Name != "esrgan-x4" || u.Arch != "" {
+		t.Errorf("upscaler = %+v, want name-only with no arch", u)
+	}
+	if u.Steps != 0 || u.CFG != 0 || u.Sampler != "" {
+		t.Errorf("upscaler should carry no render defaults, got %+v", u)
+	}
+
+	// LoRA / ControlNet: bound to a base arch, but nothing else (ADR-0006).
+	for _, k := range []string{catalog.KindLoRA, catalog.KindControlNet} {
+		p := auxProfile(k, "aux", profile.ArchSD15)
+		if p.Name != "aux" || p.Arch != profile.ArchSD15 {
+			t.Errorf("%s name/arch = %q/%q", k, p.Name, p.Arch)
+		}
+		if p.Steps != 0 || p.CFG != 0 || p.Sampler != "" || p.ClipSkip != 0 || p.Prediction != "" {
+			t.Errorf("%s should carry arch only, got %+v", k, p)
+		}
 	}
 }
 

@@ -383,19 +383,7 @@ func modelsImport(args []string) error {
 		arch = profile.Arch(*archFlag)
 	}
 
-	// Base models get the full architecture defaults. Auxiliary models are not
-	// renderable, so they carry only what identifies them: a name, and — for
-	// LoRA / ControlNet — the base architecture they're bound to (ADR-0006).
-	var prof profile.Profile
-	switch kind {
-	case catalog.KindDiffusion:
-		prof = profile.ArchDefaults(arch)
-		prof.Name = nm
-	case catalog.KindUpscaler:
-		prof = profile.Profile{Name: nm}
-	default: // lora | controlnet
-		prof = profile.Profile{Name: nm, Arch: arch}
-	}
+	prof := auxProfile(kind, nm, arch)
 
 	reg, err := store.Load()
 	if err != nil {
@@ -458,6 +446,25 @@ func splitTriggers(s string) []string {
 	return out
 }
 
+// auxProfile builds the registry profile for a model of the given (normalized)
+// kind. Base (diffusion) models get the full architecture defaults; upscalers
+// are architecture-agnostic and carry only a name; LoRA / ControlNet keep the
+// base architecture they're bound to and nothing else (ADR-0006). Pure, and
+// shared by `models import` and `models pull` (ADR-0007), so the kind→profile
+// invariant lives in one place and is unit-testable without touching the network.
+func auxProfile(kind, name string, arch profile.Arch) profile.Profile {
+	switch kind {
+	case catalog.KindUpscaler:
+		return profile.Profile{Name: name}
+	case catalog.KindLoRA, catalog.KindControlNet:
+		return profile.Profile{Name: name, Arch: arch}
+	default: // diffusion
+		p := profile.ArchDefaults(arch)
+		p.Name = name
+		return p
+	}
+}
+
 // normalizeKind validates a --kind flag value, mapping "" (and "diffusion") to
 // the default base-model kind.
 func normalizeKind(s string) (string, error) {
@@ -484,15 +491,25 @@ func haveFile(path string) bool {
 
 func modelsPull(args []string) error {
 	if len(args) < 1 || strings.HasPrefix(args[0], "-") {
-		return fmt.Errorf("models pull: usage: models pull <name|hf:owner/repo/file|url> [--allow-nsfw] [--name N]")
+		return fmt.Errorf("models pull: usage: models pull <name|hf:owner/repo/file|url> [--allow-nsfw] [--name N] [--kind K] [--arch A] [--trigger W]")
 	}
 	ref := args[0]
 	fs := flag.NewFlagSet("models pull", flag.ContinueOnError)
 	allowNSFWFlag := fs.Bool("allow-nsfw", false, "allow pulling questionable/explicit models")
 	nameOverride := fs.String("name", "", "override the registry name")
+	// Overrides for a ref that is NOT a catalog name (raw hf:/civitai:/url). A
+	// catalog entry carries its own kind/arch/triggers and ignores these (ADR-0007).
+	kindFlag := fs.String("kind", "", "kind for a non-catalog ref: lora|controlnet|upscaler (default: base diffusion)")
+	archFlag := fs.String("arch", "", "architecture for a non-catalog ref: sdxl|sd15|sd35|flux|zimage|anima (default: auto-detect)")
+	triggerFlag := fs.String("trigger", "", "comma-separated LoRA trigger words for a non-catalog ref")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
+	overrideKind, err := normalizeKind(*kindFlag)
+	if err != nil {
+		return fmt.Errorf("models pull: %w", err)
+	}
+	overridden := *kindFlag != "" || *archFlag != "" || *triggerFlag != ""
 
 	conf, err := config.Load()
 	if err != nil {
@@ -554,6 +571,10 @@ func modelsPull(args []string) error {
 		}
 	}
 
+	if known && overridden {
+		fmt.Fprintf(os.Stderr, "note: %q is a catalog entry; --kind/--arch/--trigger overrides are ignored\n", ref)
+	}
+
 	var (
 		url        string
 		filename   string
@@ -584,9 +605,18 @@ func modelsPull(args []string) error {
 		regName = strings.TrimSuffix(filename, filepath.Ext(filename))
 	}
 	if !known {
-		prof = profile.ArchDefaults(profile.Detect(regName))
-		prof.Name = regName
+		// A raw ref (hf:/civitai:/url) carries no catalog metadata: honor the
+		// --kind/--arch/--trigger overrides so a LoRA/ControlNet isn't silently
+		// registered as a base diffusion model (ADR-0007). Defaults reproduce the
+		// prior behavior — base diffusion, arch auto-detected from the name.
+		kind = overrideKind
+		arch := profile.Detect(regName)
+		if *archFlag != "" {
+			arch = profile.Arch(*archFlag)
+		}
+		prof = auxProfile(kind, regName, arch)
 		rating = profile.RatingSafe
+		triggers = splitTriggers(*triggerFlag)
 	}
 
 	if err := os.MkdirAll(store.ModelsDir(), 0o755); err != nil {
