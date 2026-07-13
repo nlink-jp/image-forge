@@ -4,7 +4,7 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.24.0] - 2026-07-14
 
 ### Added
 - **`models pull` can tag a non-catalog model** — `--kind lora|controlnet|upscaler`,
