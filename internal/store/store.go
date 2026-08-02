@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/nlink-jp/image-forge/internal/profile"
 )
@@ -46,22 +47,70 @@ type InstalledModel struct {
 	TriggerWords []string `json:"trigger_words,omitempty"`
 }
 
-// Files returns every weight file this model references — the single-file
-// checkpoint (Path), an external VAE (VAEPath), and each multi-component part.
+// FileRef is one recorded weight-file field of an InstalledModel, with its name
+// and read/write access to the value. Field uses the JSON spelling ("path",
+// "vae_path", "components.clip_l") so it can be shown to the user as-is.
+type FileRef struct {
+	Field string
+	Get   func() string
+	Set   func(string)
+}
+
+// fileRefs returns an accessor for every weight-file field this model records —
+// the single-file checkpoint (Path), an external VAE (VAEPath), and each
+// multi-component part. It is the single definition of "the files this model
+// owns" (ADR-0008): Files, MissingFiles and Registry.Relocate are all built on
+// it, so adding a component field only has to be handled here.
+//
+// The receiver is a pointer because the setters write through to it.
+func (m *InstalledModel) fileRefs() []FileRef {
+	c := &m.Components
+	return []FileRef{
+		{"path", func() string { return m.Path }, func(s string) { m.Path = s }},
+		{"vae_path", func() string { return m.VAEPath }, func(s string) { m.VAEPath = s }},
+		{"components.diffusion_model", func() string { return c.DiffusionModel }, func(s string) { c.DiffusionModel = s }},
+		{"components.clip_l", func() string { return c.ClipL }, func(s string) { c.ClipL = s }},
+		{"components.clip_g", func() string { return c.ClipG }, func(s string) { c.ClipG = s }},
+		{"components.t5xxl", func() string { return c.T5XXL }, func(s string) { c.T5XXL = s }},
+		{"components.llm", func() string { return c.LLM }, func(s string) { c.LLM = s }},
+	}
+}
+
+// Files returns every weight file this model references (see fileRefs), cleaned.
 // Empty fields are omitted. Used by `rm --purge` and `gc` to map a model to the
 // files it owns and to build the set of files still in use.
 func (m InstalledModel) Files() []string {
 	var fs []string
-	for _, p := range []string{
-		m.Path, m.VAEPath,
-		m.Components.DiffusionModel, m.Components.ClipL, m.Components.ClipG,
-		m.Components.T5XXL, m.Components.LLM,
-	} {
-		if p != "" {
+	for _, r := range m.fileRefs() {
+		if p := r.Get(); p != "" {
 			fs = append(fs, filepath.Clean(p))
 		}
 	}
 	return fs
+}
+
+// MissingFiles returns the recorded weight files that `exists` rejects, in
+// fileRefs order. Empty means every file this model needs is present. `exists`
+// is injected so callers can test against a synthetic filesystem; production
+// callers pass FileExists.
+//
+// A non-empty result means the model cannot be loaded even though it is
+// registered — typically the models dir moved (see `models relocate`), the
+// volume holding it is not mounted, or a file was deleted outside image-forge.
+func (m InstalledModel) MissingFiles(exists func(string) bool) []string {
+	var out []string
+	for _, r := range m.fileRefs() {
+		if p := r.Get(); p != "" && !exists(p) {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// FileExists is the production `exists` predicate for MissingFiles / Relocate.
+func FileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 // ReferencedFiles is the set of all files (cleaned absolute paths) referenced by
@@ -182,4 +231,78 @@ func (r *Registry) Remove(name string) bool {
 	}
 	delete(r.Models, name)
 	return true
+}
+
+// Relocation is one recorded weight-file path that relocation rewrites.
+type Relocation struct {
+	Model string
+	Field string // the JSON field name, e.g. "path" or "components.clip_l"
+	From  string
+	To    string
+}
+
+// MissingFile is a recorded weight file that is absent on disk and that
+// relocation could not account for — no same-named file exists in the target
+// directory, so there is nothing to point the registry at.
+type MissingFile struct {
+	Model string
+	Field string
+	Path  string
+}
+
+// RelocatePlan is the outcome of reconciling the registry against a models
+// directory: the paths rewritten (or that would be, on a dry run) and the
+// missing files relocation could not resolve.
+type RelocatePlan struct {
+	Moves      []Relocation
+	Unresolved []MissingFile
+}
+
+// Empty reports whether the registry is already consistent with the target
+// directory — nothing to rewrite and nothing missing.
+func (p RelocatePlan) Empty() bool { return len(p.Moves) == 0 && len(p.Unresolved) == 0 }
+
+// Relocate reconciles recorded weight-file paths with dir, the directory the
+// model files now live in (ADR-0008). A recorded path is rewritten to
+// dir/<basename> only when the recorded path is absent AND that candidate is
+// present: a path that still resolves is never touched (models deliberately kept
+// outside the models dir keep working), and a missing file with no candidate is
+// reported as unresolved rather than guessed at.
+//
+// With apply false nothing is mutated — the returned plan is a preview. With
+// apply true the in-memory registry is updated; the caller Saves it. Results are
+// ordered by model name then field, so a dry run and the apply that follows read
+// identically. `exists` is injected for testability (production: FileExists).
+func (r *Registry) Relocate(dir string, apply bool, exists func(string) bool) RelocatePlan {
+	var plan RelocatePlan
+	names := make([]string, 0, len(r.Models))
+	for n := range r.Models {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+
+	for _, n := range names {
+		m := r.Models[n] // a copy; written back only when apply changed it
+		changed := false
+		for _, ref := range m.fileRefs() {
+			p := ref.Get()
+			if p == "" || exists(p) {
+				continue
+			}
+			cand := filepath.Join(dir, filepath.Base(p))
+			if !exists(cand) {
+				plan.Unresolved = append(plan.Unresolved, MissingFile{Model: n, Field: ref.Field, Path: p})
+				continue
+			}
+			plan.Moves = append(plan.Moves, Relocation{Model: n, Field: ref.Field, From: p, To: cand})
+			if apply {
+				ref.Set(cand)
+				changed = true
+			}
+		}
+		if changed {
+			r.Models[n] = m
+		}
+	}
+	return plan
 }
