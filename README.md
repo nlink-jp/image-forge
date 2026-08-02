@@ -126,6 +126,7 @@ image-forge models pull <name | hf:owner/repo/file | civitai:<versionId> | url> 
 image-forge models open <name> [--print]                        # open the model's Civitai / HF page (--print = just the URL)
 image-forge models import <path> [--name N] [--arch A] [--vae V] [--kind K] [--trigger "a,b"]
 image-forge models quantize <name> --to <type> [--name N]
+image-forge models relocate [--apply] [--to DIR]                # re-point the registry after moving the models dir (dry-run without --apply)
 image-forge models rm <name> [--purge]                          # --purge also deletes the weight files
 image-forge models gc [--force]                                 # reclaim orphaned files (dry-run without --force)
 ```
@@ -135,6 +136,31 @@ Hugging Face repo — in your browser, so you can read the model card without
 searching for it (`--print` writes the URL instead of opening). The same URL is
 exposed as `page_url` in `models list --json`, which is how the GUI offers its
 "open model page" link.
+
+#### Moving your models to another disk
+
+`models_dir` in `config.toml` controls where *newly pulled* files are written.
+Installed models are recorded in the registry by absolute path, so changing it
+does not move anything already installed — those entries keep pointing at the old
+location. Move the models in three steps:
+
+```sh
+mv /old/models/* /Volumes/Big/image-forge/models/   # 1. move the files
+$EDITOR ~/.local/share/image-forge/config.toml      # 2. set models_dir
+image-forge models relocate                         # 3. preview, then --apply
+image-forge models relocate --apply
+```
+
+`models relocate` rewrites a recorded path to `<models_dir>/<same filename>` only
+when the recorded path is gone **and** that file is there — a model that still
+resolves where it is stays untouched, and a missing file with no match is reported,
+never guessed at. `--to DIR` targets another directory (which is also how you undo
+a relocate: re-run it with `--to` the old directory).
+
+Until you run it, `models list` marks those models `MISSING` and generation refuses
+them with the same advice — a model that cannot be loaded is never silently offered
+(see [ADR-0008](docs/adr/0008-models-dir-relocation.md)). The same check catches an
+external volume that simply isn't mounted; there, mount it rather than relocating.
 
 `models rm --purge` deletes the model's weight files too, but keeps any file
 another installed model still shares (a common VAE / text encoder) and any file
@@ -300,8 +326,9 @@ Downloads come from Hugging Face / Civitai / direct URLs. Provide tokens via
 - **Model directory** (for a bigger disk): set `models_dir` in the config (or
   `$IMAGE_FORGE_MODELS_DIR`) to store the multi-GB model files elsewhere. It
   affects **new** pulls; already-installed models keep the absolute paths in the
-  registry, so both locations coexist (relocate an existing one with `models rm`
-  + re-pull). The small `registry.json` stays in the data directory.
+  registry, so both locations coexist. To move models you already have, move the
+  files and run [`models relocate --apply`](#moving-your-models-to-another-disk).
+  The small `registry.json` stays in the data directory.
 - **Config file** (optional): `~/.config/image-forge/config.toml` (honors
   `$XDG_CONFIG_HOME` and `$IMAGE_FORGE_CONFIG`). Sets `default_model`, `output`,
   `allow_nsfw`, fallback tokens, and the hires upscaler policy (`[hires] upscaler`

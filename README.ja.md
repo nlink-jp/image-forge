@@ -121,6 +121,7 @@ image-forge models pull <name | hf:owner/repo/file | civitai:<versionId> | url> 
 image-forge models open <name> [--print]                        # モデルの Civitai / HF ページを開く（--print は URL のみ）
 image-forge models import <path> [--name N] [--arch A] [--vae V] [--kind K] [--trigger "a,b"]
 image-forge models quantize <name> --to <type> [--name N]
+image-forge models relocate [--apply] [--to DIR]                # モデルディレクトリ移動後にレジストリを張り替える（--apply 無しは dry-run）
 image-forge models rm <name> [--purge]                          # --purge は重みファイルも削除
 image-forge models gc [--force]                                 # 孤立ファイルを回収（--force 無しは dry-run）
 ```
@@ -129,6 +130,30 @@ image-forge models gc [--force]                                 # 孤立ファ�
 をブラウザで開くので、わざわざ検索しなくてもモデルカードを読める（`--print` は開かずに URL を出力）。
 同じ URL は `models list --json` に `page_url` として出るので、GUI の「モデルページを開く」導線も
 これを読んでいる。
+
+#### モデルを別ディスクへ移す
+
+`config.toml` の `models_dir` が効くのは**これから pull するファイルの保存先**だけ。
+インストール済みモデルはレジストリに絶対パスで記録されているので、`models_dir` を
+書き換えても既存エントリは古い場所を指したままになる。移動は 3 ステップで行う:
+
+```sh
+mv /old/models/* /Volumes/Big/image-forge/models/   # 1. ファイルを移す
+$EDITOR ~/.local/share/image-forge/config.toml      # 2. models_dir を設定
+image-forge models relocate                         # 3. プレビュー → --apply
+image-forge models relocate --apply
+```
+
+`models relocate` が記録パスを `<models_dir>/<同じファイル名>` へ書き換えるのは、
+記録パスが**存在せず、かつ**その候補が存在する場合だけ。今のパスで解決できるモデルは
+触らないし、候補が見つからない不在ファイルは推測せず「未解決」として報告する。
+`--to DIR` で別ディレクトリを指定でき、これが取り消し手段でもある（旧ディレクトリを
+`--to` に指定して再実行）。
+
+実行するまでの間、`models list` は該当モデルを `MISSING` と表示し、生成も同じ案内を
+出して拒否する。ロードできないモデルを黙って提示することはない
+（[ADR-0008](docs/adr/0008-models-dir-relocation.md)）。同じ検査は「外付けボリュームが
+未マウント」も捕まえるが、その場合は relocate ではなくマウントすること。
 
 `models rm --purge` は重みファイルも削除するが、他のインストール済みモデルと共有する
 ファイル（共通 VAE / テキストエンコーダ）と、管理下のモデルディレクトリ外のファイル
@@ -277,8 +302,10 @@ voice-/video-studio の MCP サーバー同様 **file-mediated**（ツールは�
   モデルレジストリ（`registry.json`）と DL 済みモデルファイル（`models/`）を格納。
 - **モデルディレクトリ**（大容量ディスク向け）: config の `models_dir`（または
   `$IMAGE_FORGE_MODELS_DIR`）で数GBのモデルファイルを別の場所に置ける。**新規** pull に
-  適用され、インストール済みモデルはレジストリの絶対パスを保持するため両方の場所が共存する
-  （既存を移すには `models rm` + 再pull）。小さな `registry.json` はデータディレクトリに残る。
+  適用され、インストール済みモデルはレジストリの絶対パスを保持するため両方の場所が共存する。
+  既存のモデルを移す場合はファイルを移動したうえで
+  [`models relocate --apply`](#モデルを別ディスクへ移す) を実行する。
+  小さな `registry.json` はデータディレクトリに残る。
 - **設定ファイル**（任意）: `~/.config/image-forge/config.toml`（`$XDG_CONFIG_HOME` /
   `$IMAGE_FORGE_CONFIG` を尊重）。`default_model` / `output` / `allow_nsfw` /
   フォールバックトークン、hires アップスケーラ方針（`[hires] upscaler` 既定 `"auto"`＝DL済

@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/nlink-jp/image-forge/internal/config"
@@ -9,29 +11,42 @@ import (
 )
 
 // seedRegistry writes a registry with a diffusion model and an upscaler into a
-// temp IMAGE_FORGE_HOME for the duration of the test.
-func seedRegistry(t *testing.T) {
+// temp IMAGE_FORGE_HOME for the duration of the test, and creates the weight
+// files they point at — resolution rejects an installed model whose files are
+// absent (ADR-0008), so the paths must be real. Returns (diffusion, upscaler).
+func seedRegistry(t *testing.T) (string, string) {
 	t.Helper()
-	t.Setenv("IMAGE_FORGE_HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("IMAGE_FORGE_HOME", home)
+	models := filepath.Join(home, "models")
+	if err := os.MkdirAll(models, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	sdxl := filepath.Join(models, "sdxl.safetensors")
+	esrgan := filepath.Join(models, "realesrgan.pth")
+	touch(t, sdxl, 8)
+	touch(t, esrgan, 8)
+
 	reg, err := store.Load()
 	if err != nil {
 		t.Fatal(err)
 	}
 	reg.Add(store.InstalledModel{
-		Name: "sdxl-model", Path: "/models/sdxl.safetensors",
+		Name: "sdxl-model", Path: sdxl,
 		Profile: profile.ArchDefaults(profile.ArchSDXL),
 	})
 	reg.Add(store.InstalledModel{
-		Name: "realesrgan-x4plus", Kind: "upscaler", Path: "/models/realesrgan.pth",
+		Name: "realesrgan-x4plus", Kind: "upscaler", Path: esrgan,
 		Profile: profile.Profile{Name: "realesrgan-x4plus"},
 	})
 	if err := reg.Save(); err != nil {
 		t.Fatal(err)
 	}
+	return sdxl, esrgan
 }
 
 func TestResolveUpscalerModel(t *testing.T) {
-	seedRegistry(t) // registry has exactly one upscaler: realesrgan-x4plus
+	_, esrgan := seedRegistry(t) // registry has exactly one upscaler: realesrgan-x4plus
 	none := config.Config{}
 
 	// An installed upscaler resolves to its path.
@@ -39,7 +54,7 @@ func TestResolveUpscalerModel(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolve upscaler by name: %v", err)
 	}
-	if got != "/models/realesrgan.pth" {
+	if got != esrgan {
 		t.Errorf("path = %q", got)
 	}
 
@@ -61,14 +76,14 @@ func TestResolveUpscalerModel(t *testing.T) {
 
 	// No name/path falls back to the sole installed upscaler.
 	got, err = resolveUpscalerModel("", "", none)
-	if err != nil || got != "/models/realesrgan.pth" {
+	if err != nil || got != esrgan {
 		t.Errorf("sole-upscaler fallback: got %q err %v", got, err)
 	}
 
 	// config [upscaler] default_model resolves to that upscaler.
 	cfg := config.Config{Upscaler: config.UpscalerConfig{DefaultModel: "realesrgan-x4plus"}}
 	got, err = resolveUpscalerModel("", "", cfg)
-	if err != nil || got != "/models/realesrgan.pth" {
+	if err != nil || got != esrgan {
 		t.Errorf("config default_model: got %q err %v", got, err)
 	}
 
@@ -87,12 +102,12 @@ func TestResolveUpscalerModel_NoneInstalled(t *testing.T) {
 }
 
 func TestResolveHiresModel(t *testing.T) {
-	seedRegistry(t)
+	_, esrgan := seedRegistry(t)
 
 	if got, err := resolveHiresModel(""); err != nil || got != "" {
 		t.Errorf("empty ref: got %q err %v", got, err)
 	}
-	if got, err := resolveHiresModel("realesrgan-x4plus"); err != nil || got != "/models/realesrgan.pth" {
+	if got, err := resolveHiresModel("realesrgan-x4plus"); err != nil || got != esrgan {
 		t.Errorf("by name: got %q err %v", got, err)
 	}
 	// A diffusion model is rejected as a hires model.

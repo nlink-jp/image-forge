@@ -16,8 +16,10 @@ allow_nsfw = false
 # Directory for pulled model files (checkpoints, VAEs, upscalers — the multi-GB
 # part). Point it at a bigger disk if you're low on space. "~" is expanded; also
 # settable via $IMAGE_FORGE_MODELS_DIR. This affects NEW pulls — already-installed
-# models keep the absolute paths recorded in the registry (move them and re-pull,
-# or `models rm` + re-pull, to relocate). Default: <data-dir>/models.
+# models keep the absolute paths recorded in the registry. To move models you
+# already have: move the files here, then run `image-forge models relocate` to
+# preview and `--apply` to re-point the registry. Until you do, those models are
+# listed as MISSING and generation refuses them. Default: <data-dir>/models.
 # models_dir = "/Volumes/BigDisk/image-forge/models"
 
 # API tokens for gated / authenticated downloads. PREFER the environment variables

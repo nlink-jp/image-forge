@@ -4,6 +4,28 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **`models relocate`** — re-points the registry after you move the model files to
+  another disk. `config.toml`'s `models_dir` only redirects *new* pulls, so editing
+  it left every installed model recorded at its old absolute path. Dry-run by
+  default; `--apply` writes, `--to DIR` targets another directory (and is the undo).
+  A recorded path is rewritten only when it is gone **and** the same filename exists
+  in the target dir — a path that still resolves is never touched, and a missing
+  file with no match is reported rather than guessed at. See ADR-0008.
+- **Missing weight files are reported** — `models list` gains a `STATUS` column
+  (`MISSING`) plus a footer naming the absent files, and `models list --json` /
+  the MCP `list_models` tool gain `missing_files`. Previously every listing built
+  its rows from the registry without stat'ing anything, so a model whose weights
+  had moved was shown as healthy and only failed at generation time.
+
+### Fixed
+- **`gen` / `serve` / `mcp` now fail early and clearly** for an installed model
+  whose weight files are absent, naming the files, the current models dir, and the
+  fix (`models relocate --apply`, or mounting the volume) — instead of surfacing a
+  low-level engine error about a stale path.
+
 ## [0.24.0] - 2026-07-14
 
 ### Added

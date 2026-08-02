@@ -75,6 +75,28 @@ type resolved struct {
 	Kind       string // "" (diffusion) or "upscaler"
 }
 
+// missingFilesError builds the error for a model that is registered but whose
+// weight files are gone — overwhelmingly because the models dir moved and the
+// registry still records the old absolute paths (ADR-0008). Failing here with
+// the fix named beats letting the engine fail on an open() of a stale path.
+// Pure (modelsDir is passed in) so the message is unit-testable.
+func missingFilesError(name string, missing []string, modelsDir string) error {
+	return fmt.Errorf(
+		"model %q is installed but %d of its weight file(s) are missing:\n  %s\n"+
+			"The models dir is %s. If the files were moved there, run `image-forge models relocate --apply`; "+
+			"if the volume holding them is not mounted, mount it",
+		name, len(missing), strings.Join(missing, "\n  "), modelsDir)
+}
+
+// checkInstalledFiles rejects an installed model whose recorded weight files are
+// absent on disk.
+func checkInstalledFiles(name string, im store.InstalledModel) error {
+	if missing := im.MissingFiles(store.FileExists); len(missing) > 0 {
+		return missingFilesError(name, missing, store.ModelsDir())
+	}
+	return nil
+}
+
 // resolveModel maps a registry name or a direct file path to a resolved model.
 func resolveModel(modelName, modelPath string) (resolved, error) {
 	switch {
@@ -86,6 +108,9 @@ func resolveModel(modelName, modelPath string) (resolved, error) {
 		im, ok := reg.Get(modelName)
 		if !ok {
 			return resolved{}, fmt.Errorf("model %q is not installed (try: image-forge models pull %s)", modelName, modelName)
+		}
+		if err := checkInstalledFiles(modelName, im); err != nil {
+			return resolved{}, err
 		}
 		return resolved{Path: im.Path, VAEPath: im.VAEPath, Components: im.Components, Profile: im.Profile, Kind: im.Kind}, nil
 	case modelPath != "":
@@ -192,6 +217,9 @@ func resolveUpscalerModel(name, path string, conf config.Config) (string, error)
 		}
 		if !im.IsUpscaler() {
 			return "", fmt.Errorf("model %q is a diffusion model, not an upscaler — pull one with `image-forge models pull realesrgan-x4plus`", name)
+		}
+		if err := checkInstalledFiles(name, im); err != nil {
+			return "", err
 		}
 		return im.Path, nil
 	case path != "":

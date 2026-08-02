@@ -11,7 +11,7 @@ users never hand-tune them. Series: **util-series**. Local-diffusion counterpart
 
 Status: **v0.17.0 released** (public, signed + notarized). **Phase 1 + Phase 2
 complete.** inpaint (`gen --init --mask`) wired + E2E-verified. `gen` txt2img/img2img/inpaint/
-LoRA, `models` list/import/pull/open/quantize/rm/gc, resident `serve`, config.toml — all E2E
+LoRA, `models` list/import/pull/open/quantize/relocate/rm/gc, resident `serve`, config.toml — all E2E
 on M2 Max (SD1.5 + Animagine XL / SDXL, q8_0, LCM-LoRA, NoobAI v-pred). v-prediction
 is wired via the profile (`--prediction eps|v|auto` overrides). Civitai downloads,
 **multi-component models** (FLUX / SD3.5 / Z-Image / **Anima**; resumable/retrying
@@ -108,6 +108,22 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   `--arch` / `--trigger` (like `import`) for that `!known` path; catalog names ignore
   them (with a stderr note). The kind→profile rule is the shared pure `auxProfile`
   (cli/models.go), used by both `pull` and `import` — one home, unit-tested.
+- **`models_dir` vs the registry** (ADR-0008): config's `models_dir` only redirects
+  where *new* pulls are written; the registry records an **absolute path per weight
+  file**, so moving models to another disk leaves every entry stale. `models relocate`
+  reconciles them — dry-run by default, `--apply` writes, `--to DIR` targets another
+  dir (and is the undo). It rebases a path to `<dir>/<basename>` **only** when the
+  recorded path is gone AND the candidate exists; a still-resolvable path is never
+  touched, an unmatched one is reported. Implicit rebasing at `store.Load()` was
+  rejected — it would load a same-named file with no word to the user. The file-field
+  walk lives in one place, `InstalledModel.fileRefs()` (get/set + JSON field name);
+  `Files()`, `MissingFiles()` and `Registry.Relocate()` are all built on it, so a new
+  component field only has to be added there. **Every listing surface stats the files**
+  (`installedView.MissingFiles` → `models list`'s `STATUS` column, `--json`, MCP
+  `list_models`) and `resolveModel`/`resolveUpscalerModel` reject a model with missing
+  weights via `checkInstalledFiles` — before ADR-0008 all of them reported registry
+  state as fact and the failure surfaced as an opaque engine error at render time.
+  `exists` is injected everywhere so none of this needs a real filesystem in tests.
 - **Upscaling & hires.fix** (ADR-0004): sd.cpp does both. Standalone
   `image-forge upscale` uses `new_upscaler_ctx`/`upscale` with an ESRGAN model
   (catalog `Kind: "upscaler"`, e.g. `realesrgan-x4plus`). hires.fix is set in the

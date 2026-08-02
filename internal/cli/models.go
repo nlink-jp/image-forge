@@ -22,11 +22,13 @@ import (
 
 func runModels(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("models: expected a subcommand (list|import|pull|open|quantize|rm|gc)")
+		return fmt.Errorf("models: expected a subcommand (list|import|pull|open|quantize|relocate|rm|gc)")
 	}
 	switch args[0] {
 	case "list":
 		return modelsList(args[1:])
+	case "relocate":
+		return modelsRelocate(args[1:])
 	case "import":
 		return modelsImport(args[1:])
 	case "pull":
@@ -85,7 +87,17 @@ type installedView struct {
 	// PageURL is the catalog model's web home (Civitai / HF); empty for a
 	// user-local model that isn't in the catalog.
 	PageURL string `json:"page_url,omitempty"`
+	// MissingFiles are the model's recorded weight files that are absent on disk
+	// (ADR-0008). Empty/absent means the model can be loaded; non-empty means it
+	// is registered but unusable — the models dir moved (`models relocate`), the
+	// volume holding it is not mounted, or a file was deleted outside image-forge.
+	// A front-end must not offer a model with missing files for generation.
+	MissingFiles []string `json:"missing_files,omitempty"`
 }
+
+// IsMissing reports whether this installed model cannot be loaded because one or
+// more of its weight files is absent.
+func (v installedView) IsMissing() bool { return len(v.MissingFiles) > 0 }
 
 // archCell renders the ARCH column: an upscaler has no diffusion architecture,
 // so it shows its kind instead.
@@ -127,7 +139,15 @@ func catalogViews(reg *store.Registry) []catalogView {
 	return out
 }
 
+// installedViews renders the installed models, checking each recorded weight
+// file against the real filesystem.
 func installedViews(reg *store.Registry) []installedView {
+	return installedViewsWith(reg, store.FileExists)
+}
+
+// installedViewsWith is the pure core: `exists` is injected so the missing-file
+// reporting (ADR-0008) is unit-testable without touching disk.
+func installedViewsWith(reg *store.Registry, exists func(string) bool) []installedView {
 	names := make([]string, 0, len(reg.Models))
 	for n := range reg.Models {
 		names = append(names, n)
@@ -157,7 +177,7 @@ func installedViews(reg *store.Registry) []installedView {
 			// upscaler / LoRA / ControlNet with no Path would just be broken.
 			MultiComponent: m.Path == "" && m.IsDiffusion(), InCatalog: inCat,
 			LicenseFlags: flags, Attribution: attribution, TriggerWords: triggers,
-			PageURL: pageURL,
+			PageURL: pageURL, MissingFiles: m.MissingFiles(exists),
 		})
 	}
 	return out
@@ -308,7 +328,7 @@ func printInstalledTable(views []installedView, titled bool) {
 		return
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tARCH\tRATING\tLICENSE\tPATH")
+	fmt.Fprintln(w, "NAME\tSTATUS\tARCH\tRATING\tLICENSE\tPATH")
 	for _, v := range views {
 		rating := v.Rating
 		if rating == "" {
@@ -322,9 +342,40 @@ func printInstalledTable(views []installedView, titled bool) {
 		if license == "" {
 			license = "-"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", v.Name, archCell(v.Arch, v.Kind), rating, license, loc)
+		// STATUS is blank for a healthy model: the column exists to make a broken
+		// one impossible to miss, not to decorate every row.
+		status := ""
+		if v.IsMissing() {
+			status = "MISSING"
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", v.Name, status, archCell(v.Arch, v.Kind), rating, license, loc)
 	}
 	w.Flush()
+	printMissingFooter(os.Stdout, views, store.ModelsDir())
+}
+
+// printMissingFooter names the absent weight files under the installed table and
+// points at the fix. Without it a `MISSING` cell says something is wrong but not
+// which file or what to do (ADR-0008).
+func printMissingFooter(out io.Writer, views []installedView, modelsDir string) {
+	var broken []installedView
+	for _, v := range views {
+		if v.IsMissing() {
+			broken = append(broken, v)
+		}
+	}
+	if len(broken) == 0 {
+		return
+	}
+	fmt.Fprintf(out, "\nwarning: %d installed model(s) have missing weight files:\n", len(broken))
+	for _, v := range broken {
+		for _, f := range v.MissingFiles {
+			fmt.Fprintf(out, "  %s: %s\n", v.Name, f)
+		}
+	}
+	fmt.Fprintf(out, "The models dir is now %s. If the files were moved there, run:\n", modelsDir)
+	fmt.Fprintln(out, "  image-forge models relocate          # preview")
+	fmt.Fprintln(out, "  image-forge models relocate --apply  # rewrite the registry")
 }
 
 func printCatalogTable(views []catalogView, titled bool) {
@@ -1033,6 +1084,72 @@ func removeFile(p string) (int64, error) {
 		return 0, err
 	}
 	return size, nil
+}
+
+// modelsRelocate reconciles the registry's recorded weight-file paths with the
+// directory the model files now live in — the fix for moving models onto another
+// disk, where editing config's `models_dir` only redirects future pulls and
+// leaves every installed model pointing at the old location (ADR-0008).
+//
+// Dry-run by default (mirroring `models gc`): it prints the plan and changes
+// nothing until `--apply`.
+func modelsRelocate(args []string) error {
+	fs := flag.NewFlagSet("models relocate", flag.ContinueOnError)
+	apply := fs.Bool("apply", false, "rewrite the registry; default: only report what would change")
+	to := fs.String("to", "", "directory the model files now live in (default: the configured models_dir)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	reg, err := store.Load()
+	if err != nil {
+		return err
+	}
+	dir := store.ModelsDir()
+	if *to != "" {
+		dir = *to
+	}
+	return runRelocate(os.Stdout, reg, filepath.Clean(dir), *apply, store.FileExists, reg.Save)
+}
+
+// runRelocate is the testable core of `models relocate`: it builds the plan
+// against `exists`, reports it, and (only with apply) persists via `save`. Both
+// the filesystem and the write are injected so a test can exercise the apply
+// path without a real registry or real files.
+func runRelocate(out io.Writer, reg *store.Registry, dir string, apply bool, exists func(string) bool, save func() error) error {
+	plan := reg.Relocate(dir, apply, exists)
+
+	if plan.Empty() {
+		fmt.Fprintf(out, "models relocate: every installed model's files are present; nothing to do (models dir: %s)\n", dir)
+		return nil
+	}
+
+	for _, m := range plan.Moves {
+		fmt.Fprintf(out, "  %s (%s)\n    %s\n    -> %s\n", m.Model, m.Field, m.From, m.To)
+	}
+	for _, u := range plan.Unresolved {
+		fmt.Fprintf(out, "  %s (%s): MISSING, and no %s in %s\n", u.Model, u.Field, filepath.Base(u.Path), dir)
+	}
+
+	if !apply {
+		if len(plan.Moves) > 0 {
+			fmt.Fprintf(out, "models relocate: %d path(s) would be rewritten to %s. Re-run with --apply to write the registry.\n", len(plan.Moves), dir)
+		}
+		if len(plan.Unresolved) > 0 {
+			fmt.Fprintf(out, "models relocate: %d file(s) are missing and could not be resolved — move them into %s, or `models rm` those models.\n", len(plan.Unresolved), dir)
+		}
+		return nil
+	}
+
+	if len(plan.Moves) > 0 {
+		if err := save(); err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "models relocate: rewrote %d path(s) to %s.\n", len(plan.Moves), dir)
+	}
+	if len(plan.Unresolved) > 0 {
+		fmt.Fprintf(out, "models relocate: %d file(s) are still missing — move them into %s, or `models rm` those models.\n", len(plan.Unresolved), dir)
+	}
+	return nil
 }
 
 // humanBytes formats a byte count as a human-readable size (e.g. "6.5 GB").
