@@ -32,6 +32,7 @@ make build         # scaffold binary (no engine) → dist/image-forge
 make build-engine  # full binary w/ sd.cpp runtime (needs cmake + Metal Toolchain)
 make test          # go test ./...
 make vet           # go vet ./...
+make verify-release  # gate: .notarized marker + freshness (run before upload)
 ```
 
 - **Never `go build` directly** — always `make build` (outputs to `dist/`).
