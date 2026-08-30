@@ -21,9 +21,10 @@ output/              rendered PNGs                         (server-written)
 - `workspace_id`: `[a-zA-Z0-9_-]{1,64}`, one per generation project.
 - `workspace_root` (optional): an **absolute path to a directory you prepared** —
   create it with your own file tools wherever you may write, then pass the same
-  value on the call. Omit it to use the server's default root
-  (`~/.local/share/image-forge/mcp-workspaces`), which requires the server and
-  you to share an unrestricted filesystem view.
+  value on the call. **Pass a root you can read back**: generated images are
+  returned as paths under it, never as bytes. Omit it to use the server's
+  default root (`~/.local/share/image-forge/mcp-workspaces`), which requires
+  the server and you to share an unrestricted filesystem view.
 - Input images (`init`, `mask`, `control`) are referenced by paths **relative to
   the workspace root** — place them in the workspace first.
 - The server never reads or writes outside the workspace (kernel-enforced;

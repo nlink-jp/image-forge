@@ -80,7 +80,7 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
   "required": ["workspace_id", "prompt"],
   "properties": {
     "workspace_id": {"type": "string", "description": "One project per workspace; [a-zA-Z0-9_-]{1,64}"},
-    "workspace_root": {"type": "string", "description": "Absolute path to an agent-prepared workspace root directory (create it first); omit to use the server default"},
+    "workspace_root": {"type": "string", "description": "Absolute path to a workspace root you prepared and can read back. Pass your own session or working directory when you have one: results come back as paths, so a workspace you cannot open leaves you holding a path to nothing. Omitting it uses the server default (the configured workspace_root), which is only useful if that is readable to you."},
     "prompt": {"type": "string", "description": "Text prompt"},
     "model": {"type": "string", "description": "Installed model registry name (see list_models); omit to use the server's default_model"},
     "negative": {"type": "string", "description": "Negative prompt"},
