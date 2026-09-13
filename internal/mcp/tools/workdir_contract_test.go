@@ -99,3 +99,17 @@ func TestWorkDirComesFromRequestMeta(t *testing.T) {
 		t.Fatalf("generate with only a _meta work dir: %v", err)
 	}
 }
+
+// A schema test catches a renamed argument; it does not catch a sentence. The
+// descriptions are the other half of what the model reads, and prose drifts
+// silently because nothing compiles it.
+func TestNoToolDescriptionNamesARetiredWorkDirName(t *testing.T) {
+	h := newHarness(t, nil)
+	for _, tool := range h.srv.Tools() {
+		for _, old := range retiredWorkDirNames {
+			if strings.Contains(tool.Description, old) {
+				t.Errorf("tool %q describes itself with %q; the name is work_dir", tool.Name, old)
+			}
+		}
+	}
+}

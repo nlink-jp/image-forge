@@ -125,9 +125,13 @@ func (c Config) HiresUpscaler() string {
 	return c.Hires.Upscaler
 }
 
-// MCPConfig holds optional settings for the `image-forge mcp` server. Every
-// field is optional; an empty WorkspaceRoot falls back to the built-in default
-// (<data-dir>/mcp-workspaces).
+// MCPConfig holds optional settings for the `image-forge mcp` server.
+//
+// It is empty: workspace_root was its only key, and ADR-0009 removed it along
+// with the built-in default it fell back to. The workspace is
+// <work_dir>/<workspace_id>/, and work_dir is named by the caller on every
+// call. The type stays so a config that still carries [mcp] is told what
+// happened rather than "unknown section".
 type MCPConfig struct {
 }
 

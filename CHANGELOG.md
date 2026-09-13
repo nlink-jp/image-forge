@@ -4,6 +4,18 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.26.1] - 2026-09-13
+
+### Fixed
+
+- A stale comment still described `MCPConfig` as falling back to a built-in
+  default workspace root; 0.26.0 removed both the key and the default.
+
+### Added
+
+- `TestNoToolDescriptionNamesARetiredWorkDirName` — the schema test pinned the
+  argument name, nothing pinned the sentences beside it.
+
 ## [0.26.0] - 2026-09-13
 
 ### Changed
