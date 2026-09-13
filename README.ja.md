@@ -260,7 +260,7 @@ image-forge mcp [--workspace-root <dir>]
 
 voice-/video-studio の MCP サーバー同様 **file-mediated**（ツールは画像bytesではなく
 ファイル**パス**を返す）。作業は**ワークスペース**ディレクトリ内（既定ルートはデータ
-ディレクトリ下、または呼び出し毎に `workspace_root` を指定）、生成PNGは `output/` に出力。
+呼び出しごとに指定する `work_dir` の下、読み戻せる場所）、生成PNGは `output/` に出力。
 生成は1〜2分かかるため**非同期** — `generate` は即座に `job_id` を返し、クライアントが
 ポーリングする。
 

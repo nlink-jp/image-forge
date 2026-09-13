@@ -129,15 +129,6 @@ func (c Config) HiresUpscaler() string {
 // field is optional; an empty WorkspaceRoot falls back to the built-in default
 // (<data-dir>/mcp-workspaces).
 type MCPConfig struct {
-	// WorkspaceRoot is the default root the MCP server writes workspaces under
-	// when a call omits workspace_root.
-	WorkspaceRoot string `toml:"workspace_root"`
-}
-
-// MCPWorkspaceRoot returns the configured default MCP workspace root, with "~"
-// expanded. Empty means "use the built-in default".
-func (c Config) MCPWorkspaceRoot() string {
-	return expandHome(c.MCP.WorkspaceRoot)
 }
 
 // expandHome expands a leading "~" to the user's home directory.

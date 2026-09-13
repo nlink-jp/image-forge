@@ -64,6 +64,15 @@ func (s *Server) RegisterTool(t Tool, h ToolHandler) {
 	s.handlers[t.Name] = h
 }
 
+// Tools returns the registered tool descriptors. It exists so that tests can
+// check the tools against the documentation and the schemas without going
+// through the JSON-RPC framing.
+func (s *Server) Tools() []Tool {
+	out := make([]Tool, len(s.tools))
+	copy(out, s.tools)
+	return out
+}
+
 // Call invokes a registered tool by name in-process, returning the handler's
 // raw value and error. It bypasses the JSON-RPC framing and is used for
 // in-process invocation and tests.

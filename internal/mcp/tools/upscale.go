@@ -14,12 +14,12 @@ import (
 
 // upscaleArgs is the decoded upscale tool input.
 type upscaleArgs struct {
-	WorkspaceID   string `json:"workspace_id"`
-	WorkspaceRoot string `json:"workspace_root"`
-	Input         string `json:"input"`
-	Model         string `json:"model"`
-	Scale         *int   `json:"scale"`
-	OutputName    string `json:"output_name"`
+	WorkspaceID string `json:"workspace_id"`
+	WorkDir     string `json:"work_dir"`
+	Input       string `json:"input"`
+	Model       string `json:"model"`
+	Scale       *int   `json:"scale"`
+	OutputName  string `json:"output_name"`
 }
 
 // UpscaleResult is the check_job "done" payload for an upscale job.
@@ -39,10 +39,10 @@ func registerUpscale(srv *mcpserver.Server, d *Deps) {
 			"list_models (scope=installed) and pass an upscaler name.",
 		InputSchema: json.RawMessage(`{
   "type": "object",
-  "required": ["workspace_id", "input"],
+  "required": ["work_dir", "workspace_id", "input"],
   "properties": {
     "workspace_id": {"type": "string", "description": "One project per workspace; [a-zA-Z0-9_-]{1,64}"},
-    "workspace_root": {"type": "string", "description": "Absolute path to a workspace root you prepared and can read back. Pass your own session or working directory when you have one: results come back as paths, so a workspace you cannot open leaves you holding a path to nothing. Omitting it uses the server default (the configured workspace_root), which is only useful if that is readable to you."},
+    "work_dir": {"type": "string", "description": "Absolute path to a directory you can read back \u2014 your session or working directory. The workspace is <work_dir>/<workspace_id>/ and every image lands under it, so a directory you cannot open leaves you holding a path to nothing. It must already exist, and nothing here expands ~ or resolves a relative path."},
     "input": {"type": "string", "description": "Image to upscale, workspace-relative path (place it in the workspace first)"},
     "model": {"type": "string", "description": "Installed upscaler name (see list_models scope=installed); omit to use the sole installed upscaler"},
     "scale": {"type": "integer", "description": "Upscale factor (default: the model's native factor, typically 4)"},
@@ -73,7 +73,12 @@ func registerUpscale(srv *mcpserver.Server, d *Deps) {
 			return nil, toolerr.Newf(toolerr.CodeInvalidArguments, "output_name must be a plain file name, got %q", in.OutputName)
 		}
 
-		ws, err := d.WS.EnsureIn(in.WorkspaceRoot, in.WorkspaceID)
+		workDir, err := d.WorkDir.Resolve(ctx, in.WorkDir)
+		if err != nil {
+			return nil, err
+		}
+
+		ws, err := d.WS.EnsureUnder(workDir, in.WorkspaceID)
 		if err != nil {
 			return nil, err
 		}

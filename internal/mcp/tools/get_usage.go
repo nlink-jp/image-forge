@@ -28,7 +28,7 @@ const Instructions = "image-forge mcp generates images locally via an embedded d
 func registerGetUsage(srv *mcpserver.Server, d *Deps) {
 	srv.RegisterTool(mcpserver.Tool{
 		Name: "get_usage",
-		Description: "Return this server's operating manual (markdown): the workspace model and workspace_root, " +
+		Description: "Return this server's operating manual (markdown): the work_dir contract and the workspace model, " +
 			"the generate parameters, the async job lifecycle (generate -> job_id -> check_job), how to " +
 			"reference input images, and the error recovery table. Call it once before your first generation.",
 		InputSchema: json.RawMessage(`{"type":"object","properties":{},"additionalProperties":false}`),

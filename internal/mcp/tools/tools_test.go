@@ -76,7 +76,7 @@ func newHarness(t *testing.T, rend *fakeRenderer) *harness {
 		rend = &fakeRenderer{seed: 12345}
 	}
 	ups := &fakeUpscaler{}
-	def := workspace.NewManager(filepath.Join(t.TempDir(), "default"))
+	def := workspace.NewManager()
 	srv := mcpserver.New("image-forge-mcp", "test",
 		transport.NewStdioTransport(strings.NewReader(""), io.Discard), nil)
 	Register(srv, &Deps{
@@ -103,7 +103,13 @@ func (h *harness) call(name string, args map[string]any) (any, error) {
 // seedWorkspace prepares an agent-style workspace root.
 func seedWorkspace(t *testing.T, wsID string) string {
 	t.Helper()
-	root := t.TempDir()
+	// The resolved spelling, because that is what the server validates the
+	// work directory down to and therefore what every path it returns is
+	// built from (organization ADR-021 §4).
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(root, wsID), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -132,10 +138,10 @@ func TestGenerateThenCheckJob(t *testing.T) {
 	root := seedWorkspace(t, "proj")
 
 	out, err := h.call("generate", map[string]any{
-		"workspace_id":   "proj",
-		"workspace_root": root,
-		"prompt":         "a cat",
-		"model":          "sdxl",
+		"workspace_id": "proj",
+		"work_dir":     root,
+		"prompt":       "a cat",
+		"model":        "sdxl",
 	})
 	if err != nil {
 		t.Fatalf("generate: %v", err)
@@ -175,22 +181,18 @@ func TestGenerateThenCheckJob(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "proj", "output", "gen.tmp.png")); !os.IsNotExist(err) {
 		t.Errorf("temp render file left behind: %v", err)
 	}
-	// The default root must stay untouched.
-	if _, err := os.Stat(filepath.Join(h.def.Root(), "proj")); !os.IsNotExist(err) {
-		t.Errorf("default root should be untouched: %v", err)
-	}
 }
 
 func TestGenerateOutputName(t *testing.T) {
 	h := newHarness(t, &fakeRenderer{seed: 5})
 	root := seedWorkspace(t, "proj")
 	out, err := h.call("generate", map[string]any{
-		"workspace_id":   "proj",
-		"workspace_root": root,
-		"prompt":         "x",
-		"model":          "sdxl",
-		"output_name":    "hero",
-		"seed":           42,
+		"workspace_id": "proj",
+		"work_dir":     root,
+		"prompt":       "x",
+		"model":        "sdxl",
+		"output_name":  "hero",
+		"seed":         42,
 	})
 	if err != nil {
 		t.Fatalf("generate: %v", err)
@@ -209,9 +211,9 @@ func TestGenerateModelRequired(t *testing.T) {
 	h := newHarness(t, nil)
 	root := seedWorkspace(t, "proj")
 	_, err := h.call("generate", map[string]any{
-		"workspace_id":   "proj",
-		"workspace_root": root,
-		"prompt":         "x",
+		"workspace_id": "proj",
+		"work_dir":     root,
+		"prompt":       "x",
 	})
 	var te *toolerr.Error
 	if !errors.As(err, &te) || te.Code != toolerr.CodeModelRequired {
@@ -221,13 +223,13 @@ func TestGenerateModelRequired(t *testing.T) {
 
 func TestGenerateDefaultModel(t *testing.T) {
 	// With a configured default model, no model arg is needed.
-	def := workspace.NewManager(filepath.Join(t.TempDir(), "default"))
+	def := workspace.NewManager()
 	rend := &fakeRenderer{seed: 9}
 	srv := mcpserver.New("image-forge-mcp", "test",
 		transport.NewStdioTransport(strings.NewReader(""), io.Discard), nil)
 	Register(srv, &Deps{DefaultModel: "cfg-default", WS: def, Render: rend, Jobs: job.NewManager(context.Background())})
 	root := seedWorkspace(t, "proj")
-	raw, _ := json.Marshal(map[string]any{"workspace_id": "proj", "workspace_root": root, "prompt": "x"})
+	raw, _ := json.Marshal(map[string]any{"workspace_id": "proj", "work_dir": root, "prompt": "x"})
 	out, err := srv.Call(context.Background(), "generate", raw)
 	if err != nil {
 		t.Fatalf("generate: %v", err)
@@ -262,7 +264,7 @@ func TestGenerateRenderErrorSurfaced(t *testing.T) {
 	h := newHarness(t, &fakeRenderer{failWith: toolerr.New(toolerr.CodeModelNotFound, "not installed")})
 	root := seedWorkspace(t, "proj")
 	out, err := h.call("generate", map[string]any{
-		"workspace_id": "proj", "workspace_root": root, "prompt": "x", "model": "ghost",
+		"workspace_id": "proj", "work_dir": root, "prompt": "x", "model": "ghost",
 	})
 	if err != nil {
 		t.Fatalf("generate submit: %v", err)
@@ -277,7 +279,7 @@ func TestGenerateMaskRequiresInit(t *testing.T) {
 	h := newHarness(t, nil)
 	root := seedWorkspace(t, "proj")
 	_, err := h.call("generate", map[string]any{
-		"workspace_id": "proj", "workspace_root": root, "prompt": "x", "model": "sdxl",
+		"workspace_id": "proj", "work_dir": root, "prompt": "x", "model": "sdxl",
 		"mask": "m.png",
 	})
 	var te *toolerr.Error
@@ -290,7 +292,7 @@ func TestGenerateInitNotFound(t *testing.T) {
 	h := newHarness(t, nil)
 	root := seedWorkspace(t, "proj")
 	_, err := h.call("generate", map[string]any{
-		"workspace_id": "proj", "workspace_root": root, "prompt": "x", "model": "sdxl",
+		"workspace_id": "proj", "work_dir": root, "prompt": "x", "model": "sdxl",
 		"init": "missing.png",
 	})
 	var te *toolerr.Error
@@ -308,7 +310,7 @@ func TestGenerateInitVerifiedAndPassed(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, err := h.call("generate", map[string]any{
-		"workspace_id": "proj", "workspace_root": root, "prompt": "x", "model": "sdxl",
+		"workspace_id": "proj", "work_dir": root, "prompt": "x", "model": "sdxl",
 		"init": "base.png", "strength": 0.4,
 	})
 	if err != nil {
@@ -323,7 +325,7 @@ func TestGenerateInitVerifiedAndPassed(t *testing.T) {
 func TestGenerateInvalidWorkspaceID(t *testing.T) {
 	h := newHarness(t, nil)
 	_, err := h.call("generate", map[string]any{
-		"workspace_id": "bad id", "prompt": "x", "model": "sdxl",
+		"workspace_id": "bad id", "work_dir": seedWorkspace(t, "proj"), "prompt": "x", "model": "sdxl",
 	})
 	if !errors.Is(err, toolerr.New(toolerr.CodeInvalidWorkspaceID, "")) {
 		t.Fatalf("want invalid_workspace_id, got %v", err)
@@ -429,7 +431,7 @@ func TestGenerateThreadsHires(t *testing.T) {
 	h := newHarness(t, rend)
 	root := seedWorkspace(t, "proj")
 	out, err := h.call("generate", map[string]any{
-		"workspace_id": "proj", "workspace_root": root, "prompt": "x", "model": "sdxl",
+		"workspace_id": "proj", "work_dir": root, "prompt": "x", "model": "sdxl",
 		"hires": "on", "hires_scale": 1.75, "hires_upscaler": "lanczos",
 	})
 	if err != nil {
@@ -456,7 +458,7 @@ func TestGenerateThreadsLoRAAndControlNet(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, err := h.call("generate", map[string]any{
-		"workspace_id": "proj", "workspace_root": root, "prompt": "x", "model": "sd15",
+		"workspace_id": "proj", "work_dir": root, "prompt": "x", "model": "sd15",
 		"loras":       []any{"lcm-lora-sd15:0.8", "/m/extra.safetensors:1"},
 		"control_net": "controlnet-canny-sd15", "control": "edge.png",
 		"control_strength": 0.7, "canny": true,
@@ -506,7 +508,7 @@ func TestGenerateControlRequiresControlNet(t *testing.T) {
 	h := newHarness(t, nil)
 	root := seedWorkspace(t, "proj")
 	_, err := h.call("generate", map[string]any{
-		"workspace_id": "proj", "workspace_root": root, "prompt": "x", "model": "sd15",
+		"workspace_id": "proj", "work_dir": root, "prompt": "x", "model": "sd15",
 		"control": "edge.png", // no control_net
 	})
 	var te *toolerr.Error
@@ -523,7 +525,7 @@ func TestUpscaleThenCheckJob(t *testing.T) {
 		t.Fatal(err)
 	}
 	out, err := h.call("upscale", map[string]any{
-		"workspace_id": "proj", "workspace_root": root,
+		"workspace_id": "proj", "work_dir": root,
 		"input": "in.png", "model": "realesrgan-x4plus", "scale": 4,
 	})
 	if err != nil {
@@ -568,10 +570,10 @@ func TestUpscaleThenCheckJob(t *testing.T) {
 func TestUpscaleMissingArgs(t *testing.T) {
 	h := newHarness(t, nil)
 	root := seedWorkspace(t, "proj")
-	if _, err := h.call("upscale", map[string]any{"workspace_root": root, "input": "in.png"}); !errors.Is(err, toolerr.New(toolerr.CodeMissingArgument, "")) {
+	if _, err := h.call("upscale", map[string]any{"work_dir": root, "input": "in.png"}); !errors.Is(err, toolerr.New(toolerr.CodeMissingArgument, "")) {
 		t.Fatalf("missing workspace_id: %v", err)
 	}
-	if _, err := h.call("upscale", map[string]any{"workspace_id": "proj", "workspace_root": root}); !errors.Is(err, toolerr.New(toolerr.CodeMissingArgument, "")) {
+	if _, err := h.call("upscale", map[string]any{"workspace_id": "proj", "work_dir": root}); !errors.Is(err, toolerr.New(toolerr.CodeMissingArgument, "")) {
 		t.Fatalf("missing input: %v", err)
 	}
 }
@@ -580,7 +582,7 @@ func TestUpscaleInputNotFound(t *testing.T) {
 	h := newHarness(t, nil)
 	root := seedWorkspace(t, "proj")
 	_, err := h.call("upscale", map[string]any{
-		"workspace_id": "proj", "workspace_root": root, "input": "missing.png", "model": "x",
+		"workspace_id": "proj", "work_dir": root, "input": "missing.png", "model": "x",
 	})
 	var te *toolerr.Error
 	if !errors.As(err, &te) || te.Code != toolerr.CodeInputNotFound {

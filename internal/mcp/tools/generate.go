@@ -18,7 +18,7 @@ import (
 // generateArgs is the decoded generate tool input.
 type generateArgs struct {
 	WorkspaceID     string   `json:"workspace_id"`
-	WorkspaceRoot   string   `json:"workspace_root"`
+	WorkDir         string   `json:"work_dir"`
 	Prompt          string   `json:"prompt"`
 	Model           string   `json:"model"`
 	Negative        *string  `json:"negative"`
@@ -77,10 +77,10 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
 			"is given and no default is configured, returns model_required — call list_models to pick one.",
 		InputSchema: json.RawMessage(`{
   "type": "object",
-  "required": ["workspace_id", "prompt"],
+  "required": ["work_dir", "workspace_id", "prompt"],
   "properties": {
     "workspace_id": {"type": "string", "description": "One project per workspace; [a-zA-Z0-9_-]{1,64}"},
-    "workspace_root": {"type": "string", "description": "Absolute path to a workspace root you prepared and can read back. Pass your own session or working directory when you have one: results come back as paths, so a workspace you cannot open leaves you holding a path to nothing. Omitting it uses the server default (the configured workspace_root), which is only useful if that is readable to you."},
+    "work_dir": {"type": "string", "description": "Absolute path to a directory you can read back \u2014 your session or working directory. The workspace is <work_dir>/<workspace_id>/ and every image lands under it, so a directory you cannot open leaves you holding a path to nothing. It must already exist, and nothing here expands ~ or resolves a relative path."},
     "prompt": {"type": "string", "description": "Text prompt"},
     "model": {"type": "string", "description": "Installed model registry name (see list_models); omit to use the server's default_model"},
     "negative": {"type": "string", "description": "Negative prompt"},
@@ -149,7 +149,12 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
 			return nil, toolerr.Newf(toolerr.CodeInvalidArguments, "output_name must be a plain file name, got %q", in.OutputName)
 		}
 
-		ws, err := d.WS.EnsureIn(in.WorkspaceRoot, in.WorkspaceID)
+		workDir, err := d.WorkDir.Resolve(ctx, in.WorkDir)
+		if err != nil {
+			return nil, err
+		}
+
+		ws, err := d.WS.EnsureUnder(workDir, in.WorkspaceID)
 		if err != nil {
 			return nil, err
 		}

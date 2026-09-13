@@ -4,6 +4,33 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- **Breaking: `workspace_root` is now `work_dir`, required by `generate` and
+  `upscale`.** It means the absolute path of a directory the caller can read
+  back; the workspace is `<work_dir>/<workspace_id>/`. A call still sending
+  `workspace_root` (or `workspaceRoot` / `workspace_dir`) is refused with
+  `work_dir_required` naming the replacement. See
+  [ADR-0009](docs/adr/0009-work-dir-contract.md); organization ADR-021.
+- **Breaking: the default workspace root is gone, and so are the ways to
+  configure one** — the `--workspace-root` flag and the `[mcp] workspace_root`
+  config key. All three were places an operator named a directory the caller may
+  not be able to read, which turned a successful render into a path that cannot
+  be opened.
+- A runtime may supply the directory instead of the model: the server reads
+  `_meta["jp.nlink/work_dir"]` when the argument is absent. The argument wins.
+- The model store (`~/.local/share/image-forge`) is refused as a work directory,
+  along with system locations, the home directory itself, and credential
+  directories.
+
+### Added
+
+- `work_dir_required`, `work_dir_invalid`, `work_dir_not_found`,
+  `work_dir_not_writable`, `work_dir_denied` — five codes that say which part of
+  the contract failed.
+
 ## [0.25.1] - 2026-08-31
 
 ### Changed

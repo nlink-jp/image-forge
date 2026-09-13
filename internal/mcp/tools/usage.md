@@ -11,7 +11,7 @@ Call `get_usage` once before your first generation.
 
 ## Workspace model (read this first)
 
-All output lives in a workspace: `<workspace_root>/<workspace_id>/`
+All output lives in a workspace: `<work_dir>/<workspace_id>/`
 
 ```
 <input images>       img2img / inpaint / control inputs   (you place these)
@@ -19,14 +19,15 @@ output/              rendered PNGs                         (server-written)
 ```
 
 - `workspace_id`: `[a-zA-Z0-9_-]{1,64}`, one per generation project.
-- `workspace_root` (optional): an **absolute path to a directory you prepared** —
-  create it with your own file tools wherever you may write, then pass the same
-  value on the call. **Pass a root you can read back**: generated images are
-  returned as paths under it, never as bytes. Omit it to use the server's
-  default root (`~/.local/share/image-forge/mcp-workspaces`), which requires
-  the server and you to share an unrestricted filesystem view.
+- `work_dir` (**required**, every call): the **absolute path of a directory you
+  can read back** — your session or working directory. Generated images come
+  back as paths under it, never as bytes, so a directory you cannot open leaves
+  you holding a path to nothing. There is no default: it must already exist, and
+  nothing here expands `~` or resolves a relative path. Your runtime may supply
+  it for you by setting `_meta["jp.nlink/work_dir"]` on the call; the argument
+  always wins.
 - Input images (`init`, `mask`, `control`) are referenced by paths **relative to
-  the workspace root** — place them in the workspace first.
+  the workspace** — place them in the workspace first.
 - The server never reads or writes outside the workspace (kernel-enforced;
   symlinks inside the workspace that point outside fail with `path_not_allowed`).
 
@@ -50,7 +51,7 @@ Required: `workspace_id`, `prompt`.
 - `model` — an installed model name (from `list_models`). If omitted, the
   server's configured `default_model` is used; if there is none, you get
   `model_required` — call `list_models` and pass one.
-- `workspace_root` — absolute agent-prepared root (see above).
+- `work_dir` — the absolute directory you can read back (see above).
 - `negative` — negative prompt.
 - `seed` — integer; `-1` = random (the concrete seed is reported back).
 - `steps`, `cfg`, `width`, `height`, `sampler`, `scheduler`, `clip_skip`,
@@ -90,7 +91,7 @@ Required: `workspace_id`, `input`.
 - `scale` — upscale factor (default: the model's native factor, typically 4).
 - `output_name` — base name for the PNG (default `upscaled`); the final file is
   `output/<output_name>.png`.
-- `workspace_root` — absolute agent-prepared root (see above).
+- `work_dir` — the absolute directory you can read back (see above).
 
 ## Job lifecycle (async)
 
@@ -115,7 +116,12 @@ workspace).
 | model_not_found | the named model is not installed; call list_models (scope=installed); the user pulls catalog models with the CLI |
 | no_runtime | this build has no diffusion runtime (built without cgo_sdcpp); the user must install the engine build |
 | input_not_found | place the referenced init/mask image in the workspace, then retry |
-| path_not_allowed | use workspace-relative input paths / a valid absolute workspace_root; symlinks out of the workspace are rejected |
+| path_not_allowed | use workspace-relative input paths; symlinks out of the workspace are rejected |
+| work_dir_required | no `work_dir` argument and no `_meta` hint — pass the absolute path of a directory you can read back |
+| work_dir_invalid | not absolute, started with `~`, or contained `..` |
+| work_dir_not_found | not there, or not a directory — it is yours, so this is a typo; the server does not create it |
+| work_dir_not_writable | the server cannot write there |
+| work_dir_denied | a system location, your home directory itself, or a credential directory |
 | invalid_workspace_id | match [a-zA-Z0-9_-]{1,64} |
 | invalid_arguments | fix the flagged argument (e.g. output_name must be a plain file name; mask requires init) |
 | invalid_scope | list_models scope must be installed|catalog|all |

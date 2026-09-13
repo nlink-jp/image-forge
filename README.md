@@ -277,7 +277,7 @@ image-forge mcp [--workspace-root <dir>]
 
 It is **file-mediated** (like the voice-/video-studio MCP servers): tools return
 file **paths**, never image bytes. Work happens in a **workspace** directory (a
-default root under the data dir, or an agent-prepared `workspace_root` per call);
+a `work_dir` the caller names on every call and can read back);
 generated PNGs land in the workspace's `output/`. Generation is **async** — a
 render takes a minute or two, so the server returns a `job_id` immediately and
 the client polls.

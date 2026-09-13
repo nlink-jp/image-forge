@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 
 	"github.com/nlink-jp/image-forge/internal/config"
@@ -17,6 +16,7 @@ import (
 	"github.com/nlink-jp/image-forge/internal/mcp/toolerr"
 	"github.com/nlink-jp/image-forge/internal/mcp/tools"
 	"github.com/nlink-jp/image-forge/internal/mcp/transport"
+	"github.com/nlink-jp/image-forge/internal/mcp/workdir"
 	"github.com/nlink-jp/image-forge/internal/mcp/workspace"
 	"github.com/nlink-jp/image-forge/internal/store"
 )
@@ -31,7 +31,6 @@ var mcpVersion = "dev"
 // of scope for v1 (stdio only).
 func runMCP(args []string) error {
 	fs := flag.NewFlagSet("mcp", flag.ContinueOnError)
-	wsRoot := fs.String("workspace-root", "", "default workspace root (overrides config mcp.workspace_root)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -54,17 +53,6 @@ func runMCP(args []string) error {
 		return fmt.Errorf("mcp: config: %w", err)
 	}
 
-	root := *wsRoot
-	if root == "" {
-		root = conf.MCPWorkspaceRoot()
-	}
-	if root == "" {
-		root = filepath.Join(store.Home(), "mcp-workspaces")
-	}
-	if err := os.MkdirAll(root, 0o755); err != nil {
-		return fmt.Errorf("mcp: create default workspace root: %w", err)
-	}
-
 	// SIGINT/SIGTERM (and stdin EOF) shut the server down; canceling ctx aborts
 	// an in-flight render and stops the job worker.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -78,10 +66,13 @@ func runMCP(args []string) error {
 	srv.SetInstructions(tools.Instructions)
 	tools.Register(srv, &tools.Deps{
 		DefaultModel: conf.DefaultModel,
-		WS:           workspace.NewManager(root),
-		Render:       &residentRenderer{re: re},
-		Upscale:      &engineUpscaler{},
-		ListModels:   func(scope string) (any, error) { return ListModels(scope) },
+		WS:           workspace.NewManager(),
+		// The model's own directory is off limits as a destination: the
+		// model store lives there (ADR-0009).
+		WorkDir:    workdir.Resolver{Denied: []string{store.Home()}},
+		Render:     &residentRenderer{re: re},
+		Upscale:    &engineUpscaler{},
+		ListModels: func(scope string) (any, error) { return ListModels(scope) },
 		// Wire the server's SIGINT/SIGTERM-cancellable ctx so shutdown stops the
 		// worker and drops queued jobs (rather than the Background() default).
 		Jobs:   job.NewManager(ctx),
@@ -89,7 +80,7 @@ func runMCP(args []string) error {
 	})
 
 	logger.Info("image-forge mcp server ready",
-		"workspace_root", root, "default_model", conf.DefaultModel, "engine", engine.Info())
+		"default_model", conf.DefaultModel, "engine", engine.Info())
 	return srv.Serve(ctx)
 }
 

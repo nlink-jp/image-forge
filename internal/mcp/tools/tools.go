@@ -11,10 +11,12 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"strings"
 
 	"github.com/nlink-jp/image-forge/internal/mcp/job"
 	"github.com/nlink-jp/image-forge/internal/mcp/mcpserver"
 	"github.com/nlink-jp/image-forge/internal/mcp/toolerr"
+	"github.com/nlink-jp/image-forge/internal/mcp/workdir"
 	"github.com/nlink-jp/image-forge/internal/mcp/workspace"
 )
 
@@ -108,8 +110,12 @@ type ModelLister func(scope string) (any, error)
 type Deps struct {
 	// DefaultModel is used by generate when no model arg is given (from config).
 	DefaultModel string
-	// WS manages workspaces (default root + agent-prepared roots).
+	// WS materializes workspaces under the caller's work directory.
 	WS *workspace.Manager
+	// WorkDir resolves and validates the per-call work directory: the
+	// argument, then the request's _meta, then an error. The zero value
+	// works (organization ADR-021).
+	WorkDir workdir.Resolver
 	// Render performs the actual generation (real engine or a test fake).
 	Render Renderer
 	// Upscale performs standalone ESRGAN super-resolution (real engine or a fake).
@@ -137,8 +143,17 @@ func Register(srv *mcpserver.Server, d *Deps) {
 	registerListModels(srv, d)
 }
 
+// retiredWorkDirNames are the spellings the work directory argument carried
+// across the fleet before org ADR-021 settled on work_dir.
+var retiredWorkDirNames = []string{"workspace_root", "workspaceRoot", "workspace_dir"}
+
 // unmarshalStrict decodes tool arguments, rejecting unknown fields so agent
 // typos surface as invalid_arguments instead of being silently ignored.
+//
+// A caller sending one of the retired work-directory spellings is told the new
+// name rather than left to guess from "unknown field": the rename is ours, and
+// a caller working from an older manual should need one turn to recover, not a
+// schema re-read.
 func unmarshalStrict(args json.RawMessage, into any) error {
 	if len(args) == 0 {
 		args = json.RawMessage("{}")
@@ -146,6 +161,13 @@ func unmarshalStrict(args json.RawMessage, into any) error {
 	dec := json.NewDecoder(bytes.NewReader(args))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(into); err != nil {
+		msg := err.Error()
+		for _, old := range retiredWorkDirNames {
+			if strings.Contains(msg, `unknown field "`+old+`"`) {
+				return toolerr.Newf(toolerr.CodeWorkDirRequired,
+					"%q was renamed to work_dir: pass the absolute path of a directory you can read back", old)
+			}
+		}
 		return toolerr.Newf(toolerr.CodeInvalidArguments, "invalid arguments: %v", err)
 	}
 	return nil

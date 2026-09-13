@@ -65,7 +65,7 @@ Usage:
   image-forge upscale <in> -o <out> [--model <name>]    ESRGAN super-resolution of an existing image
   image-forge models  <list|pull|open|import|quantize|relocate|rm|gc> manage models (relocate = re-point the registry after moving models_dir)
   image-forge serve   [flags]                           resident JSON-line API (Phase 2)
-  image-forge mcp     [--workspace-root <dir>]          MCP stdio server (AI image generation)
+  image-forge mcp                                       MCP stdio server (AI image generation)
   image-forge version                                   print version
 
 Run "image-forge <command> --help" for command details.
