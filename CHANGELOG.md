@@ -4,6 +4,17 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.26.3] - 2026-09-14
+
+### Fixed
+
+- **`input_not_found` named nothing.** "input %q is not in the workspace —
+  place it there first" does not say where the workspace is, and it reaches the
+  model on every `init`, `mask`, `control` and `upscale` input. It now names the
+  absolute path it looked at. (Found on voice-scribe with a real agent, which
+  answered that sentence by inventing a directory and spent four rounds
+  recovering; these servers share the workspace code.)
+
 ## [0.26.2] - 2026-09-14
 
 ### Fixed

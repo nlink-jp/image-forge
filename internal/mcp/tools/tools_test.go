@@ -608,3 +608,31 @@ func TestToolsListed(t *testing.T) {
 		}
 	}
 }
+
+// TestMissingInputErrorNamesThePath is the regression for a message that told
+// the agent what to do without saying where. voice-scribe shipped the same
+// sentence and a real agent (2026-09-14) answered it by inventing a directory,
+// being denied, and spending four rounds recovering; these servers share the
+// workspace code, so they shared the defect.
+func TestMissingInputErrorNamesThePath(t *testing.T) {
+	h := newHarness(t, nil)
+	root := t.TempDir()
+
+	_, err := h.call("generate", map[string]any{
+		"prompt":       "a cat",
+		"work_dir":     root,
+		"workspace_id": "w1",
+		"model":        "sdxl",
+		"init":         "not-there.png",
+	})
+	if err == nil {
+		t.Fatal("an init image that is not in the workspace must fail")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "not-there.png") {
+		t.Errorf("error does not name the input: %q", msg)
+	}
+	if !strings.Contains(msg, root) {
+		t.Errorf("error does not name the absolute path it looked for: %q", msg)
+	}
+}

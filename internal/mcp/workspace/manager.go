@@ -176,8 +176,16 @@ func (w *Workspace) VerifyRegular(rel string) error {
 	fi, err := r.Lstat(rel)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
+			// Name the path that was actually looked at. "Place it in the
+			// workspace" without saying where sent a real agent (voice-scribe,
+			// 2026-09-14) off inventing a directory and cost it four rounds:
+			// a relative name is workspace-relative, and the workspace is a
+			// level below the work directory the caller named, which is not
+			// where an agent naturally puts a file.
 			return toolerr.Newf(toolerr.CodeInputNotFound,
-				"input %q is not in the workspace — place it there first", rel)
+				"input %q is not in the workspace: looked for %s. Input images are "+
+					"workspace-relative — write the file there with your own file tools "+
+					"and pass the name it has inside the workspace", rel, w.Path(rel))
 		}
 		return mapRootErr("lstat", rel, err)
 	}
