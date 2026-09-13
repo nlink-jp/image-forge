@@ -272,13 +272,15 @@ Exposes image generation to an AI over the Model Context Protocol (JSON-RPC 2.0
 on stdio), reusing the resident engine.
 
 ```sh
-image-forge mcp [--workspace-root <dir>]
+image-forge mcp
 ```
 
 It is **file-mediated** (like the voice-/video-studio MCP servers): tools return
-file **paths**, never image bytes. Work happens in a **workspace** directory (a
-a `work_dir` the caller names on every call and can read back);
-generated PNGs land in the workspace's `output/`. Generation is **async** — a
+file **paths**, never image bytes. Every call names a `work_dir` — an absolute
+path the caller can read back — and the workspace is `<work_dir>/<workspace_id>/`;
+generated PNGs land in its `output/`. There is no flag and no default: a
+directory the server picked is one the caller may not be able to open, which
+would make the returned path useless. Generation is **async** — a
 render takes a minute or two, so the server returns a `job_id` immediately and
 the client polls.
 

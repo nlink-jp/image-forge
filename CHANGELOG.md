@@ -10,6 +10,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 - A stale comment still described `MCPConfig` as falling back to a built-in
   default workspace root; 0.26.0 removed both the key and the default.
+- **Both READMEs still showed `image-forge mcp [--workspace-root <dir>]`** — a
+  flag 0.26.0 deleted — and the paragraph under it had been left half-rewritten
+  in either language.
 
 ### Added
 

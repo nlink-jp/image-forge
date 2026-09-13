@@ -255,12 +255,14 @@ image-forge serve < requests.jsonl
 画像生成を MCP（stdio 上の JSON-RPC 2.0）で AI に公開する。常駐エンジンを再利用。
 
 ```sh
-image-forge mcp [--workspace-root <dir>]
+image-forge mcp
 ```
 
 voice-/video-studio の MCP サーバー同様 **file-mediated**（ツールは画像bytesではなく
-ファイル**パス**を返す）。作業は**ワークスペース**ディレクトリ内（既定ルートはデータ
-呼び出しごとに指定する `work_dir` の下、読み戻せる場所）、生成PNGは `output/` に出力。
+ファイル**パス**を返す）。呼び出しごとに `work_dir`（呼び出し側が読み戻せる絶対パス）を
+指定し、ワークスペースは `<work_dir>/<workspace_id>/`。生成PNGはその `output/` に出力。
+フラグも既定値も無い — サーバーが選んだディレクトリは呼び出し側が開けるとは限らず、
+返したパスが役に立たなくなるため。
 生成は1〜2分かかるため**非同期** — `generate` は即座に `job_id` を返し、クライアントが
 ポーリングする。
 
