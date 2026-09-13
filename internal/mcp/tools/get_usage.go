@@ -19,8 +19,10 @@ var usageMarkdown string
 // Instructions is the short initialize-time hint that makes get_usage
 // discoverable (surfaced via the MCP `instructions` field).
 const Instructions = "image-forge mcp generates images locally via an embedded diffusion engine " +
-	"(stable-diffusion.cpp on Apple Silicon / Metal). It is stateful, file-mediated, and async: " +
-	"generated PNGs are written under a workspace directory and returned as file paths (never image bytes); " +
+	"(stable-diffusion.cpp on Apple Silicon / Metal). Every call names work_dir: the absolute path of a " +
+	"directory you can read back (your session or working directory). It is required and has no default, " +
+	"and the workspace is <work_dir>/<workspace_id>/. It is stateful, file-mediated, and async: " +
+	"generated PNGs are written under that workspace and returned as file paths (never image bytes); " +
 	"generate enqueues a job and returns a job_id, which you poll with check_job. " +
 	"Call the get_usage tool before your first generation to learn the workspace model, the generate " +
 	"parameters, the job lifecycle, and the error recovery table."
