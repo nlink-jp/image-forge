@@ -170,7 +170,8 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   gen params (`g.hires` via `sd_hires_params_init`) and driven by the model
   profile; `gen --hires auto|on|off` (auto follows the profile). The hires
   upscaler resolves CLI → profile → config `[hires] upscaler` → built-in latent;
-  `"auto"`/`[upscaler] default_model` pick a downloaded ESRGAN if present.
+  `"auto"` picks `[upscaler] default_model`, else the sole installed ESRGAN, else
+  latent (`pickUpscalerModel`) — two installed and no default means latent.
   `str_to_sd_hires_upscaler` is case-sensitive on display names — map lowercase
   names to the enum directly (see `hiresUpscalerEnum`).
 - **Performance flags are opt-in (`[performance]`).** `flash_attn` (`OpenParams.FlashAttn`,

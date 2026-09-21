@@ -444,12 +444,9 @@ func modelsImport(args []string) error {
 	if nm == "" {
 		nm = strings.TrimSuffix(filepath.Base(abs), filepath.Ext(abs))
 	}
-	arch, archSource := profile.Detect(nm), store.ArchDetected
-	if *archFlag != "" {
-		if arch, err = parseArch(*archFlag); err != nil {
-			return fmt.Errorf("models import: %w", err)
-		}
-		archSource = store.ArchFromFlag
+	arch, archSource, err := archFor(nm, *archFlag)
+	if err != nil {
+		return fmt.Errorf("models import: %w", err)
 	}
 
 	prof := auxProfile(kind, nm, arch)
@@ -680,13 +677,9 @@ func modelsPull(args []string) error {
 		// registered as a base diffusion model (ADR-0007). Defaults reproduce the
 		// prior behavior — base diffusion, arch auto-detected from the name.
 		kind = overrideKind
-		arch := profile.Detect(regName)
-		archSource = store.ArchDetected
-		if *archFlag != "" {
-			if arch, err = parseArch(*archFlag); err != nil {
-				return fmt.Errorf("models pull: %w", err)
-			}
-			archSource = store.ArchFromFlag
+		var arch profile.Arch
+		if arch, archSource, err = archFor(regName, *archFlag); err != nil {
+			return fmt.Errorf("models pull: %w", err)
 		}
 		prof = auxProfile(kind, regName, arch)
 		rating = profile.RatingSafe
@@ -901,14 +894,8 @@ func modelsQuantize(args []string) error {
 
 	prof := src.Profile
 	prof.Name = outName
-	// A quantized copy has its source's architecture, and is as trusted as the
-	// source was; under the new name, a pre-0.28.0 catalog source would no
-	// longer be recognised, so its trust is written down now.
-	archSource := src.ArchSource
-	if archSource == "" && trustedArch(src) != "" {
-		archSource = store.ArchFromCatalog
-	}
-	reg.Add(store.InstalledModel{Name: outName, Path: outPath, Profile: prof, ArchSource: archSource, Rating: src.Rating, License: src.License})
+	// A quantized copy has its source's architecture and trust.
+	reg.Add(store.InstalledModel{Name: outName, Path: outPath, Profile: prof, ArchSource: derivedArchSource(src), Rating: src.Rating, License: src.License})
 	if err := reg.Save(); err != nil {
 		return err
 	}

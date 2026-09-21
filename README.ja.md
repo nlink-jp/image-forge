@@ -174,7 +174,8 @@ ControlNet は学習時のベース**アーキテクチャ**を記録するた�
 モデルと別のアーキテクチャ向けのインストール済み LoRA / ControlNet を、何かを読み込む前に
 拒否します。比べるのは事実であるアーキテクチャだけ —— カタログ自身のものか、`--arch` で
 指定したもの（検証あり: `sd15|sdxl|sd35|flux|zimage|anima`。Pony・Illustrious・NoobAI は
-`sdxl`）です。`--arch` を付けずに登録したものはファイル名からの推測を記録しており、比べません。
+`sdxl`）です。`--arch` を付けずに登録したものは登録名（`--name`、無ければファイル名）からの
+推測を記録しており、比べません。
 誤りと分かっている記録を覆すときは、`--arch` を付けて登録し直すか、LoRA / ControlNet の
 ファイルをパスで渡してください。
 
@@ -326,8 +327,9 @@ listing から読んだか**である。多くのエントリはバイト自体�
   小さな `registry.json` はデータディレクトリに残る。
 - **設定ファイル**（任意）: `~/.config/image-forge/config.toml`（`$XDG_CONFIG_HOME` /
   `$IMAGE_FORGE_CONFIG` を尊重）。`default_model` / `output` / `allow_nsfw` /
-  フォールバックトークン、hires アップスケーラ方針（`[hires] upscaler` 既定 `"auto"`＝DL済
-  ESRGANがあればそれ、無ければ内蔵latent；`[upscaler] default_model`）を設定。
+  フォールバックトークン、hires アップスケーラ方針（`[hires] upscaler` 既定 `"auto"`＝
+  `[upscaler] default_model` の ESRGAN、無ければ唯一インストール済みのもの、それも無ければ内蔵
+  latent）を設定。
   [`config.example.toml`](config.example.toml) をコピーして編集。（v0.5前の場所
   `$IMAGE_FORGE_HOME/config.toml` も後方互換で読む。）
 - **Flash attention**（opt-in）: `[performance] flash_attn = true`（または `gen

@@ -185,7 +185,7 @@ another architecture than the installed model, before anything loads. Only
 architectures that are facts are compared — the catalog's own, or one given with
 `--arch` (validated: `sd15|sdxl|sd35|flux|zimage|anima`; Pony, Illustrious and
 NoobAI are `sdxl`). An install that named no `--arch` records a guess from the
-file name, which is not compared. To overrule a record you know is wrong,
+registered name (`--name`, else the file name), which is not compared. To overrule a record you know is wrong,
 re-register with `--arch`, or pass the LoRA / ControlNet file by path.
 
 ```sh
@@ -352,8 +352,8 @@ Downloads come from Hugging Face / Civitai / direct URLs. Provide tokens via
 - **Config file** (optional): `~/.config/image-forge/config.toml` (honors
   `$XDG_CONFIG_HOME` and `$IMAGE_FORGE_CONFIG`). Sets `default_model`, `output`,
   `allow_nsfw`, fallback tokens, and the hires upscaler policy (`[hires] upscaler`
-  defaults to `"auto"` — a downloaded ESRGAN if installed, else the built-in
-  latent; `[upscaler] default_model`). See [`config.example.toml`](config.example.toml)
+  defaults to `"auto"` — the ESRGAN named by `[upscaler] default_model`, or the
+  only one installed, else the built-in latent). See [`config.example.toml`](config.example.toml)
   — copy it and edit. (The pre-v0.5 location, `$IMAGE_FORGE_HOME/config.toml`, is
   still read as a fallback.)
 - **Flash attention** (opt-in): `[performance] flash_attn = true` (or `gen

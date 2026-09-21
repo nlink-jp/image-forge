@@ -102,7 +102,8 @@ func (c Config) ModelsDirResolved() string {
 type HiresConfig struct {
 	// Upscaler selects which upscaler hires.fix uses by default: "latent"
 	// (built-in, no model), "lanczos"/"nearest" (built-in), "model", "auto"
-	// (a downloaded ESRGAN upscaler if one is installed, else latent), or the
+	// (the [upscaler] default_model ESRGAN, else the only one installed, else
+	// latent), or the
 	// name of an installed upscaler model. The gen flags and the model profile
 	// override this. Empty is treated as "auto".
 	Upscaler string `toml:"upscaler"`
@@ -117,7 +118,8 @@ type UpscalerConfig struct {
 }
 
 // HiresUpscaler returns the configured default hires upscaler policy, defaulting
-// to "auto" (prefer a downloaded ESRGAN, else the built-in latent upscaler).
+// to "auto" (the default_model ESRGAN, else the only one installed, else the
+// built-in latent upscaler).
 func (c Config) HiresUpscaler() string {
 	if c.Hires.Upscaler == "" {
 		return "auto"

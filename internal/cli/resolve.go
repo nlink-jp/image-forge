@@ -104,6 +104,31 @@ func trustedArch(im store.InstalledModel) profile.Arch {
 	return ""
 }
 
+// archFor decides a registration's architecture and where it came from:
+// --arch when given (validated), else profile.Detect's guess from the
+// registered name. import and a raw-ref pull both take it from here, so the
+// two cannot record a guess as a fact differently.
+func archFor(regName, flagValue string) (profile.Arch, string, error) {
+	if flagValue != "" {
+		a, err := parseArch(flagValue)
+		if err != nil {
+			return "", "", err
+		}
+		return a, store.ArchFromFlag, nil
+	}
+	return profile.Detect(regName), store.ArchDetected, nil
+}
+
+// derivedArchSource is the ArchSource of a model made from src (quantize):
+// as trusted as src was. Under a new name a pre-0.28.0 catalog source would no
+// longer be recognised, so its trust is written down.
+func derivedArchSource(src store.InstalledModel) string {
+	if src.ArchSource == "" && trustedArch(src) != "" {
+		return store.ArchFromCatalog
+	}
+	return src.ArchSource
+}
+
 // knownArches are the values --arch accepts, in the order the error lists them.
 var knownArches = []profile.Arch{
 	profile.ArchSD15, profile.ArchSDXL, profile.ArchSD35, profile.ArchFlux, profile.ArchZImage, profile.ArchAnima,

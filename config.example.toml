@@ -31,7 +31,8 @@ allow_nsfw = false
 # hires.fix defaults. `gen --hires auto` (the default) follows the model profile;
 # `on`/`off` force it. When hires runs, this picks the upscaler:
 #   "latent"  — built-in, no model download (fast, default fallback)
-#   "auto"    — a downloaded ESRGAN upscaler if one is installed, else latent
+#   "auto"    — the ESRGAN named by [upscaler] default_model, or the only one
+#               installed, else latent (two or more and no default_model: latent)
 #   "lanczos" / "nearest" — other built-ins
 #   "<name>"  — a specific installed upscaler model (see `models list`)
 # CLI --hires-upscaler / --hires-model and the model profile override this.

@@ -83,8 +83,9 @@ Required: `workspace_id`, `prompt`.
   config's `[hires] upscaler`, whose default `auto` picks an ESRGAN — the
   configured `[upscaler] default_model`, or the only one installed — else
   latent), and `hires_model` (an installed upscaler name for
-  `hires_upscaler=model`; without it the same pick applies, and with no ESRGAN
-  installed the pass falls back to latent). hires roughly doubles render time
+  `hires_upscaler=model`; without it the same pick applies, and when it finds
+  none — no ESRGAN installed, or two or more and no `default_model` — the pass
+  falls back to latent). hires roughly doubles render time
   and raises peak memory.
 
 ## Upscale parameters
