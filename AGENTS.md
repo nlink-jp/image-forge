@@ -52,7 +52,7 @@ internal/mcp/               `image-forge mcp` MCP stdio server (ADR-0003): jsonr
                             job (async FIFO worker), workspace (os.Root containment), tools
                             (get_usage/generate/check_job/list_models/upscale)
 internal/profile/           model profiles, per-arch defaults, arch Detect (the gotcha-hiding core)
-internal/catalog/           curated model catalog (kind, content_rating, license + license_flags/attribution, trigger_words, RAM tier, source) + Profile()
+internal/catalog/           curated model catalog (kind, content_rating, license + license_source/license_flags/attribution, trigger_words, RAM tier, source) + Profile()
 internal/store/             installed-model registry (JSON) at $IMAGE_FORGE_HOME/registry.json;
                             ModelsDir relocatable via config models_dir / $IMAGE_FORGE_MODELS_DIR
                             (store.SetModelsDir, set from config in cli.Run — store stays config-free).
@@ -70,6 +70,21 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
 ```
 
 ## Gotchas
+
+- **A model's licence comes from the card of the weights, not from the repo the
+  bytes come from.** Most entries download from a quantization or mirror repo
+  (`second-state/…-GGUF`, `city96/…-gguf`, a re-upload), which can declare a
+  different licence or none. `anima-turbo` shipped reporting NVIDIA's Open Model
+  License — the terms of the Cosmos *base model* — and therefore told users
+  commercial use was fine, while the weights it downloads are CircleStone's
+  non-commercial licence. A publisher's family is not uniform either: the same
+  Anima repo holds CircleStone weights beside Apache-2.0 Qwen components.
+  `Entry.LicenseSource` records which card was read, `licenceSources` in
+  `internal/cli/licensesource_test.go` pins it per entry, and the entry count is
+  compared so a new model cannot be added without stating its provenance. Note
+  also that `installedViews` reports the **catalog's** licence for a cataloged
+  model: the registry keeps what was recorded at install time, so a correction
+  would otherwise never reach a model someone already pulled.
 
 - **Containment: the workspace base is verified by real path, because the path
   is handed to code outside any root.** `os.Root` contains operations *within*

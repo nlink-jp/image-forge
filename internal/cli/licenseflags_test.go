@@ -90,7 +90,10 @@ func TestBaseModelLicenseFlags(t *testing.T) {
 		"t-ponynai3-v7":       {catalog.LicenseNoDerivatives},
 		"noobai-xl-vpred":     {catalog.LicenseShareAlike},
 		"sd35-medium":         {catalog.LicenseAttribution},
-		"anima-turbo":         {catalog.LicenseAttribution},
+		// Corrected: the weights are CircleStone's non-commercial licence. The
+		// catalog used to read NVIDIA's Open Model License off the Cosmos base
+		// model and report "commercial OK" — and this line pinned the mistake.
+		"anima-turbo": {catalog.LicenseNonCommercial, catalog.LicenseAttribution},
 		// Permissive base models carry no flags.
 		"z-image-turbo":    nil, // Apache-2.0 (Tongyi-MAI/Z-Image)
 		"flux1-schnell":    nil,

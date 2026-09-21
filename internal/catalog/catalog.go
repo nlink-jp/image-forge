@@ -53,13 +53,30 @@ const (
 
 // Entry is a catalog record.
 type Entry struct {
-	Name         string
-	Kind         string // "" (diffusion, default) | upscaler | lora | controlnet
-	Arch         profile.Arch
-	Prediction   profile.Prediction
-	Rating       profile.Rating
-	License      string
-	LicenseFlags []string // notable restrictions (non-commercial / no-derivatives / …)
+	Name       string
+	Kind       string // "" (diffusion, default) | upscaler | lora | controlnet
+	Arch       profile.Arch
+	Prediction profile.Prediction
+	Rating     profile.Rating
+	License    string
+	// LicenseSource names where License was read from: the listing or model card
+	// that states the terms for the **weights this entry downloads**.
+	//
+	// It is required, and it is usually *not* the repository in Source. Most
+	// entries here fetch from a quantization or mirror repo (second-state/…-GGUF,
+	// city96/…-gguf, comfyanonymous/…_fp16_safetensors, a re-upload), and such a
+	// repo may declare a different licence from the weights' publisher, declare
+	// none at all, or — the case that shipped wrong here — the terms may get read
+	// from the *base* model instead: anima-turbo claimed NVIDIA's Open Model
+	// License, which governs the Cosmos base, while the weights being downloaded
+	// are CircleStone's non-commercial licence.
+	//
+	// A publisher's family is not uniform either: two repos from one owner, and
+	// even two files in one repo, can differ (the Anima repo carries CircleStone
+	// weights beside Apache-2.0 Qwen components). Read the card for the file, not
+	// for the family, and record which card you read.
+	LicenseSource string
+	LicenseFlags  []string // notable restrictions (non-commercial / no-derivatives / …)
 	// Attribution is the credit text to give when a license requires it — written
 	// into the output PNG's metadata and shown by a front-end. Set it whenever
 	// LicenseFlags includes attribution.
@@ -206,21 +223,26 @@ func (e Entry) Profile() profile.Profile {
 
 // Default returns the curated, binary-embedded catalog.
 //
-// NOTE: Source repo ids below are provisional (RFP stage). Each must be verified
-// against the actual HF/Civitai listing before Phase 1 `pull` support ships.
+// The Source refs below are live: `models pull` downloads from them. Each
+// entry's licence was read from the publisher's own card or listing and that
+// origin is recorded in LicenseSource — re-read the card there, not the repo in
+// Source, when revisiting terms (the note that used to stand here called these
+// ids provisional, which stopped being true when pull shipped).
 func Default() []Entry {
 	return []Entry{
 		{
 			Name: "sd15-emaonly", Arch: profile.ArchSD15, Prediction: profile.PredEps,
 			Rating: profile.RatingSafe, License: "CreativeML OpenRAIL-M",
-			MinRAMGB: 8, RecRAMGB: 16,
+			LicenseSource: "stable-diffusion-v1-5/stable-diffusion-v1-5",
+			MinRAMGB:      8, RecRAMGB: 16,
 			Source: Source{HF: "second-state/stable-diffusion-v1-5-GGUF/stable-diffusion-v1-5-pruned-emaonly-Q8_0.gguf"},
 			Notes:  "Classic SD1.5 (GGUF, baked VAE). Small; a good smoke-test model.",
 		},
 		{
 			Name: "animagine-xl-4", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "CreativeML OpenRAIL++-M (per the HF model card)",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseSource: "cagliostrolab/animagine-xl-4.0",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				HF:  "cagliostrolab/animagine-xl-4.0/animagine-xl-4.0.safetensors",
 				VAE: "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -229,10 +251,11 @@ func Default() []Entry {
 		},
 		{
 			Name: "illustrious-xl-v1", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
-			Rating: profile.RatingQuestionable, License: "OnomaAI Illustrious License: no derivatives, credit required",
-			LicenseFlags: []string{LicenseNoDerivatives, LicenseAttribution},
-			Attribution:  "Illustrious XL by ONOMAAI (Civitai)",
-			MinRAMGB:     16, RecRAMGB: 32,
+			Rating: profile.RatingQuestionable, License: "OnomaAI Illustrious terms (Civitai listing): no derivatives, credit required. The Hugging Face card for these weights instead declares `other` / `sdxl-license`, linking the SDXL 1.0 licence — the stricter of the two is reported here",
+			LicenseSource: "civitai:1096723 listing + OnomaAIResearch/Illustrious-XL-v1.0 card",
+			LicenseFlags:  []string{LicenseNoDerivatives, LicenseAttribution},
+			Attribution:   "Illustrious XL by ONOMAAI (Civitai)",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				HF:  "OnomaAIResearch/Illustrious-XL-v1.0/Illustrious-XL-v1.0.safetensors",
 				VAE: "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -241,10 +264,11 @@ func Default() []Entry {
 		},
 		{
 			Name: "illustrious-xl-v1.1", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
-			Rating: profile.RatingQuestionable, License: "OnomaAI Illustrious License: no derivatives, credit required",
-			LicenseFlags: []string{LicenseNoDerivatives, LicenseAttribution},
-			Attribution:  "Illustrious XL by ONOMAAI (Civitai)",
-			MinRAMGB:     16, RecRAMGB: 32,
+			Rating: profile.RatingQuestionable, License: "OnomaAI Illustrious terms (Civitai listing): no derivatives, credit required. The Hugging Face card for these weights instead declares `other` / `sdxl-license`, linking the SDXL 1.0 licence — the stricter of the two is reported here",
+			LicenseSource: "civitai:1411690 listing",
+			LicenseFlags:  []string{LicenseNoDerivatives, LicenseAttribution},
+			Attribution:   "Illustrious XL by ONOMAAI (Civitai)",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "1411690", // https://civitai.com/models/1252206 (v1.1)
 				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -254,8 +278,9 @@ func Default() []Entry {
 		{
 			Name: "akium-unmotivated", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: images non-commercial (rent-only), derivatives allowed",
-			LicenseFlags: []string{LicenseNonCommercial},
-			MinRAMGB:     16, RecRAMGB: 32,
+			LicenseSource: "civitai:3046291 listing",
+			LicenseFlags:  []string{LicenseNonCommercial},
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "3046291", // https://civitai.com/models/2711644 (v1.0)
 				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -265,9 +290,10 @@ func Default() []Entry {
 		{
 			Name: "akium-ijin", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: images non-commercial (rent-only), derivatives allowed, credit required",
-			LicenseFlags: []string{LicenseNonCommercial, LicenseAttribution},
-			Attribution:  "Akium (Civitai)",
-			MinRAMGB:     16, RecRAMGB: 32,
+			LicenseSource: "civitai:3081528 listing",
+			LicenseFlags:  []string{LicenseNonCommercial, LicenseAttribution},
+			Attribution:   "Akium (Civitai)",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "3081528", // https://civitai.com/models/2740167 (Akium IJIN v1.0)
 				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -277,8 +303,9 @@ func Default() []Entry {
 		{
 			Name: "akium-lumen", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingExplicit, License: "Civitai listing: images non-commercial (rent-only), derivatives allowed",
-			LicenseFlags: []string{LicenseNonCommercial},
-			MinRAMGB:     16, RecRAMGB: 32,
+			LicenseSource: "civitai:2962026 listing",
+			LicenseFlags:  []string{LicenseNonCommercial},
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "2962026", // https://civitai.com/models/2385399 (Akium Lumen ILL - base v4.0)
 				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -288,8 +315,9 @@ func Default() []Entry {
 		{
 			Name: "t-ponynai3-v7", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: NO derivatives; images may be used commercially",
-			LicenseFlags: []string{LicenseNoDerivatives},
-			MinRAMGB:     16, RecRAMGB: 32,
+			LicenseSource: "civitai:1392706 listing",
+			LicenseFlags:  []string{LicenseNoDerivatives},
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "1392706", // https://civitai.com/models/317902 (v7)
 				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -301,8 +329,9 @@ func Default() []Entry {
 		{
 			Name: "t-ponynai3-v5.5", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: NO derivatives; images may be used commercially",
-			LicenseFlags: []string{LicenseNoDerivatives},
-			MinRAMGB:     16, RecRAMGB: 32,
+			LicenseSource: "civitai:593760 listing",
+			LicenseFlags:  []string{LicenseNoDerivatives},
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "593760", // https://civitai.com/models/317902 (v5.5)
 				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -314,9 +343,10 @@ func Default() []Entry {
 		{
 			Name: "momoiro-pony", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingExplicit, License: "Civitai listing: NO commercial use, credit required, derivatives allowed",
-			LicenseFlags: []string{LicenseNonCommercial, LicenseAttribution},
-			Attribution:  "T-ponynai MomoiroPony by superiorenby (Civitai)",
-			MinRAMGB:     16, RecRAMGB: 32,
+			LicenseSource: "civitai:425904 listing",
+			LicenseFlags:  []string{LicenseNonCommercial, LicenseAttribution},
+			Attribution:   "T-ponynai MomoiroPony by superiorenby (Civitai)",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "425904", // https://civitai.com/models/381535 (v1.0)
 				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -328,9 +358,10 @@ func Default() []Entry {
 		{
 			Name: "prefect-pony-xl", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: images non-commercial (rent-only), NO derivatives, credit required",
-			LicenseFlags: []string{LicenseNonCommercial, LicenseNoDerivatives, LicenseAttribution},
-			Attribution:  "Prefect Pony XL by Goofy_Ai (Civitai)",
-			MinRAMGB:     16, RecRAMGB: 32,
+			LicenseSource: "civitai:2114187 listing",
+			LicenseFlags:  []string{LicenseNonCommercial, LicenseNoDerivatives, LicenseAttribution},
+			Attribution:   "Prefect Pony XL by Goofy_Ai (Civitai)",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				Civitai: "2114187", // https://civitai.com/models/439889 (v6)
 				VAE:     "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -346,7 +377,8 @@ func Default() []Entry {
 		{
 			Name: "realvisxl-v5", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "OpenRAIL++-M",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseSource: "SG161222/RealVisXL_V5.0",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				HF:  "SG161222/RealVisXL_V5.0/RealVisXL_V5.0_fp16.safetensors",
 				VAE: "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -357,7 +389,8 @@ func Default() []Entry {
 		{
 			Name: "juggernaut-xl-v9", Arch: profile.ArchSDXL, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "CreativeML OpenRAIL-M",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseSource: "RunDiffusion/Juggernaut-XL-v9",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				HF:  "RunDiffusion/Juggernaut-XL-v9/Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors",
 				VAE: "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -368,7 +401,8 @@ func Default() []Entry {
 		{
 			Name: "flux1-schnell", Arch: profile.ArchFlux, Prediction: profile.PredEps,
 			Rating: profile.RatingSafe, License: "Apache-2.0",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseSource: "black-forest-labs/FLUX.1-schnell",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				DiffusionModel: "leejet/FLUX.1-schnell-gguf/flux1-schnell-q4_k.gguf",
 				ClipL:          "comfyanonymous/flux_text_encoders/clip_l.safetensors",
@@ -380,7 +414,8 @@ func Default() []Entry {
 		{
 			Name: "flux1-dev", Arch: profile.ArchFlux, Prediction: profile.PredEps,
 			Rating: profile.RatingSafe, License: "FLUX.1 [dev] Non-Commercial License: the model weights are for non-commercial use; generated outputs may be used commercially",
-			LicenseFlags: []string{LicenseNonCommercial},
+			LicenseSource: "black-forest-labs/FLUX.1-dev",
+			LicenseFlags:  []string{LicenseNonCommercial},
 			// Not distilled like schnell: needs ~20 steps (sd.cpp's distilled_guidance
 			// default of 3.5 is already the standard FLUX.1-dev guidance; CFG stays 1).
 			Steps:    20,
@@ -396,9 +431,10 @@ func Default() []Entry {
 		{
 			Name: "sd35-medium", Arch: profile.ArchSD35, Prediction: profile.PredEps,
 			Rating: profile.RatingSafe, License: "Stability Community License: free incl. commercial under $1M annual revenue; attribution required; enterprise license above that",
-			LicenseFlags: []string{LicenseAttribution},
-			Attribution:  "Powered by Stability AI",
-			MinRAMGB:     16, RecRAMGB: 32,
+			LicenseSource: "stabilityai/stable-diffusion-3.5-medium",
+			LicenseFlags:  []string{LicenseAttribution},
+			Attribution:   "Powered by Stability AI",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				DiffusionModel: "city96/stable-diffusion-3.5-medium-gguf/sd3.5_medium-Q4_K_M.gguf",
 				ClipL:          "Comfy-Org/stable-diffusion-3.5-fp8/text_encoders/clip_l.safetensors",
@@ -411,9 +447,10 @@ func Default() []Entry {
 		{
 			Name: "sd35-large", Arch: profile.ArchSD35, Prediction: profile.PredEps,
 			Rating: profile.RatingSafe, License: "Stability Community License: free incl. commercial under $1M annual revenue; attribution required; enterprise license above that",
-			LicenseFlags: []string{LicenseAttribution},
-			Attribution:  "Powered by Stability AI",
-			MinRAMGB:     16, RecRAMGB: 32,
+			LicenseSource: "stabilityai/stable-diffusion-3.5-large",
+			LicenseFlags:  []string{LicenseAttribution},
+			Attribution:   "Powered by Stability AI",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				DiffusionModel: "city96/stable-diffusion-3.5-large-gguf/sd3.5_large-Q4_0.gguf",
 				ClipL:          "Comfy-Org/stable-diffusion-3.5-fp8/text_encoders/clip_l.safetensors",
@@ -426,7 +463,8 @@ func Default() []Entry {
 		{
 			Name: "z-image-turbo", Arch: profile.ArchZImage, Prediction: profile.PredEps,
 			Rating: profile.RatingSafe, License: "Apache-2.0 (Tongyi-MAI/Z-Image)",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseSource: "Tongyi-MAI/Z-Image",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				DiffusionModel: "Comfy-Org/z_image_turbo/split_files/diffusion_models/z_image_turbo_bf16.safetensors",
 				LLM:            "Comfy-Org/z_image_turbo/split_files/text_encoders/qwen_3_4b.safetensors",
@@ -437,8 +475,9 @@ func Default() []Entry {
 		{
 			Name: "noobai-xl-vpred", Arch: profile.ArchSDXL, Prediction: profile.PredVPred,
 			Rating: profile.RatingExplicit, License: "Fair AI Public License 1.0-SD (copyleft: model derivatives must keep the same license)",
-			LicenseFlags: []string{LicenseShareAlike},
-			MinRAMGB:     16, RecRAMGB: 32,
+			LicenseSource: "Laxhar/noobai-XL-Vpred-1.0",
+			LicenseFlags:  []string{LicenseShareAlike},
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{
 				HF:  "Laxhar/noobai-XL-Vpred-1.0/NoobAI-XL-Vpred-v1.0.safetensors",
 				VAE: "madebyollin/sdxl-vae-fp16-fix/sdxl.vae.safetensors",
@@ -453,22 +492,24 @@ func Default() []Entry {
 			// AnimaConditioner wants a Qwen3 LLM under `text_encoders.llm` plus the
 			// Qwen-Image VAE. The single-file Civitai download will NOT load.
 			Name: "anima-turbo", Arch: profile.ArchAnima, Prediction: profile.PredEps,
-			Rating: profile.RatingSafe, License: "NVIDIA Open Model License: commercial OK, attribution / notice retention required (see model card)",
-			LicenseFlags: []string{LicenseAttribution},
-			Attribution:  "Anima by CircleStone Labs / Comfy Org (NVIDIA Open Model License)",
-			MinRAMGB:     8, RecRAMGB: 16,
+			Rating: profile.RatingSafe, License: "CircleStone Labs Non-Commercial License v1.2: the weights are for non-commercial, non-production use (revenue-generating use needs a licence from CircleStone); generated outputs may be used commercially (§2.e); the attribution notice must travel with any copy or derivative",
+			LicenseSource: "circlestone-labs/Anima LICENSE.md",
+			LicenseFlags:  []string{LicenseNonCommercial, LicenseAttribution},
+			Attribution:   "The CircleStone Model is licensed by CircleStone Labs LLC under the CircleStone Non-Commercial License. Copyright CircleStone Labs LLC.",
+			MinRAMGB:      8, RecRAMGB: 16,
 			Source: Source{
 				DiffusionModel: "circlestone-labs/Anima/split_files/diffusion_models/anima-turbo-v1.0.safetensors",
 				LLM:            "circlestone-labs/Anima/split_files/text_encoders/qwen_3_06b_base.safetensors",
 				VAE:            "circlestone-labs/Anima/split_files/vae/qwen_image_vae.safetensors",
 			},
-			Notes: "Anima turbo (CircleStone Labs x Comfy Org, 2B): anime / illustration focused, explicitly not for realism. Distilled — CFG 1 and 8-12 steps (the profile sets 10, sampler euler, no negative prompt). Multi-component: DiT + Qwen3-0.6B text encoder + Qwen-Image VAE. Base for Anima LoRAs.",
+			Notes: "Anima turbo (CircleStone Labs x Comfy Org, 2B): anime / illustration focused, explicitly not for realism. Distilled — CFG 1 and 8-12 steps (the profile sets 10, sampler euler, no negative prompt). Multi-component: DiT by CircleStone (non-commercial) + Qwen3-0.6B text encoder and Qwen-Image VAE, which are Apache-2.0 files by Qwen re-hosted in the same repo. Base for Anima LoRAs — a LoRA trained on it is a Derivative under CircleStone's licence, which carries the same restriction.",
 		},
 		{
 			Name: "anima-yume", Arch: profile.ArchAnima, Prediction: profile.PredEps,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: images non-commercial (rent-only), derivatives allowed",
-			LicenseFlags: []string{LicenseNonCommercial},
-			MinRAMGB:     8, RecRAMGB: 16,
+			LicenseSource: "civitai:3065644 listing; the shared encoder/VAE are Apache-2.0 (Qwen/Qwen3-0.6B-Base, Qwen/Qwen-Image), re-hosted in circlestone-labs/Anima",
+			LicenseFlags:  []string{LicenseNonCommercial},
+			MinRAMGB:      8, RecRAMGB: 16,
 			// Unlike anima-turbo, the AnimaYume "base final" checkpoint is NOT
 			// guidance-distilled: at the arch default (CFG 1, 10 steps) it renders
 			// washed-out and incoherent. It needs real CFG and step counts, so
@@ -485,7 +526,8 @@ func Default() []Entry {
 		{
 			Name: "nova-anime-am", Arch: profile.ArchAnima, Prediction: profile.PredEps,
 			Rating: profile.RatingExplicit, License: "Civitai listing: commercial image use OK, derivatives OK, credit optional",
-			MinRAMGB: 8, RecRAMGB: 16,
+			LicenseSource: "civitai:3086321 listing; the shared encoder/VAE are Apache-2.0 (Qwen/Qwen3-0.6B-Base, Qwen/Qwen-Image), re-hosted in circlestone-labs/Anima",
+			MinRAMGB:      8, RecRAMGB: 16,
 			// Not distilled — same as anima-yume, needs real CFG / steps (verified E2E).
 			Steps: 24, CFG: 5,
 			Source: Source{
@@ -498,14 +540,16 @@ func Default() []Entry {
 		{
 			Name: "realesrgan-x4plus", Kind: KindUpscaler,
 			Rating: profile.RatingSafe, License: "BSD-3-Clause",
-			MinRAMGB: 4, RecRAMGB: 8,
+			LicenseSource: "github.com/xinntao/Real-ESRGAN",
+			MinRAMGB:      4, RecRAMGB: 8,
 			Source: Source{HF: "schwgHao/RealESRGAN_x4plus/RealESRGAN_x4plus.pth"},
 			Notes:  "Real-ESRGAN x4 general-purpose upscaler (ESRGAN). For `image-forge upscale` and `gen --hires-upscaler model --hires-model realesrgan-x4plus`.",
 		},
 		{
 			Name: "realesrgan-x4-anime", Kind: KindUpscaler,
 			Rating: profile.RatingSafe, License: "BSD-3-Clause",
-			MinRAMGB: 4, RecRAMGB: 8,
+			LicenseSource: "github.com/xinntao/Real-ESRGAN",
+			MinRAMGB:      4, RecRAMGB: 8,
 			Source: Source{HF: "utnah/esrgan/RealESRGAN_x4plus_anime_6B.pth"},
 			Notes:  "Real-ESRGAN x4 anime-tuned upscaler (ESRGAN, 6B). For `image-forge upscale` and `gen --hires-upscaler model --hires-model realesrgan-x4-anime`.",
 		},
@@ -517,15 +561,17 @@ func Default() []Entry {
 		// normal image into an edge map.
 		{
 			Name: "controlnet-canny-sd15", Kind: KindControlNet, Arch: profile.ArchSD15,
-			Rating: profile.RatingSafe, License: "CreativeML OpenRAIL-M (lllyasviel/ControlNet-v1-1)",
-			MinRAMGB: 8, RecRAMGB: 16,
+			Rating: profile.RatingSafe, License: "OpenRAIL (as declared by lllyasviel/ControlNet-v1-1; the fp16 conversion repo declares nothing)",
+			LicenseSource: "lllyasviel/ControlNet-v1-1",
+			MinRAMGB:      8, RecRAMGB: 16,
 			Source: Source{HF: "comfyanonymous/ControlNet-v1-1_fp16_safetensors/control_v11p_sd15_canny_fp16.safetensors"},
 			Notes:  "Canny-edge ControlNet for SD1.5. `gen -m <sd15> --control-net controlnet-canny-sd15 --control edge.png` (add --canny to derive edges from a normal image).",
 		},
 		{
 			Name: "controlnet-canny-sdxl", Kind: KindControlNet, Arch: profile.ArchSDXL,
 			Rating: profile.RatingSafe, License: "Apache-2.0 (xinsir/controlnet-canny-sdxl-1.0)",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseSource: "xinsir/controlnet-canny-sdxl-1.0",
+			MinRAMGB:      16, RecRAMGB: 32,
 			// A diffusers-format ControlNet. sd.cpp converts its names on load and now
 			// sizes the ControlNet graph for SDXL's deep transformers (upstream #1752),
 			// so it loads directly — no pre-conversion needed.
@@ -538,37 +584,42 @@ func Default() []Entry {
 		{
 			Name: "lcm-lora-sdxl", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingSafe, License: "OpenRAIL++",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseSource: "latent-consistency/lcm-lora-sdxl",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{HF: "latent-consistency/lcm-lora-sdxl/pytorch_lora_weights.safetensors"},
 			Notes:  "Latent Consistency LoRA for SDXL: few-step sampling. Use ~4-8 steps, CFG ~1-2, sampler lcm. e.g. `gen --lora lcm-lora-sdxl:1.0 --steps 6 --cfg 1.5 --sampler lcm`.",
 		},
 		{
 			Name: "lcm-lora-sd15", Kind: KindLoRA, Arch: profile.ArchSD15,
 			Rating: profile.RatingSafe, License: "OpenRAIL++",
-			MinRAMGB: 8, RecRAMGB: 16,
+			LicenseSource: "latent-consistency/lcm-lora-sdv1-5",
+			MinRAMGB:      8, RecRAMGB: 16,
 			Source: Source{HF: "latent-consistency/lcm-lora-sdv1-5/pytorch_lora_weights.safetensors"},
 			Notes:  "Latent Consistency LoRA for SD1.5: few-step sampling. Use ~4-8 steps, CFG ~1-2, sampler lcm.",
 		},
 		{
 			Name: "sdxl-lightning-4step", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingSafe, License: "OpenRAIL++",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseSource: "ByteDance/SDXL-Lightning",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{HF: "ByteDance/SDXL-Lightning/sdxl_lightning_4step_lora.safetensors"},
 			Notes:  "SDXL Lightning (ByteDance): 4-step sampling, generally sharper than LCM. Use `--steps 4 --cfg 1 --sampler euler`.",
 		},
 		{
 			Name: "sdxl-lightning-8step", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingSafe, License: "OpenRAIL++",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseSource: "ByteDance/SDXL-Lightning",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{HF: "ByteDance/SDXL-Lightning/sdxl_lightning_8step_lora.safetensors"},
 			Notes:  "SDXL Lightning (ByteDance): 8-step sampling, higher quality than the 4-step. Use `--steps 8 --cfg 1 --sampler euler`.",
 		},
 		{
 			Name: "dmd2-sdxl-4step", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingSafe, License: "CC BY-NC 4.0 (non-commercial only)",
-			LicenseFlags: []string{LicenseNonCommercial, LicenseAttribution},
-			Attribution:  "DMD2 by Tianwei Yin et al. (CC BY-NC 4.0)",
-			MinRAMGB:     16, RecRAMGB: 32,
+			LicenseSource: "tianweiy/DMD2",
+			LicenseFlags:  []string{LicenseNonCommercial, LicenseAttribution},
+			Attribution:   "DMD2 by Tianwei Yin et al. (CC BY-NC 4.0)",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source: Source{HF: "tianweiy/DMD2/dmd2_sdxl_4step_lora_fp16.safetensors"},
 			Notes:  "DMD2 (Improved Distribution Matching Distillation): 4-step sampling. Use `--steps 4 --cfg 1 --sampler euler`. NOTE: CC BY-NC 4.0 — non-commercial use only.",
 		},
@@ -579,7 +630,8 @@ func Default() []Entry {
 		{
 			Name: "mythic-fantasy-illustrious", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: derivatives allowed, commercial image/rent/sell",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseSource: "civitai:1373674 listing",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source:       Source{Civitai: "1373674"}, // https://civitai.com/models/599757 (illustrious)
 			TriggerWords: []string{"mythp0rt"},
 			Notes:        "Velvet's Mythic Fantasy style (Illustrious). Painterly fantasy portraits.",
@@ -587,9 +639,10 @@ func Default() []Entry {
 		{
 			Name: "genba-neko-illustrious", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingSafe, License: "Civitai listing: NO derivatives, credit required, commercial rent-on-Civitai only",
-			LicenseFlags: []string{LicenseNonCommercial, LicenseNoDerivatives, LicenseAttribution},
-			Attribution:  "Genba Neko Like by HypnotistDolphin (Civitai)",
-			MinRAMGB:     16, RecRAMGB: 32,
+			LicenseSource: "civitai:1619987 listing",
+			LicenseFlags:  []string{LicenseNonCommercial, LicenseNoDerivatives, LicenseAttribution},
+			Attribution:   "Genba Neko Like by HypnotistDolphin (Civitai)",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source:       Source{Civitai: "1619987"}, // https://civitai.com/models/1128981 (v2.0 IL)
 			TriggerWords: []string{"genba_neko", "chibi", "pointing", "standing on one leg", ":3", "open mouth", "meme", "parody"},
 			Notes:        "現場猫風 / Genba Neko meme style (Illustrious).",
@@ -597,7 +650,8 @@ func Default() []Entry {
 		{
 			Name: "lighting-slider-illustrious", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: derivatives allowed, commercial image/rent",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseSource: "civitai:1444863 listing",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source:       Source{Civitai: "1444863"}, // https://civitai.com/models/1280702 (Illustrious)
 			TriggerWords: []string{"dark", "late night", "blue hour"},
 			Notes:        "Lighting / darkness slider (Illustrious). Adjust the LoRA weight to move the exposure; on this base a positive weight brightened and a negative one darkened (measured mean luma: -1.0 => 22, no LoRA => 40, +1.0 => 108). The direction is base-dependent — the Anima version darkens at positive weight — so try both signs.",
@@ -605,8 +659,9 @@ func Default() []Entry {
 		{
 			Name: "s1-dramatic-lighting-illustrious", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: derivatives allowed, commercial rent-on-Civitai only",
-			LicenseFlags: []string{LicenseNonCommercial},
-			MinRAMGB:     16, RecRAMGB: 32,
+			LicenseSource: "civitai:2200691 listing",
+			LicenseFlags:  []string{LicenseNonCommercial},
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source:       Source{Civitai: "2200691"}, // https://civitai.com/models/661736 (Illustrious V1)
 			TriggerWords: []string{"s1_dram"},
 			Notes:        "S1 Dramatic Lighting (Illustrious V1). In practice it shifts the art style as much as the lighting. V2 exists but its listing is rated explicit; V1 is the same effect at a lower rating.",
@@ -614,7 +669,8 @@ func Default() []Entry {
 		{
 			Name: "pov-on-couch-illustrious", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingExplicit, License: "Civitai listing: derivatives allowed, commercial image/rent-on-Civitai",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseSource: "civitai:1361868 listing",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source:       Source{Civitai: "1361868"}, // https://civitai.com/models/1209145 (v1.0)
 			TriggerWords: []string{"pov", "on couch"},
 			Notes:        "POV on-couch pose LoRA (Illustrious). The trigger is plain English, so the base model already produces a couch scene; the LoRA mainly strengthens the low POV angle and hands. NSFW-capable.",
@@ -622,7 +678,8 @@ func Default() []Entry {
 		{
 			Name: "ai-illust-ojisan-noobai", Kind: KindLoRA, Arch: profile.ArchSDXL,
 			Rating: profile.RatingExplicit, License: "Civitai listing: derivatives allowed, commercial image/rent-on-Civitai",
-			MinRAMGB: 16, RecRAMGB: 32,
+			LicenseSource: "civitai:2927805 listing",
+			MinRAMGB:      16, RecRAMGB: 32,
 			Source:       Source{Civitai: "2927805"}, // https://civitai.com/models/2564226 (v1.0 Chenkin)
 			TriggerWords: []string{"@411llust0j1s4n,"},
 			Notes:        "AIイラストおじさん / Uncle AI illustration style (NoobAI, an SDXL family base). NSFW-capable.",
@@ -633,7 +690,8 @@ func Default() []Entry {
 		{
 			Name: "mythic-fantasy-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: derivatives allowed, commercial image/rent/sell",
-			MinRAMGB: 8, RecRAMGB: 16,
+			LicenseSource: "civitai:3084665 listing",
+			MinRAMGB:      8, RecRAMGB: 16,
 			Source:       Source{Civitai: "3084665"}, // https://civitai.com/models/599757 (Anima Portrait Style)
 			TriggerWords: []string{"mythp0rt"},
 			Notes:        "Velvet's Mythic Fantasy style (Anima). Painterly fantasy portraits.",
@@ -641,9 +699,10 @@ func Default() []Entry {
 		{
 			Name: "genba-neko-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
 			Rating: profile.RatingSafe, License: "Civitai listing: NO derivatives, credit required, commercial rent-on-Civitai only",
-			LicenseFlags: []string{LicenseNonCommercial, LicenseNoDerivatives, LicenseAttribution},
-			Attribution:  "Genba Neko Like by HypnotistDolphin (Civitai)",
-			MinRAMGB:     8, RecRAMGB: 16,
+			LicenseSource: "civitai:3029956 listing",
+			LicenseFlags:  []string{LicenseNonCommercial, LicenseNoDerivatives, LicenseAttribution},
+			Attribution:   "Genba Neko Like by HypnotistDolphin (Civitai)",
+			MinRAMGB:      8, RecRAMGB: 16,
 			Source:       Source{Civitai: "3029956"}, // https://civitai.com/models/1128981 (v1.0 Anima)
 			TriggerWords: []string{"genba_neko", "chibi", "pointing", "standing on one leg", ":3", "open mouth", "meme", "parody"},
 			Notes:        "現場猫風 / Genba Neko meme style (Anima).",
@@ -651,15 +710,17 @@ func Default() []Entry {
 		{
 			Name: "lighting-slider-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
 			Rating: profile.RatingSafe, License: "Civitai listing: derivatives allowed, commercial image/rent",
-			MinRAMGB: 8, RecRAMGB: 16,
+			LicenseSource: "civitai:3078972 listing",
+			MinRAMGB:      8, RecRAMGB: 16,
 			Source: Source{Civitai: "3078972"}, // https://civitai.com/models/1280702 (Anima)
 			Notes:  "Lighting / darkness slider (Anima). A slider with no trigger word: adjust the LoRA weight to move the exposure (see lighting-slider-illustrious for the measured direction).",
 		},
 		{
 			Name: "s1-dramatic-lighting-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
 			Rating: profile.RatingQuestionable, License: "Civitai listing: derivatives allowed, commercial rent-on-Civitai only",
-			LicenseFlags: []string{LicenseNonCommercial},
-			MinRAMGB:     8, RecRAMGB: 16,
+			LicenseSource: "civitai:3037397 listing",
+			LicenseFlags:  []string{LicenseNonCommercial},
+			MinRAMGB:      8, RecRAMGB: 16,
 			Source:       Source{Civitai: "3037397"}, // https://civitai.com/models/661736 (Anima v1.0)
 			TriggerWords: []string{"s1_dram"},
 			Notes:        "S1 Dramatic Lighting (Anima).",
@@ -667,7 +728,8 @@ func Default() []Entry {
 		{
 			Name: "pov-on-couch-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
 			Rating: profile.RatingExplicit, License: "Civitai listing: derivatives allowed, commercial image/rent-on-Civitai",
-			MinRAMGB: 8, RecRAMGB: 16,
+			LicenseSource: "civitai:3101268 listing",
+			MinRAMGB:      8, RecRAMGB: 16,
 			Source:       Source{Civitai: "3101268"}, // https://civitai.com/models/1209145 (v2.0 Anima)
 			TriggerWords: []string{"pov", "on couch"},
 			Notes:        "POV on-couch pose LoRA (Anima). NSFW-capable.",
@@ -675,7 +737,8 @@ func Default() []Entry {
 		{
 			Name: "ai-illust-ojisan-anima", Kind: KindLoRA, Arch: profile.ArchAnima,
 			Rating: profile.RatingExplicit, License: "Civitai listing: derivatives allowed, commercial image/rent-on-Civitai",
-			MinRAMGB: 8, RecRAMGB: 16,
+			LicenseSource: "civitai:3038551 listing",
+			MinRAMGB:      8, RecRAMGB: 16,
 			Source:       Source{Civitai: "3038551"}, // https://civitai.com/models/2564226 (v1.0 AB1)
 			TriggerWords: []string{"@411llust0j1s4n,"},
 			Notes:        "AIイラストおじさん / Uncle AI illustration style (Anima). NSFW-capable.",

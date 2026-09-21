@@ -318,6 +318,13 @@ The curated catalog tags each entry with `content_rating`
 (`safe` / `questionable` / `explicit`) and `license`. Questionable/explicit models
 require an explicit opt-in (`--allow-nsfw`); the final judgment is left to you.
 
+`license` is accompanied by `license_source`: the card or listing those terms
+were read from. It is usually **not** the repository the bytes come from — most
+entries download from a quantization or mirror repo, which may declare a
+different licence, none at all, or belong to a base model with other terms. So
+the catalog records which card was read, and if you need to check the terms
+yourself, that is the one to open.
+
 Downloads come from Hugging Face / Civitai / direct URLs. Provide tokens via
 `HF_TOKEN` / `CIVITAI_TOKEN` (environment) — **never commit them**.
 

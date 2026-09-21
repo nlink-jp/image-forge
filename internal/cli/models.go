@@ -50,12 +50,15 @@ func runModels(args []string) error {
 // `models list` (as a table or, with --json, as JSON) — decoupled from the
 // internal catalog.Entry / store.InstalledModel structs.
 type catalogView struct {
-	Name           string   `json:"name"`
-	Kind           string   `json:"kind,omitempty"` // "" (diffusion) | upscaler | lora | controlnet
-	Arch           string   `json:"arch"`
-	Prediction     string   `json:"prediction"`
-	Rating         string   `json:"rating"`
-	License        string   `json:"license"`
+	Name       string `json:"name"`
+	Kind       string `json:"kind,omitempty"` // "" (diffusion) | upscaler | lora | controlnet
+	Arch       string `json:"arch"`
+	Prediction string `json:"prediction"`
+	Rating     string `json:"rating"`
+	License    string `json:"license"`
+	// LicenseSource is the card or listing License was read from — for most
+	// entries not the repository the bytes come from. See catalog.Entry.
+	LicenseSource  string   `json:"license_source,omitempty"`
 	MinRAMGB       int      `json:"min_ram_gb"`
 	RecRAMGB       int      `json:"rec_ram_gb"`
 	MultiComponent bool     `json:"multi_component"`
@@ -77,6 +80,7 @@ type installedView struct {
 	Arch           string   `json:"arch"`
 	Rating         string   `json:"rating,omitempty"`
 	License        string   `json:"license,omitempty"`
+	LicenseSource  string   `json:"license_source,omitempty"`
 	Path           string   `json:"path,omitempty"`
 	VAEPath        string   `json:"vae_path,omitempty"`
 	MultiComponent bool     `json:"multi_component"`
@@ -128,7 +132,7 @@ func catalogViews(reg *store.Registry) []catalogView {
 		pageURL, _ := e.PageURL()
 		out = append(out, catalogView{
 			Name: e.Name, Kind: e.Kind, Arch: string(e.Arch), Prediction: string(e.Prediction),
-			Rating: string(e.Rating), License: e.License,
+			Rating: string(e.Rating), License: e.License, LicenseSource: e.LicenseSource,
 			MinRAMGB: e.MinRAMGB, RecRAMGB: e.RecRAMGB,
 			MultiComponent: e.IsMultiComponent(), NeedsOptIn: e.NeedsOptIn(),
 			Experimental: e.Experimental, Installed: installed, Notes: e.Notes,
@@ -162,17 +166,20 @@ func installedViewsWith(reg *store.Registry, exists func(string) bool) []install
 		// source of truth — use it so entries installed before these fields existed
 		// (or corrected in the catalog since) are still reported accurately.
 		license, flags, triggers, attribution := m.License, m.LicenseFlags, m.TriggerWords, m.Attribution
-		var pageURL string
+		var pageURL, licenseSource string
 		if inCat {
+			// The licence text comes from the catalog too, not only when the stored
+			// one is empty. A model installed before a correction kept reporting the
+			// licence it was installed with: anima-turbo was recorded as "commercial
+			// OK" and would have gone on saying so beside corrected flags.
+			license = e.License
 			flags, triggers, attribution = e.LicenseFlags, e.TriggerWords, e.Attribution
+			licenseSource = e.LicenseSource
 			pageURL, _ = e.PageURL()
-			if license == "" {
-				license = e.License
-			}
 		}
 		out = append(out, installedView{
 			Name: m.Name, Kind: m.Kind, Arch: string(m.Profile.Arch), Rating: string(m.Rating),
-			License: license, Path: m.Path, VAEPath: m.VAEPath,
+			License: license, LicenseSource: licenseSource, Path: m.Path, VAEPath: m.VAEPath,
 			// Only a base diffusion model can be assembled from components; an
 			// upscaler / LoRA / ControlNet with no Path would just be broken.
 			MultiComponent: m.Path == "" && m.IsDiffusion(), InCatalog: inCat,

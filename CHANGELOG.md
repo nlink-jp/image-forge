@@ -4,6 +4,41 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- **`anima-turbo` reported the wrong licence, and said commercial use was
+  permitted.** The entry carried NVIDIA's Open Model License — the terms of the
+  Cosmos base model Anima was trained from — while the weights it downloads are
+  published by CircleStone Labs under their Non-Commercial License v1.2:
+  non-commercial and non-production use only, with revenue-generating use
+  requiring a licence from them (generated outputs may still be used
+  commercially, §2.e). It is now reported as that, flagged `non-commercial`, and
+  carries the attribution notice the licence requires. A test pinned the old
+  flags, so the mistake had a guard holding it in place; that expectation is
+  corrected with the entry.
+- **A licence correction now reaches an already-installed model.**
+  `models list` took the licence recorded in the registry at install time and
+  fell back to the catalog only when it was empty — so a model pulled before a
+  correction kept reporting the old terms, beside corrected flags from the
+  catalog. The comment above that code already said the catalog is the source of
+  truth for descriptive metadata; now it is.
+- **`controlnet-canny-sd15`** is reported as OpenRAIL, which is what
+  `lllyasviel/ControlNet-v1-1` declares, rather than CreativeML OpenRAIL-M (a
+  different licence). The fp16 conversion repo the file comes from declares none.
+- **`illustrious-xl-v1`** now states that the Hugging Face card for those
+  weights declares `other` / `sdxl-license` while the Civitai listing states no
+  derivatives and credit required. Both exist; the stricter is reported.
+
+### Added
+
+- **`license_source` on every catalog entry, surfaced in `models list --json`.**
+  It names the card or listing the licence was read from, which for most entries
+  is not the repository the bytes come from. Verified against the publishers on
+  2026-09-21 and pinned per entry by a test that also compares the entry count,
+  so a model cannot be added without stating where its terms came from.
+
 ## [0.26.5] - 2026-09-21
 
 ### Security
