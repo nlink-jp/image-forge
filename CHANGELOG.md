@@ -4,6 +4,48 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.28.0] - 2026-09-22
+
+### Added
+
+- **A LoRA or ControlNet made for another architecture is refused before
+  anything loads**, in `gen`, `serve` and the MCP server alike. ADR-0006 and
+  ADR-0007 promised this; the code only checked the kind, so an SDXL LoRA on an
+  SD1.5 base failed deep in sd.cpp or drew garbage. Only architectures that are
+  facts are compared — the catalog's own, or one given with `--arch` — so a
+  guess never refuses anything. To overrule a record you know is wrong,
+  re-register with `--arch`, or pass the LoRA / ControlNet file by path.
+- Every registration records where its architecture came from (`arch_source`:
+  catalog, flag or detected), and `models list --json` / MCP `list_models`
+  report `arch_trusted`, so a front-end can filter by the same rule. A model
+  registered before this version is trusted only if it is the catalog entry of
+  the same name.
+
+### Changed
+
+- **`--arch` is validated** on `models import` and `models pull`:
+  `sd15|sdxl|sd35|flux|zimage|anima`, any case (Pony, Illustrious and NoobAI are
+  `sdxl`). A value such as `pony`, `SDXL-turbo` or `unknown` used to be stored
+  as typed — for a base model it silently gave the 512 px defaults of an
+  unknown architecture — and is now an error.
+
+### Fixed
+
+- The hires upscaler default was described as `latent` in `gen --help`, the MCP
+  `generate` schema and its usage reference, and the README. It is the model
+  profile's, else config `[hires] upscaler`, whose default `auto` picks the
+  ESRGAN named by `[upscaler] default_model`, else the only one installed, else
+  latent. The MCP reference also said `hires_model` is required for
+  `hires_upscaler=model`; without it the same pick applies.
+
+### Documentation
+
+- The ADRs agree with each other and with the code: ADR-0003 points at ADR-0009,
+  which replaced its default root; ADR-0009 lists four fallback steps and says a
+  leftover `--workspace-root` stops `image-forge mcp` from starting (measured)
+  while a leftover `[mcp] workspace_root` is ignored; ADR-0004, ADR-0005,
+  ADR-0002 and ADR-0008 lose smaller contradictions.
+
 ## [0.27.0] - 2026-09-21
 
 ### Fixed
