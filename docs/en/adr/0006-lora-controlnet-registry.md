@@ -78,6 +78,10 @@ already is**, and let name resolution (not raw paths) be the primary interface.
   `Path == "" && Kind == KindDiffusion`, or LoRAs would be misreported.
 - Arch is advisory: we record and filter on it, but sd.cpp is the final arbiter.
   A mismatch is a clear up-front error instead of a confusing render.
+  (Until 0.27 the CLI did not compare at all; since 0.28.0 `resolveAuxModel`
+  refuses an installed LoRA / ControlNet whose recorded arch differs from the
+  installed model's. Only recorded arches are compared: a raw path on either
+  side — `--model-path` has only a filename guess — is left to sd.cpp.)
 - **ControlNet changes reload the base model** (it is in `reloadKey`); LoRA
   changes do not. Front-ends should surface that cost — swapping a ControlNet
   mid-session is not free, swapping a LoRA is.

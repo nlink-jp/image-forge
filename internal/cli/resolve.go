@@ -73,6 +73,20 @@ type resolved struct {
 	Components store.Components
 	Profile    profile.Profile
 	Kind       string // "" (diffusion) or "upscaler"
+	// Registered says the model came from the registry, so Profile.Arch is
+	// the recorded architecture. A --model-path has only profile.Detect's
+	// guess from the filename, which defaults to SDXL when nothing matches.
+	Registered bool
+}
+
+// recordedArch is the architecture a LoRA / ControlNet is checked against:
+// the registry's record for an installed model, and nothing for a raw path,
+// whose arch is a filename guess (ADR-0006).
+func (r resolved) recordedArch() profile.Arch {
+	if !r.Registered {
+		return ""
+	}
+	return r.Profile.Arch
 }
 
 // missingFilesError builds the error for a model that is registered but whose
@@ -112,7 +126,7 @@ func resolveModel(modelName, modelPath string) (resolved, error) {
 		if err := checkInstalledFiles(modelName, im); err != nil {
 			return resolved{}, err
 		}
-		return resolved{Path: im.Path, VAEPath: im.VAEPath, Components: im.Components, Profile: im.Profile, Kind: im.Kind}, nil
+		return resolved{Path: im.Path, VAEPath: im.VAEPath, Components: im.Components, Profile: im.Profile, Kind: im.Kind, Registered: true}, nil
 	case modelPath != "":
 		return resolved{Path: modelPath, Profile: profile.ArchDefaults(profile.Detect(filepath.Base(modelPath)))}, nil
 	default:
@@ -159,18 +173,34 @@ func looksLikePath(s string) bool {
 	return strings.ContainsRune(s, filepath.Separator) || filepath.Ext(s) != ""
 }
 
+// archKnown reports whether an architecture is a recorded one rather than
+// blank or "unknown".
+func archKnown(a profile.Arch) bool { return a != "" && a != profile.ArchUnknown }
+
 // resolveAuxModel resolves a LoRA / ControlNet reference to a file path: an
 // installed model of `kind` resolves by registry name; a value that looks like a
 // path passes through unchanged (so existing path-based invocations keep
 // working); a bare name that isn't installed is a clear error. `get` is the
 // registry lookup, injected so this stays unit-testable. See ADR-0006.
-func resolveAuxModel(ref, kind string, get func(string) (store.InstalledModel, bool)) (string, error) {
+//
+// base is the recorded architecture of the model being rendered ("" when it
+// has none). An installed LoRA / ControlNet recorded for a different
+// architecture is refused before the render: against the wrong base it fails
+// deep in sd.cpp or draws garbage. Only recorded architectures are compared —
+// a raw path on either side leaves the judgement to sd.cpp, which is the way
+// to overrule a record the user knows to be wrong.
+func resolveAuxModel(ref, kind string, base profile.Arch, get func(string) (store.InstalledModel, bool)) (string, error) {
 	if ref == "" {
 		return "", nil
 	}
 	if im, ok := get(ref); ok {
 		if im.Kind != kind {
 			return "", fmt.Errorf("%q is a %s, not a %s", ref, kindNoun(im.Kind), kindNoun(kind))
+		}
+		if archKnown(base) && archKnown(im.Profile.Arch) && im.Profile.Arch != base {
+			return "", fmt.Errorf("%s %q is for %s and the model is %s: against another architecture it fails "+
+				"inside sd.cpp or draws garbage — pick a %s one, or pass the file by path to leave it to sd.cpp",
+				kindNoun(kind), ref, im.Profile.Arch, base, base)
 		}
 		return im.Path, nil
 	}
@@ -182,22 +212,23 @@ func resolveAuxModel(ref, kind string, get func(string) (store.InstalledModel, b
 
 // resolveAuxRefs resolves LoRA references (in place) and a ControlNet reference
 // against the registry: registry names become installed paths, raw paths pass
-// through. Shared by `gen`, the resident `serve` loop, and the MCP worker so all
+// through, and an installed one recorded for another architecture than base is
+// refused. Shared by `gen`, the resident `serve` loop, and the MCP worker so all
 // three accept installed names identically (ADR-0006).
-func resolveAuxRefs(loras []engine.LoRA, controlNet string) ([]engine.LoRA, string, error) {
+func resolveAuxRefs(loras []engine.LoRA, controlNet string, base profile.Arch) ([]engine.LoRA, string, error) {
 	reg, err := store.Load()
 	if err != nil {
 		return nil, "", err
 	}
 	get := func(n string) (store.InstalledModel, bool) { return reg.Get(n) }
 	for i := range loras {
-		p, err := resolveAuxModel(loras[i].Path, catalog.KindLoRA, get)
+		p, err := resolveAuxModel(loras[i].Path, catalog.KindLoRA, base, get)
 		if err != nil {
 			return nil, "", fmt.Errorf("lora: %w", err)
 		}
 		loras[i].Path = p
 	}
-	cn, err := resolveAuxModel(controlNet, catalog.KindControlNet, get)
+	cn, err := resolveAuxModel(controlNet, catalog.KindControlNet, base, get)
 	if err != nil {
 		return nil, "", fmt.Errorf("control-net: %w", err)
 	}

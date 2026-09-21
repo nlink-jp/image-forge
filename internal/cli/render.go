@@ -69,7 +69,7 @@ func buildRender(r RenderRequest) (engine.Request, engine.OpenParams, string, in
 		return engine.Request{}, engine.OpenParams{}, "", 0, err
 	}
 	// LoRA / ControlNet may be given as registry names or as raw paths (ADR-0006).
-	loras, controlNet, err := resolveAuxRefs(loras, r.ControlNet)
+	loras, controlNet, err := resolveAuxRefs(loras, r.ControlNet, res.recordedArch())
 	if err != nil {
 		return engine.Request{}, engine.OpenParams{}, "", 0, err
 	}

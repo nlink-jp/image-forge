@@ -29,17 +29,17 @@ func TestResolveAuxModel(t *testing.T) {
 	)
 
 	// A registry name of the right kind resolves to its installed path.
-	got, err := resolveAuxModel("lcm-lora-sdxl", catalog.KindLoRA, get)
+	got, err := resolveAuxModel("lcm-lora-sdxl", catalog.KindLoRA, "", get)
 	if err != nil || got != "/models/lcm.safetensors" {
 		t.Errorf("lora by name = %q, %v", got, err)
 	}
-	got, err = resolveAuxModel("canny-sdxl", catalog.KindControlNet, get)
+	got, err = resolveAuxModel("canny-sdxl", catalog.KindControlNet, "", get)
 	if err != nil || got != "/models/canny.safetensors" {
 		t.Errorf("controlnet by name = %q, %v", got, err)
 	}
 
 	// An empty ref stays empty (feature not requested).
-	if got, err := resolveAuxModel("", catalog.KindLoRA, get); err != nil || got != "" {
+	if got, err := resolveAuxModel("", catalog.KindLoRA, "", get); err != nil || got != "" {
 		t.Errorf("empty ref = %q, %v", got, err)
 	}
 }
@@ -48,7 +48,7 @@ func TestResolveAuxModelPathPassthrough(t *testing.T) {
 	get := fakeRegistry()
 	// Values that look like paths pass through unchanged (back-compat).
 	for _, p := range []string{"/abs/path/x.safetensors", "rel/dir/y.pth", "z.safetensors"} {
-		got, err := resolveAuxModel(p, catalog.KindLoRA, get)
+		got, err := resolveAuxModel(p, catalog.KindLoRA, "", get)
 		if err != nil || got != p {
 			t.Errorf("path %q => %q, %v; want passthrough", p, got, err)
 		}
@@ -61,13 +61,13 @@ func TestResolveAuxModelErrors(t *testing.T) {
 	)
 
 	// A bare name that isn't installed is a clear error, not a bogus path.
-	_, err := resolveAuxModel("no-such-lora", catalog.KindLoRA, get)
+	_, err := resolveAuxModel("no-such-lora", catalog.KindLoRA, "", get)
 	if err == nil || !strings.Contains(err.Error(), "not installed") {
 		t.Errorf("missing lora err = %v, want 'not installed'", err)
 	}
 
 	// A name registered under the wrong kind is rejected.
-	_, err = resolveAuxModel("animagine-xl-4", catalog.KindLoRA, get)
+	_, err = resolveAuxModel("animagine-xl-4", catalog.KindLoRA, "", get)
 	if err == nil || !strings.Contains(err.Error(), "not a LoRA") {
 		t.Errorf("wrong-kind err = %v, want 'not a LoRA'", err)
 	}
@@ -171,5 +171,61 @@ func TestLoRACatalogEntriesCarryArch(t *testing.T) {
 	}
 	if !sawLoRA {
 		t.Error("expected at least one LoRA catalog entry")
+	}
+}
+
+// TestResolveAuxModelRefusesAnotherArchitecture is ADR-0006's promise that
+// ADR-0007 repeats: an installed LoRA / ControlNet recorded for another
+// architecture than the model is a clear error before the render, not a
+// failure deep in sd.cpp or a garbage image. Only recorded architectures are
+// compared, so a raw path on either side still passes through.
+func TestResolveAuxModelRefusesAnotherArchitecture(t *testing.T) {
+	get := fakeRegistry(
+		store.InstalledModel{Name: "lcm-lora-sdxl", Kind: catalog.KindLoRA, Path: "/models/lcm.safetensors",
+			Profile: profile.Profile{Name: "lcm-lora-sdxl", Arch: profile.ArchSDXL}},
+		store.InstalledModel{Name: "canny-sdxl", Kind: catalog.KindControlNet, Path: "/models/canny.safetensors",
+			Profile: profile.Profile{Name: "canny-sdxl", Arch: profile.ArchSDXL}},
+		store.InstalledModel{Name: "untagged-lora", Kind: catalog.KindLoRA, Path: "/models/u.safetensors"},
+	)
+
+	for _, kind := range []struct{ ref, kind string }{
+		{"lcm-lora-sdxl", catalog.KindLoRA}, {"canny-sdxl", catalog.KindControlNet},
+	} {
+		_, err := resolveAuxModel(kind.ref, kind.kind, profile.ArchSD15, get)
+		if err == nil || !strings.Contains(err.Error(), "is for sdxl and the model is sd15") {
+			t.Errorf("%s against sd15: err = %v, want an architecture mismatch", kind.ref, err)
+		}
+		if got, err := resolveAuxModel(kind.ref, kind.kind, profile.ArchSDXL, get); err != nil || got == "" {
+			t.Errorf("%s against sdxl = %q, %v; want it resolved", kind.ref, got, err)
+		}
+	}
+
+	pass := []struct {
+		name, ref string
+		base      profile.Arch
+	}{
+		{"model with no recorded arch", "lcm-lora-sdxl", ""},
+		{"model arch unknown", "lcm-lora-sdxl", profile.ArchUnknown},
+		{"LoRA with no recorded arch", "untagged-lora", profile.ArchSD15},
+		{"LoRA given by path", "/somewhere/sdxl-lora.safetensors", profile.ArchSD15},
+	}
+	for _, tc := range pass {
+		if _, err := resolveAuxModel(tc.ref, catalog.KindLoRA, tc.base, get); err != nil {
+			t.Errorf("%s: %v; only two recorded architectures are compared", tc.name, err)
+		}
+	}
+}
+
+// TestOnlyARegisteredModelHasARecordedArch: a --model-path's architecture is
+// profile.Detect's guess from the filename, which is SDXL for any name it
+// does not recognise, so it must not be used to refuse a LoRA.
+func TestOnlyARegisteredModelHasARecordedArch(t *testing.T) {
+	guessed := resolved{Path: "/x/model.safetensors", Profile: profile.Profile{Arch: profile.ArchSDXL}}
+	if a := guessed.recordedArch(); a != "" {
+		t.Errorf("raw path recordedArch = %q, want none", a)
+	}
+	registered := resolved{Profile: profile.Profile{Arch: profile.ArchSD15}, Registered: true}
+	if a := registered.recordedArch(); a != profile.ArchSD15 {
+		t.Errorf("registered recordedArch = %q, want sd15", a)
 	}
 }

@@ -75,11 +75,6 @@ func runGen(args []string) error {
 	if err != nil {
 		return err
 	}
-	// LoRA / ControlNet accept an installed registry name or a raw path (ADR-0006).
-	loras, ctrlNetPath, err := resolveAuxRefs(loras, *ctrlNet)
-	if err != nil {
-		return err
-	}
 
 	conf, err := config.Load()
 	if err != nil {
@@ -97,6 +92,12 @@ func runGen(args []string) error {
 	}
 	if res.Kind == "upscaler" {
 		return fmt.Errorf("gen: %q is an upscaler, not a diffusion model — use `image-forge upscale`", mName)
+	}
+	// LoRA / ControlNet accept an installed registry name or a raw path, and
+	// an installed one must match the model's recorded architecture (ADR-0006).
+	loras, ctrlNetPath, err := resolveAuxRefs(loras, *ctrlNet, res.recordedArch())
+	if err != nil {
+		return err
 	}
 
 	outPath := *out

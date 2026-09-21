@@ -179,7 +179,11 @@ front-ends, not for scripts.
 The registry holds four **kinds** (`--kind diffusion|lora|controlnet|upscaler`):
 a base diffusion model, plus three auxiliary kinds that aren't renderable on
 their own. LoRA and ControlNet entries record the base **architecture** they were
-trained against, so incompatible combinations can be caught up front (ADR-0006).
+trained against, so incompatible combinations can be caught up front (ADR-0006):
+`gen`, `serve` and the MCP server refuse an installed LoRA or ControlNet recorded
+for another architecture than the installed model, before anything loads. A file
+given by path, for the model or the add-on, has no recorded architecture and is
+left to sd.cpp — which is also how to overrule a record you know is wrong.
 
 ```sh
 image-forge models pull lcm-lora-sdxl          # a LoRA, like any other model

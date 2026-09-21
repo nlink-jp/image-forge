@@ -170,7 +170,11 @@ image-forge models relocate --apply
 レジストリは 4 つの **kind**（`--kind diffusion|lora|controlnet|upscaler`）を持ちます。
 ベースの拡散モデルに加え、単体では描画できない補助モデル 3 種です。LoRA と
 ControlNet は学習時のベース**アーキテクチャ**を記録するため、非互換な組み合わせを
-事前に弾けます（ADR-0006）。
+事前に弾けます（ADR-0006）。`gen`・`serve`・MCP サーバーは、インストール済みの
+モデルと別のアーキテクチャで記録されたインストール済みの LoRA / ControlNet を、何かを
+読み込む前に拒否します。パスで渡したファイルは（モデル側でも補助モデル側でも）記録された
+アーキテクチャを持たないため、判定を sd.cpp に任せます。誤りと分かっている記録を
+覆すときもこの方法を使います。
 
 ```sh
 image-forge models pull lcm-lora-sdxl          # LoRA も他のモデルと同じように取得
