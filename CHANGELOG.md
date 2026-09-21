@@ -8,6 +8,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **`make verify-release` now fails closed.** Its last block chained unzip, the
+  packaged binary's `--version` and `spctl` with `&&` and ended the whole chain
+  in `|| true`, so a zip that did not unpack or a binary that did not run exited
+  0 and the upload proceeded. Each step is now judged on its own, the packaged
+  binary's `--version` must contain the tag being released, and only the
+  informational `spctl` line may be ignored. Matches the org template
+  (CONVENTIONS.md §Code Signing → Verifying a release).
+
 - **`anima-turbo` reported the wrong licence, and said commercial use was
   permitted.** The entry carried NVIDIA's Open Model License — the terms of the
   Cosmos base model Anima was trained from — while the weights it downloads are
