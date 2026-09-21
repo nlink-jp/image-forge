@@ -18,7 +18,14 @@ import (
 
 func TestNoToolSchemaCarriesARetiredWorkDirName(t *testing.T) {
 	h := newHarness(t, nil)
-	for _, tool := range h.srv.Tools() {
+	tools := h.srv.Tools()
+	// A floor, not decoration: an empty list passes every assertion below
+	// and the contract reads as kept while nothing was checked.
+	if len(tools) < 5 {
+		t.Fatalf("the registry yielded %d tools, want at least 5 — "+
+			"the harness is broken and this file would pass vacuously", len(tools))
+	}
+	for _, tool := range tools {
 		for _, old := range retiredWorkDirNames {
 			if strings.Contains(string(tool.InputSchema), `"`+old+`"`) {
 				t.Errorf("tool %q declares %q; the name is work_dir", tool.Name, old)
@@ -29,7 +36,14 @@ func TestNoToolSchemaCarriesARetiredWorkDirName(t *testing.T) {
 
 func TestWorkDirIsRequiredWhereverItIsDeclared(t *testing.T) {
 	h := newHarness(t, nil)
-	for _, tool := range h.srv.Tools() {
+	tools := h.srv.Tools()
+	// A floor, not decoration: an empty list passes every assertion below
+	// and the contract reads as kept while nothing was checked.
+	if len(tools) < 5 {
+		t.Fatalf("the registry yielded %d tools, want at least 5 — "+
+			"the harness is broken and this file would pass vacuously", len(tools))
+	}
+	for _, tool := range tools {
 		var schema struct {
 			Required   []string                   `json:"required"`
 			Properties map[string]json.RawMessage `json:"properties"`
@@ -105,7 +119,14 @@ func TestWorkDirComesFromRequestMeta(t *testing.T) {
 // silently because nothing compiles it.
 func TestNoToolDescriptionNamesARetiredWorkDirName(t *testing.T) {
 	h := newHarness(t, nil)
-	for _, tool := range h.srv.Tools() {
+	tools := h.srv.Tools()
+	// A floor, not decoration: an empty list passes every assertion below
+	// and the contract reads as kept while nothing was checked.
+	if len(tools) < 5 {
+		t.Fatalf("the registry yielded %d tools, want at least 5 — "+
+			"the harness is broken and this file would pass vacuously", len(tools))
+	}
+	for _, tool := range tools {
 		for _, old := range retiredWorkDirNames {
 			if strings.Contains(tool.Description, old) {
 				t.Errorf("tool %q describes itself with %q; the name is work_dir", tool.Name, old)
@@ -142,7 +163,14 @@ func TestInstructionsNameTheWorkDirContract(t *testing.T) {
 // and is blind to this one; JSON Schema itself permits it, so nothing else
 // catches it either.
 func TestEveryRequiredNameIsDeclared(t *testing.T) {
-	for _, tool := range newHarness(t, nil).srv.Tools() {
+	tools := newHarness(t, nil).srv.Tools()
+	// A floor, not decoration: an empty list passes every assertion below
+	// and the contract reads as kept while nothing was checked.
+	if len(tools) < 5 {
+		t.Fatalf("the registry yielded %d tools, want at least 5 — "+
+			"the harness is broken and this file would pass vacuously", len(tools))
+	}
+	for _, tool := range tools {
 		var schema struct {
 			Properties map[string]json.RawMessage `json:"properties"`
 			Required   []string                   `json:"required"`
