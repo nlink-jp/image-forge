@@ -87,7 +87,7 @@ project adheres to [Semantic Versioning](https://semver.org/).
   back; the workspace is `<work_dir>/<workspace_id>/`. A call still sending
   `workspace_root` (or `workspaceRoot` / `workspace_dir`) is refused with
   `work_dir_required` naming the replacement. See
-  [ADR-0009](docs/adr/0009-work-dir-contract.md); organization ADR-021.
+  [ADR-0009](docs/en/adr/0009-work-dir-contract.md); organization ADR-021.
 - **Breaking: the default workspace root is gone, and so are the ways to
   configure one** — the `--workspace-root` flag and the `[mcp] workspace_root`
   config key. All three were places an operator named a directory the caller may
