@@ -65,7 +65,10 @@ Required: `workspace_id`, `prompt`.
 - `strength` — img2img denoise strength `0..1` (with `init`).
 - `loras` — an array of LoRAs to apply, each `"<installed-name-or-path>:<weight>"`
   (see `list_models`). Applied per render, no model reload. A LoRA's registry name
-  resolves to its file.
+  resolves to its file. An installed LoRA or ControlNet made for another
+  architecture than the model is refused before loading when both arches are
+  facts — `list_models` marks those `arch_trusted: true`; a guessed arch is never
+  compared.
 - `control_net` — a ControlNet installed name or path (see
   `list_models` scope with `kind` `controlnet`). Loaded with the base model, so
   **changing it reloads the base**. Ships for SD1.5 (`controlnet-canny-sd15`) and

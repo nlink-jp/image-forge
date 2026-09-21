@@ -187,6 +187,8 @@ architectures that are facts are compared — the catalog's own, or one given wi
 NoobAI are `sdxl`). An install that named no `--arch` records a guess from the
 registered name (`--name`, else the file name), which is not compared. To overrule a record you know is wrong,
 re-register with `--arch`, or pass the LoRA / ControlNet file by path.
+`models list --json` reports `arch_trusted` for each model, so a front-end can
+filter by the same rule.
 
 ```sh
 image-forge models pull lcm-lora-sdxl          # a LoRA, like any other model

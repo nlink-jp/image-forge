@@ -129,3 +129,19 @@ func TestModelsImportRecordsWhereTheArchCameFrom(t *testing.T) {
 		t.Error("an invalid --arch left a registry entry")
 	}
 }
+
+// models list --json says which arches are facts, so a front-end can filter
+// LoRAs / ControlNets by the same rule the render path applies.
+func TestModelsListReportsWhetherAnArchIsTrusted(t *testing.T) {
+	reg := &store.Registry{Models: map[string]store.InstalledModel{
+		"flagged": {Name: "flagged", Path: "/m/a", Profile: profile.Profile{Arch: profile.ArchSD15}, ArchSource: store.ArchFromFlag},
+		"guessed": {Name: "guessed", Path: "/m/b", Profile: profile.Profile{Arch: profile.ArchSDXL}, ArchSource: store.ArchDetected},
+	}}
+	got := map[string]bool{}
+	for _, v := range installedViews(reg) {
+		got[v.Name] = v.ArchTrusted
+	}
+	if !got["flagged"] || got["guessed"] {
+		t.Errorf("arch_trusted = %v, want flagged true and guessed false", got)
+	}
+}

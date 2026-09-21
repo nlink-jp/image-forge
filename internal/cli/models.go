@@ -75,9 +75,14 @@ type catalogView struct {
 }
 
 type installedView struct {
-	Name           string   `json:"name"`
-	Kind           string   `json:"kind,omitempty"` // "" (diffusion) | upscaler | lora | controlnet
-	Arch           string   `json:"arch"`
+	Name string `json:"name"`
+	Kind string `json:"kind,omitempty"` // "" (diffusion) | upscaler | lora | controlnet
+	Arch string `json:"arch"`
+	// ArchTrusted says Arch is a fact — the catalog's own, or given with
+	// --arch — rather than a guess from the name (ADR-0006). A front-end that
+	// filters LoRAs / ControlNets by arch should compare only trusted arches,
+	// as gen / serve / MCP do; a guess hides compatible ones.
+	ArchTrusted    bool     `json:"arch_trusted"`
 	Rating         string   `json:"rating,omitempty"`
 	License        string   `json:"license,omitempty"`
 	LicenseSource  string   `json:"license_source,omitempty"`
@@ -186,7 +191,7 @@ func installedViewsWith(reg *store.Registry, exists func(string) bool) []install
 			pageURL, _ = e.PageURL()
 		}
 		out = append(out, installedView{
-			Name: m.Name, Kind: m.Kind, Arch: string(m.Profile.Arch), Rating: string(m.Rating),
+			Name: m.Name, Kind: m.Kind, Arch: string(m.Profile.Arch), ArchTrusted: trustedArch(m) != "", Rating: string(m.Rating),
 			License: license, LicenseSource: licenseSource, Path: m.Path, VAEPath: m.VAEPath,
 			// Only a base diffusion model can be assembled from components; an
 			// upscaler / LoRA / ControlNet with no Path would just be broken.
