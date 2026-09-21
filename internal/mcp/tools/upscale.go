@@ -98,6 +98,15 @@ func registerUpscale(srv *mcpserver.Server, d *Deps) {
 			// name inside the workspace, then re-materialize it atomically via os.Root.
 			tmpRel := filepath.Join(workspace.DirOutput, outputName+".tmp.png")
 			finalRel := filepath.Join(workspace.DirOutput, outputName+".png")
+			// os.Create follows a symlink planted at that name, so the upscale
+			// would land outside the workspace. Clear the name through the
+			// containment root first — an os.Root remove unlinks the link
+			// itself instead of following it — so the engine always creates the
+			// file fresh, and a removal the root refuses stops the job before
+			// the path is handed out.
+			if err := ws.RemoveAll(tmpRel); err != nil {
+				return nil, err
+			}
 			uerr := d.Upscale.Upscale(ctx, UpscaleRequest{
 				Input:  inputAbs,
 				Output: ws.Path(tmpRel),

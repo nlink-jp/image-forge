@@ -30,6 +30,9 @@ output/              rendered PNGs                         (server-written)
   the workspace** — place them in the workspace first.
 - The server never reads or writes outside the workspace (kernel-enforced;
   symlinks inside the workspace that point outside fail with `path_not_allowed`).
+  The workspace directory itself is checked too: if `<work_dir>/<workspace_id>`
+  is a symlink rather than a real directory, the call is refused instead of
+  silently working somewhere else.
 
 ## Tools
 
@@ -116,7 +119,7 @@ workspace).
 | model_not_found | the named model is not installed; call list_models (scope=installed); the user pulls catalog models with the CLI |
 | no_runtime | this build has no diffusion runtime (built without cgo_sdcpp); the user must install the engine build |
 | input_not_found | place the referenced init/mask image in the workspace, then retry |
-| path_not_allowed | use workspace-relative input paths; symlinks out of the workspace are rejected |
+| path_not_allowed | use workspace-relative input paths; symlinks out of the workspace are rejected, as is a workspace directory that is itself a symlink |
 | work_dir_required | no `work_dir` argument and no `_meta` hint — pass the absolute path of a directory you can read back |
 | work_dir_invalid | not absolute, started with `~`, or contained `..` |
 | work_dir_not_found | not there, or not a directory — it is yours, so this is a typo; the server does not create it |

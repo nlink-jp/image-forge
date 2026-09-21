@@ -71,6 +71,20 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
 
 ## Gotchas
 
+- **Containment: the workspace base is verified by real path, because the path
+  is handed to code outside any root.** `os.Root` contains operations *within*
+  the root but resolves the root path itself normally, so `os.OpenRoot` on a
+  symlink planted at `<work_dir>/<id>` anchors on the link's target and every
+  read and write lands outside `work_dir` while reporting success.
+  `workspace.makeBaseDir` therefore creates the directory through an `os.Root`
+  on `work_dir` **and** compares `filepath.EvalSymlinks` of the result against
+  `<real work_dir>/<id>`; the comparison is the part that must stay, because
+  `w.BaseDir` is later passed to `os.OpenRoot` and to the engine. The same rule
+  applies one level down: any absolute path handed to the diffusion engine
+  (which opens it with plain `os.Create`) must first be unlinked *through* the
+  root — `generate`/`upscale` do that for `output/<name>.tmp.png`. Both are
+  pinned by `TestEnsureUnderRefusesLinkedWorkspaceDir` and
+  `TestGenerate/UpscaleDoesNotWriteThroughPlantedTmpLink`.
 - **Toolchain for the engine build**: `cmake` (`brew install cmake`) and the Xcode
   **Metal Toolchain** (`xcodebuild -downloadComponent MetalToolchain`) are required
   for `make deps` / `make build-engine`. Neither is needed for scaffold work.

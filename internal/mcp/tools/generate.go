@@ -217,6 +217,16 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
 			// after resolveSeed inside the engine. Render to a temp name, then rename
 			// to output/<output_name>-<seed>.png once the seed is known.
 			tmpRel := filepath.Join(workspace.DirOutput, outputName+".tmp.png")
+			// The engine opens r.Output with plain os.Create, which follows a
+			// symlink planted at that name and writes the render outside the
+			// workspace. Clear the name through the containment root first —
+			// an os.Root remove unlinks the link itself instead of following
+			// it — so the engine always creates the file fresh. A removal that
+			// cannot be done inside the root (a linked output/ directory, say)
+			// refuses the job rather than handing the path out anyway.
+			if err := ws.RemoveAll(tmpRel); err != nil {
+				return nil, err
+			}
 			r := req
 			r.Output = ws.Path(tmpRel)
 			seed, rerr := d.Render.Render(ctx, r, func(f float64, msg string) {

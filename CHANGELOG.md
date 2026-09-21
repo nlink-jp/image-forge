@@ -4,6 +4,28 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Security
+
+- **A symlink planted at `<work_dir>/<workspace_id>` no longer redirects the
+  whole workspace.** `os.Root` confines operations inside a root but resolves
+  the root path itself normally, so if anything else with write access to your
+  work directory (another tool, sandboxed code) left a link at the workspace's
+  name, every read and write anchored on the link's target: images were written
+  outside the directory you named and the call reported success. The workspace
+  directory is now created through an `os.Root` on `work_dir` and then verified
+  by real path; a workspace whose name resolves elsewhere is refused with
+  `path_not_allowed`, naming the id and what it resolved to.
+- **A symlink planted at the engine's temp output path is no longer written
+  through.** `generate` and `upscale` hand the diffusion engine an absolute
+  path (`output/<name>.tmp.png`), which the engine opens with plain
+  `os.Create` — following any link left there and writing the render outside
+  the workspace. The tool then failed while reading the result back, so the
+  out-of-workspace write had already happened silently. That name is now
+  unlinked through the containment root before the path is handed out, so the
+  engine always creates the file fresh.
+
 ## [0.26.4] - 2026-09-14
 
 ### Added

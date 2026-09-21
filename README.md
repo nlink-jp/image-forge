@@ -280,7 +280,11 @@ file **paths**, never image bytes. Every call names a `work_dir` — an absolute
 path the caller can read back — and the workspace is `<work_dir>/<workspace_id>/`;
 generated PNGs land in its `output/`. There is no flag and no default: a
 directory the server picked is one the caller may not be able to open, which
-would make the returned path useless. Generation is **async** — a
+would make the returned path useless. Every path the server touches is confined
+to that workspace by the kernel, and the workspace directory itself must be a
+real directory under `work_dir`: a symlink planted at
+`<work_dir>/<workspace_id>` is refused rather than followed, so nothing lands
+outside the directory you named. Generation is **async** — a
 render takes a minute or two, so the server returns a `job_id` immediately and
 the client polls.
 
