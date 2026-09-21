@@ -172,6 +172,14 @@ func installedViewsWith(reg *store.Registry, exists func(string) bool) []install
 			// one is empty. A model installed before a correction kept reporting the
 			// licence it was installed with: anima-turbo was recorded as "commercial
 			// OK" and would have gone on saying so beside corrected flags.
+			//
+			// Safe because the stored licence was never derived independently: only
+			// `models pull` of a catalog entry writes one, and it writes a copy of
+			// this same field. `models import` leaves it empty. So there is no local
+			// fact here that the catalog could be wrong about — unlike a recorded
+			// checksum, which is evidence about the file on disk and must survive.
+			// A model that has left the catalog keeps its recorded licence, reported
+			// without a source, since nothing current can vouch for it.
 			license = e.License
 			flags, triggers, attribution = e.LicenseFlags, e.TriggerWords, e.Attribution
 			licenseSource = e.LicenseSource
