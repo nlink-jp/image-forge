@@ -152,7 +152,7 @@ image-forge models relocate --apply
 
 実行するまでの間、`models list` は該当モデルを `MISSING` と表示し、生成も同じ案内を
 出して拒否する。ロードできないモデルを黙って提示することはない
-（[ADR-0008](docs/adr/0008-models-dir-relocation.md)）。同じ検査は「外付けボリュームが
+（[ADR-0008](docs/ja/adr/0008-models-dir-relocation.ja.md)）。同じ検査は「外付けボリュームが
 未マウント」も捕まえるが、その場合は relocate ではなくマウントすること。
 
 `models rm --purge` は重みファイルも削除するが、他のインストール済みモデルと共有する

@@ -159,7 +159,7 @@ a relocate: re-run it with `--to` the old directory).
 
 Until you run it, `models list` marks those models `MISSING` and generation refuses
 them with the same advice — a model that cannot be loaded is never silently offered
-(see [ADR-0008](docs/adr/0008-models-dir-relocation.md)). The same check catches an
+(see [ADR-0008](docs/en/adr/0008-models-dir-relocation.md)). The same check catches an
 external volume that simply isn't mounted; there, mount it rather than relocating.
 
 `models rm --purge` deletes the model's weight files too, but keeps any file
