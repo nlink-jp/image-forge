@@ -22,7 +22,8 @@ Two shapes were considered for separating the views:
 **Adopt option 2: keep a single `models list` command with mode flags, plus a
 `--json` flag on every mode.**
 
-- `models list` (default) — **installed** models only: `NAME ARCH RATING LICENSE PATH`.
+- `models list` (default) — **installed** models only: `NAME ARCH RATING LICENSE PATH`
+  (ADR-0008 later added a `STATUS` column for models whose files are missing).
 - `models list --catalog` — the curated catalog: `NAME ARCH RATING RAM LICENSE INSTALLED`.
 - `models list --all` — both, as two clearly-labelled sections (`INSTALLED`, `CATALOG`).
 - `--json` on any mode emits stable, purpose-built JSON (installed → array;

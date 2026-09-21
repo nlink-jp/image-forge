@@ -72,8 +72,7 @@
    ようになり（空なら省略）、レジストリのパスを stat して埋める。`models list` の表に
    **`STATUS`** 列が加わり、健全なモデルでは空欄、壊れたモデルでは `MISSING` になる。
    加えて、欠けているファイルを名指しし `models relocate` を指し示すフッタが付く。
-   `ListModels` が CLI・`--json`・MCP の単一の供給元なので、3 つ同時にこれを得る
-   （ADR-0002 の共有ビュー規則）。
+   `ListModels` が CLI・`--json`・MCP の単一の供給元なので、3 つ同時にこれを得る。
 
 5. **GUI はこれを見せ、描画を拒否する。** `ModelInfo` が `missing_files` をデコードし、
    Manage Models はその行に印を付け、Composer は欠落ファイルを持つモデルをピッカーから

@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-07-07
+- Amended by: [ADR-0009](0009-work-dir-contract.md) (the output directory is the caller's `work_dir`; the default root and `workspace_root` are gone)
 
 ## Context
 
@@ -43,7 +44,8 @@ Placement — **subcommand, not a separate project**:
 File handoff — **copy the studios**:
 
 - **Workspace model.** One workspace = one working directory (a default root
-  under the data dir, or an agent-prepared `workspace_root` per call). The server
+  under the data dir, or an agent-prepared `workspace_root` per call — since
+  ADR-0009, `<work_dir>/<workspace_id>/`, with `work_dir` required and no default). The server
   writes only under `<ws>/output/`. Input images (img2img/inpaint) are
   agent-placed and referenced by workspace-relative paths, resolved through
   `os.Root` so planted symlinks cannot escape the workspace.

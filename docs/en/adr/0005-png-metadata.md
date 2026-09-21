@@ -30,7 +30,7 @@ Two keywords:**
    Hires upscaler: .., Version: image-forge vX.Y.Z]
    ```
 2. **`image-forge`** — a **complete JSON** record (image-forge's own, lossless):
-   model / model_path / prompt / negative / seed / steps / cfg / width / height /
+   model / model_path (removed in v0.13.1 — see below) / prompt / negative / seed / steps / cfg / width / height /
    sampler / scheduler / clip_skip / prediction / vae / loras / img2img / hires /
    controlnet / version.
 

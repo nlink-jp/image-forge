@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-07-07
+- Amended by: [ADR-0009](0009-work-dir-contract.ja.md)（出力先は呼び出し側の `work_dir`。既定ルートと `workspace_root` は廃止）
 
 ## Context
 
@@ -38,7 +39,8 @@ Metal）は外部プロセスではなく、**バイナリへ静的リンクさ�
 ファイルの受け渡し — **studio 群を写す**:
 
 - **ワークスペースモデル。** 1 ワークスペース = 1 作業ディレクトリ（データディレクトリ配下の
-  既定ルート、または呼び出しごとにエージェントが用意する `workspace_root`）。サーバーが
+  既定ルート、または呼び出しごとにエージェントが用意する `workspace_root`。ADR-0009 以降は
+  `<work_dir>/<workspace_id>/` で、`work_dir` は必須・既定なし）。サーバーが
   書くのは `<ws>/output/` 配下のみ。入力画像（img2img/inpaint）はエージェントが置き、
   ワークスペース相対パスで参照し、`os.Root` 経由で解決するので、仕込まれた symlink では
   ワークスペースの外へ出られない。

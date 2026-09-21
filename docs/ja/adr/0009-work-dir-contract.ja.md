@@ -9,7 +9,7 @@
 参照実装は voice-scribe（ADR-0010）、絶対パス入力とブラックリストの形は
 pcap-analyzer-mcp（ADR-0008）で確定済み。ここは受け取る側である。
 
-このサーバーの出力先は 3 段のフォールバックを持っていた —— 呼び出しの
+このサーバーの出力先は 4 段のフォールバックを持っていた —— 呼び出しの
 `workspace_root`、起動フラグ `--workspace-root`、config の `[mcp] workspace_root`、
 そして最後に `~/.local/share/image-forge/mcp-workspaces`。後ろ 3 つはいずれも
 **運用者が書いた場所**であり、呼び出し側がそこを読めるかは偶然でしかない。生成は
@@ -37,13 +37,16 @@ pcap-analyzer-mcp（ADR-0008）で確定済み。ここは受け取る側であ�
 ## Consequences
 
 - **破壊的。** `workspace_root` を送る呼び出しは新しい名前を告げて拒否される。
-  `--workspace-root` を書いた登録行、`[mcp] workspace_root` を書いた config は
-  効かなくなる（フラグは未知オプションとして落ちる）
+  `[mcp] workspace_root` を書いた config は効かなくなる（キーは無視される）。
+  `--workspace-root` を書いた登録行ではサーバーが起動しなくなる —— フラグが無くなった
+  ため、`image-forge mcp` は「flag provided but not defined: -workspace-root」で終了する。
+  登録行から削除すること
 - `internal/mcp/workdir` は voice-scribe / pcap-analyzer / gem-scribe と同一ファイル
 - 既定ルートが消え、`internal/mcp/workspace` は「呼び出し側 dir の下に作る」だけになる
 
 ## References
 
 - 組織 ADR-021、voice-scribe ADR-0010（参照実装）、pcap-analyzer-mcp ADR-0008
-- ADR-0003（MCP サーバーサブコマンド）— `--workspace-root` を導入した記録。本 ADR が
-  そのフラグを撤回する
+- ADR-0003（MCP サーバーサブコマンド）— 既定ルートと呼び出しごとの `workspace_root` を
+  導入した記録。本 ADR はその両方と、後から加わった `--workspace-root` フラグ・
+  `[mcp] workspace_root` キーを撤回する

@@ -22,7 +22,8 @@
 **案 2 を採用する: `models list` は 1 コマンドのままモードフラグを持ち、加えて全モードに
 `--json` フラグを付ける。**
 
-- `models list`（既定）— **インストール済み**モデルのみ: `NAME ARCH RATING LICENSE PATH`。
+- `models list`（既定）— **インストール済み**モデルのみ: `NAME ARCH RATING LICENSE PATH`
+  （後に ADR-0008 が、ファイルの欠けたモデル向けに `STATUS` 列を加えた）。
 - `models list --catalog` — キュレーション済みカタログ: `NAME ARCH RATING RAM LICENSE INSTALLED`。
 - `models list --all` — 両方を、明示ラベル付きの 2 セクション（`INSTALLED`、`CATALOG`）で。
 - `--json` はどのモードでも安定した目的専用の JSON を出す（installed → 配列、

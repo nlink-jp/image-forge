@@ -49,7 +49,8 @@ stable-diffusion.cpp supports both natively:
   `--hires-denoise`, `--hires-upscaler latent|lanczos|nearest|model`,
   `--hires-model <esrgan>`.
 - image-forge's opinionated defaults (overridable, and more conservative than
-  sd.cpp's): upscaler `latent` (no download), **`scale 1.5`**, **`denoise 0.5`**
+  sd.cpp's): upscaler `latent` (no download; §2b below later made it the config
+  `[hires] upscaler`, default `"auto"`), **`scale 1.5`**, **`denoise 0.5`**
   — 2.0/0.7 is heavy for the 16 GB baseline and 0.7 drifts too far from the base
   composition.
 - `serve` and the `mcp` `generate` tool accept the same hires controls.

@@ -10,7 +10,7 @@ applied to this server. The reference implementation is voice-scribe (ADR-0010),
 and the shape of absolute-path inputs and the blacklist was settled by
 pcap-analyzer-mcp (ADR-0008). This is the receiving side.
 
-This server's output destination had a three-step fallback — the call's
+This server's output destination had a four-step fallback — the call's
 `workspace_root`, the launch flag `--workspace-root`, the config's
 `[mcp] workspace_root`, and finally
 `~/.local/share/image-forge/mcp-workspaces`. The last three are all
@@ -44,14 +44,16 @@ lagent), neither MCP's `roots` nor the environment reaches half of them.
 ## Consequences
 
 - **Breaking.** A call sending `workspace_root` is refused with the new name
-  named. A registration line carrying `--workspace-root` and a config carrying
-  `[mcp] workspace_root` stop taking effect (the flag is dropped as an unknown
-  option)
+  named. A config carrying `[mcp] workspace_root` stops taking effect: the key is
+  ignored. A registration line carrying `--workspace-root` stops the server from
+  starting — the flag is gone, so `image-forge mcp` exits with "flag provided but
+  not defined: -workspace-root"; remove it from the line
 - `internal/mcp/workdir` is the same file as in voice-scribe / pcap-analyzer / gem-scribe
 - With the default root gone, `internal/mcp/workspace` only "creates under the caller's dir"
 
 ## References
 
 - Organization ADR-021, voice-scribe ADR-0010 (the reference implementation), pcap-analyzer-mcp ADR-0008
-- ADR-0003 (the MCP server subcommand) — the record that introduced
-  `--workspace-root`. This ADR withdraws that flag
+- ADR-0003 (the MCP server subcommand) — the record that introduced the default
+  root and the per-call `workspace_root`. This ADR withdraws both, together with
+  the `--workspace-root` flag and the `[mcp] workspace_root` key added after it

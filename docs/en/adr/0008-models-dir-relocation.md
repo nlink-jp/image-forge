@@ -73,8 +73,7 @@ operation — not an implicit repair.
    registry paths. The `models list` table gains a **`STATUS`** column, blank for a
    healthy model and `MISSING` for a broken one, plus a footer naming the absent
    files and pointing at `models relocate`. Because `ListModels` is the single
-   source for the CLI, `--json`, and MCP, all three gain it at once (ADR-0002's
-   shared-view rule).
+   source for the CLI, `--json`, and MCP, all three gain it at once.
 
 5. **The GUI surfaces it and refuses to render.** `ModelInfo` decodes
    `missing_files`; Manage Models marks such rows, and the Composer keeps a model

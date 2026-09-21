@@ -47,7 +47,8 @@ stable-diffusion.cpp は両方をネイティブに備えている:
   細かい上書きは `--hires-scale`・`--hires-denoise`・
   `--hires-upscaler latent|lanczos|nearest|model`・`--hires-model <esrgan>`。
 - image-forge の意見を持った既定値（上書き可能で、sd.cpp より控えめ）: アップスケーラは
-  `latent`（ダウンロード不要）、**`scale 1.5`**、**`denoise 0.5`** — 2.0/0.7 は 16 GB の
+  `latent`（ダウンロード不要。後の §2b で config の `[hires] upscaler`、既定 `"auto"` に
+  変わった）、**`scale 1.5`**、**`denoise 0.5`** — 2.0/0.7 は 16 GB の
   基準機には重く、0.7 は元の構図から離れすぎる。
 - `serve` と `mcp` の `generate` ツールも同じ hires 制御を受け付ける。
 

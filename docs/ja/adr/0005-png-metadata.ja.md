@@ -30,7 +30,7 @@ image-forge は **PNG** を出力する。PNG における AI 画像の慣行は
    Hires upscaler: .., Version: image-forge vX.Y.Z]
    ```
 2. **`image-forge`** — **完全な JSON** レコード（image-forge 独自、無損失）:
-   model / model_path / prompt / negative / seed / steps / cfg / width / height /
+   model / model_path（v0.13.1 で削除 — 後述）/ prompt / negative / seed / steps / cfg / width / height /
    sampler / scheduler / clip_skip / prediction / vae / loras / img2img / hires /
    controlnet / version。
 
