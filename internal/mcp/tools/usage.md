@@ -79,9 +79,13 @@ Required: `workspace_id`, `prompt`.
   (default; follow the model profile — some models ship with it on), `on`, or
   `off`. Fine-grained: `hires_scale` (default profile or 1.5), `hires_denoise`
   (`0..1`, default profile or 0.5), `hires_upscaler`
-  (`latent`|`lanczos`|`nearest`|`model`, default latent), and `hires_model` (an
-  installed upscaler name, required for `hires_upscaler=model`). hires roughly
-  doubles render time and raises peak memory.
+  (`latent`|`lanczos`|`nearest`|`model`; default: the model profile, else the
+  config's `[hires] upscaler`, whose default `auto` picks an ESRGAN — the
+  configured `[upscaler] default_model`, or the only one installed — else
+  latent), and `hires_model` (an installed upscaler name for
+  `hires_upscaler=model`; without it the same pick applies, and with no ESRGAN
+  installed the pass falls back to latent). hires roughly doubles render time
+  and raises peak memory.
 
 ## Upscale parameters
 

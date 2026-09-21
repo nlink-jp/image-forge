@@ -51,7 +51,7 @@ func runGen(args []string) error {
 		hires         = fs.String("hires", "auto", "hires.fix: auto (follow the model profile) | on | off")
 		hiresScale    = fs.Float64("hires-scale", 0, "hires upscale factor (default: profile or 1.5)")
 		hiresDenoise  = fs.Float64("hires-denoise", 0, "hires denoise strength 0..1 (default: profile or 0.5)")
-		hiresUpscaler = fs.String("hires-upscaler", "", "hires upscaler: latent|lanczos|nearest|model (default: profile, else config [hires] upscaler — auto: a downloaded ESRGAN, else latent)")
+		hiresUpscaler = fs.String("hires-upscaler", "", "hires upscaler: latent|lanczos|nearest|model (default: profile, else config [hires] upscaler — auto: an ESRGAN ([upscaler] default_model, or the only one installed), else latent)")
 		hiresModel    = fs.String("hires-model", "", "ESRGAN model (installed upscaler name or path) for --hires-upscaler model")
 
 		flashAttn = fs.Bool("flash-attn", false, "flash attention: faster/leaner on large & hires renders (default off; also config [performance] flash_attn)")

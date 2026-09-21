@@ -80,7 +80,7 @@ fp16-fix VAE.
 | `--slg-scale` | skip-layer guidance for DiT models (**SD3.5**): 0 = off, ~2.5 is a good SD3.5 value (skips layers 7–9) |
 | `--img-cfg` | separate image CFG for img2img / instruct edits (default: same as `--cfg`) |
 | `--hires auto\|on\|off` | hires.fix (generate → upscale → a 2nd img2img pass for detail). `auto` (default) follows the model profile; `on`/`off` force it |
-| `--hires-scale` `--hires-denoise` `--hires-upscaler latent\|lanczos\|nearest\|model` `--hires-model <name\|path>` | fine-tune hires (defaults: scale 1.5, denoise 0.5; upscaler from the profile, else config `[hires] upscaler` — `auto`: a downloaded ESRGAN, else latent) |
+| `--hires-scale` `--hires-denoise` `--hires-upscaler latent\|lanczos\|nearest\|model` `--hires-model <name\|path>` | fine-tune hires (defaults: scale 1.5, denoise 0.5; upscaler from the profile, else config `[hires] upscaler` — `auto`: an ESRGAN (`[upscaler] default_model`, or the only one installed), else latent) |
 | `--no-metadata` | do not embed the prompt/parameters/model into the PNG |
 
 Progress is emitted as a JSON-line stream on stderr (`load` / `progress` / `done` /

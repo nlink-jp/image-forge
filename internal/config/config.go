@@ -130,8 +130,8 @@ func (c Config) HiresUpscaler() string {
 // It is empty: workspace_root was its only key, and ADR-0009 removed it along
 // with the built-in default it fell back to. The workspace is
 // <work_dir>/<workspace_id>/, and work_dir is named by the caller on every
-// call. The type stays so a config that still carries [mcp] is told what
-// happened rather than "unknown section".
+// call. The type stays so a config that still carries [mcp] decodes; the
+// leftover key is ignored, as the TOML decoder ignores every unknown key.
 type MCPConfig struct {
 }
 
