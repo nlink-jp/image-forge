@@ -76,7 +76,7 @@ steps、CFG、プロンプト前置）を encode した **プロファイル** �
 | `--slg-scale` | DiT モデル（**SD3.5**）の skip-layer guidance: 0=off、SD3.5 は ~2.5 が good（layer 7–9 をスキップ） |
 | `--img-cfg` | img2img / instruct 編集用の別 image CFG（既定: `--cfg` と同じ） |
 | `--hires auto\|on\|off` | hires.fix（生成→拡大→ディテール付与の2nd img2imgパス）。`auto`(既定)はプロファイルに従う、`on`/`off`で強制 |
-| `--hires-scale` `--hires-denoise` `--hires-upscaler latent\|lanczos\|nearest\|model` `--hires-model <name\|path>` | hires 微調整（既定: latent / scale 1.5 / denoise 0.5） |
+| `--hires-scale` `--hires-denoise` `--hires-upscaler latent\|lanczos\|nearest\|model` `--hires-model <name\|path>` | hires 微調整（既定: scale 1.5 / denoise 0.5。アップスケーラはプロファイル、無ければ設定の `[hires] upscaler` — `auto` ならダウンロード済み ESRGAN、無ければ latent） |
 | `--no-metadata` | プロンプト/パラメータ/モデルを PNG に埋め込まない |
 
 進捗は stderr への JSON 行ストリーム（`load` / `progress` / `done` / `error`）、
