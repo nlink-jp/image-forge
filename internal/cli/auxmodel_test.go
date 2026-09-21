@@ -175,21 +175,23 @@ func TestLoRACatalogEntriesCarryArch(t *testing.T) {
 }
 
 // TestResolveAuxModelRefusesAnotherArchitecture is ADR-0006's promise that
-// ADR-0007 repeats: an installed LoRA / ControlNet recorded for another
-// architecture than the model is a clear error before the render, not a
-// failure deep in sd.cpp or a garbage image. Only recorded architectures are
-// compared, so a raw path on either side still passes through.
+// ADR-0007 repeats: an installed LoRA / ControlNet whose architecture is a fact
+// and differs from the model's is a clear error before the render, not a
+// failure deep in sd.cpp or a garbage image. A guessed arch, a missing one or a
+// raw path on either side passes through to sd.cpp.
 func TestResolveAuxModelRefusesAnotherArchitecture(t *testing.T) {
 	get := fakeRegistry(
-		store.InstalledModel{Name: "lcm-lora-sdxl", Kind: catalog.KindLoRA, Path: "/models/lcm.safetensors",
-			Profile: profile.Profile{Name: "lcm-lora-sdxl", Arch: profile.ArchSDXL}},
-		store.InstalledModel{Name: "canny-sdxl", Kind: catalog.KindControlNet, Path: "/models/canny.safetensors",
-			Profile: profile.Profile{Name: "canny-sdxl", Arch: profile.ArchSDXL}},
+		store.InstalledModel{Name: "my-lora-sdxl", Kind: catalog.KindLoRA, Path: "/models/l.safetensors",
+			Profile: profile.Profile{Arch: profile.ArchSDXL}, ArchSource: store.ArchFromFlag},
+		store.InstalledModel{Name: "my-canny-sdxl", Kind: catalog.KindControlNet, Path: "/models/c.safetensors",
+			Profile: profile.Profile{Arch: profile.ArchSDXL}, ArchSource: store.ArchFromCatalog},
+		store.InstalledModel{Name: "guessed-lora", Kind: catalog.KindLoRA, Path: "/models/g.safetensors",
+			Profile: profile.Profile{Arch: profile.ArchSDXL}, ArchSource: store.ArchDetected},
 		store.InstalledModel{Name: "untagged-lora", Kind: catalog.KindLoRA, Path: "/models/u.safetensors"},
 	)
 
 	for _, kind := range []struct{ ref, kind string }{
-		{"lcm-lora-sdxl", catalog.KindLoRA}, {"canny-sdxl", catalog.KindControlNet},
+		{"my-lora-sdxl", catalog.KindLoRA}, {"my-canny-sdxl", catalog.KindControlNet},
 	} {
 		_, err := resolveAuxModel(kind.ref, kind.kind, profile.ArchSD15, get)
 		if err == nil || !strings.Contains(err.Error(), "is for sdxl and the model is sd15") {
@@ -204,28 +206,60 @@ func TestResolveAuxModelRefusesAnotherArchitecture(t *testing.T) {
 		name, ref string
 		base      profile.Arch
 	}{
-		{"model with no recorded arch", "lcm-lora-sdxl", ""},
-		{"model arch unknown", "lcm-lora-sdxl", profile.ArchUnknown},
+		{"model with no trusted arch", "my-lora-sdxl", ""},
+		{"model arch unknown", "my-lora-sdxl", profile.ArchUnknown},
+		{"LoRA arch only guessed from its name", "guessed-lora", profile.ArchSD15},
 		{"LoRA with no recorded arch", "untagged-lora", profile.ArchSD15},
 		{"LoRA given by path", "/somewhere/sdxl-lora.safetensors", profile.ArchSD15},
 	}
 	for _, tc := range pass {
 		if _, err := resolveAuxModel(tc.ref, catalog.KindLoRA, tc.base, get); err != nil {
-			t.Errorf("%s: %v; only two recorded architectures are compared", tc.name, err)
+			t.Errorf("%s: %v; only two facts are compared", tc.name, err)
 		}
 	}
 }
 
-// TestOnlyARegisteredModelHasARecordedArch: a --model-path's architecture is
-// profile.Detect's guess from the filename, which is SDXL for any name it
-// does not recognise, so it must not be used to refuse a LoRA.
-func TestOnlyARegisteredModelHasARecordedArch(t *testing.T) {
-	guessed := resolved{Path: "/x/model.safetensors", Profile: profile.Profile{Arch: profile.ArchSDXL}}
-	if a := guessed.recordedArch(); a != "" {
-		t.Errorf("raw path recordedArch = %q, want none", a)
+// TestTrustedArch: an arch is a fact when the catalog or --arch gave it, and a
+// guess when profile.Detect made it up from the name — the review of this
+// check found an SD1.5 checkpoint imported as "dreamshaper_8" recorded as
+// sdxl, which would have refused every SD1.5 LoRA on it. A model registered
+// before sources were recorded is trusted only as the catalog entry itself.
+func TestTrustedArch(t *testing.T) {
+	cases := []struct {
+		name string
+		im   store.InstalledModel
+		want profile.Arch
+	}{
+		{"catalog", store.InstalledModel{Name: "x", Profile: profile.Profile{Arch: profile.ArchSD15}, ArchSource: store.ArchFromCatalog}, profile.ArchSD15},
+		{"--arch", store.InstalledModel{Name: "x", Profile: profile.Profile{Arch: profile.ArchFlux}, ArchSource: store.ArchFromFlag}, profile.ArchFlux},
+		{"guessed", store.InstalledModel{Name: "dreamshaper_8", Profile: profile.Profile{Arch: profile.ArchSDXL}, ArchSource: store.ArchDetected}, ""},
+		{"old, the catalog's own", store.InstalledModel{Name: "lcm-lora-sd15", Profile: profile.Profile{Arch: profile.ArchSD15}}, profile.ArchSD15},
+		{"old, catalog name but another arch", store.InstalledModel{Name: "lcm-lora-sd15", Profile: profile.Profile{Arch: profile.ArchSDXL}}, ""},
+		{"old, not in the catalog", store.InstalledModel{Name: "dreamshaper_8", Profile: profile.Profile{Arch: profile.ArchSDXL}}, ""},
+		{"unknown arch", store.InstalledModel{Name: "x", Profile: profile.Profile{Arch: profile.ArchUnknown}, ArchSource: store.ArchFromFlag}, ""},
 	}
-	registered := resolved{Profile: profile.Profile{Arch: profile.ArchSD15}, Registered: true}
-	if a := registered.recordedArch(); a != profile.ArchSD15 {
-		t.Errorf("registered recordedArch = %q, want sd15", a)
+	for _, tc := range cases {
+		if got := trustedArch(tc.im); got != tc.want {
+			t.Errorf("%s: trustedArch = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+	if got := (resolved{Trusted: profile.ArchSD15}).recordedArch(); got != profile.ArchSD15 {
+		t.Errorf("recordedArch = %q, want sd15", got)
+	}
+	if got := (resolved{Profile: profile.Profile{Arch: profile.ArchSDXL}}).recordedArch(); got != "" {
+		t.Errorf("a --model-path's filename guess must not be trusted: %q", got)
+	}
+}
+
+// TestParseArch: --arch is validated, so a value that would be compared as
+// typed ("SDXL", "pony") cannot become a trusted record.
+func TestParseArch(t *testing.T) {
+	if a, err := parseArch(" SDXL "); err != nil || a != profile.ArchSDXL {
+		t.Errorf("parseArch(SDXL) = %q, %v", a, err)
+	}
+	for _, bad := range []string{"pony", "illustrious", "sd2", "unknown", ""} {
+		if _, err := parseArch(bad); err == nil {
+			t.Errorf("parseArch(%q) accepted", bad)
+		}
 	}
 }

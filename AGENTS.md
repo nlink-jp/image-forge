@@ -138,6 +138,16 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   `--arch` / `--trigger` (like `import`) for that `!known` path; catalog names ignore
   them (with a stderr note). The kind→profile rule is the shared pure `auxProfile`
   (cli/models.go), used by both `pull` and `import` — one home, unit-tested.
+- **An arch is a fact or a guess, and only facts refuse** (ADR-0006): every
+  registration writes `ArchSource` — `catalog`, `flag` (`--arch`, validated by
+  `parseArch`) or `detected` (`profile.Detect`, SDXL when the name matches
+  nothing). `trustedArch` is the one reading of it, and `resolveAuxModel`
+  compares only trusted arches, so `gen`, `serve` and the MCP worker (via
+  `buildRender`) refuse a LoRA / ControlNet for another base before loading.
+  A pre-0.28.0 entry has no source and is trusted only as the catalog entry of
+  the same name and arch. A new registration path must set `ArchSource`, or
+  its models are never checked; `quantize` carries the source's trust over.
+  `archcheck_plumbing_test.go` fails if either call site stops passing it.
 - **`models_dir` vs the registry** (ADR-0008): config's `models_dir` only redirects
   where *new* pulls are written; the registry records an **absolute path per weight
   file**, so moving models to another disk leaves every entry stale. `models relocate`

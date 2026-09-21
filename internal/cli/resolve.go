@@ -73,20 +73,56 @@ type resolved struct {
 	Components store.Components
 	Profile    profile.Profile
 	Kind       string // "" (diffusion) or "upscaler"
-	// Registered says the model came from the registry, so Profile.Arch is
-	// the recorded architecture. A --model-path has only profile.Detect's
-	// guess from the filename, which defaults to SDXL when nothing matches.
-	Registered bool
+	// Trusted is the architecture a LoRA / ControlNet is checked against:
+	// the installed model's arch when it is a fact (trustedArch), and "" for a
+	// guess — a --model-path's, or an install that named no --arch.
+	Trusted profile.Arch
 }
 
-// recordedArch is the architecture a LoRA / ControlNet is checked against:
-// the registry's record for an installed model, and nothing for a raw path,
-// whose arch is a filename guess (ADR-0006).
-func (r resolved) recordedArch() profile.Arch {
-	if !r.Registered {
+// recordedArch is the architecture a LoRA / ControlNet is checked against
+// (ADR-0006); "" means none, and the check is left to sd.cpp.
+func (r resolved) recordedArch() profile.Arch { return r.Trusted }
+
+// trustedArch is an installed model's architecture when it is a fact — the
+// catalog's own, or given with --arch — and "" when it is a guess from the
+// name, which is SDXL whenever nothing matches. A model registered before
+// 0.28.0 recorded no source; it is trusted only when it is the catalog entry
+// of the same name and arch, which is how the catalog installs.
+func trustedArch(im store.InstalledModel) profile.Arch {
+	a := im.Profile.Arch
+	if !archKnown(a) {
 		return ""
 	}
-	return r.Profile.Arch
+	switch im.ArchSource {
+	case store.ArchFromCatalog, store.ArchFromFlag:
+		return a
+	case "":
+		if e, ok := catalog.Find(im.Name); ok && e.Arch == a {
+			return a
+		}
+	}
+	return ""
+}
+
+// knownArches are the values --arch accepts, in the order the error lists them.
+var knownArches = []profile.Arch{
+	profile.ArchSD15, profile.ArchSDXL, profile.ArchSD35, profile.ArchFlux, profile.ArchZImage, profile.ArchAnima,
+}
+
+// parseArch validates an --arch value, case-insensitively. A value stored as
+// typed is compared as typed, and a trusted "SDXL" or "pony" would refuse every
+// LoRA made for it.
+func parseArch(s string) (profile.Arch, error) {
+	a := profile.Arch(strings.ToLower(strings.TrimSpace(s)))
+	names := make([]string, len(knownArches))
+	for i, k := range knownArches {
+		if a == k {
+			return a, nil
+		}
+		names[i] = string(k)
+	}
+	return "", fmt.Errorf("--arch %q is not one of %s (Pony, Illustrious and NoobAI models are sdxl)",
+		s, strings.Join(names, "|"))
 }
 
 // missingFilesError builds the error for a model that is registered but whose
@@ -126,7 +162,7 @@ func resolveModel(modelName, modelPath string) (resolved, error) {
 		if err := checkInstalledFiles(modelName, im); err != nil {
 			return resolved{}, err
 		}
-		return resolved{Path: im.Path, VAEPath: im.VAEPath, Components: im.Components, Profile: im.Profile, Kind: im.Kind, Registered: true}, nil
+		return resolved{Path: im.Path, VAEPath: im.VAEPath, Components: im.Components, Profile: im.Profile, Kind: im.Kind, Trusted: trustedArch(im)}, nil
 	case modelPath != "":
 		return resolved{Path: modelPath, Profile: profile.ArchDefaults(profile.Detect(filepath.Base(modelPath)))}, nil
 	default:
@@ -183,12 +219,12 @@ func archKnown(a profile.Arch) bool { return a != "" && a != profile.ArchUnknown
 // working); a bare name that isn't installed is a clear error. `get` is the
 // registry lookup, injected so this stays unit-testable. See ADR-0006.
 //
-// base is the recorded architecture of the model being rendered ("" when it
-// has none). An installed LoRA / ControlNet recorded for a different
-// architecture is refused before the render: against the wrong base it fails
-// deep in sd.cpp or draws garbage. Only recorded architectures are compared —
-// a raw path on either side leaves the judgement to sd.cpp, which is the way
-// to overrule a record the user knows to be wrong.
+// base is the trusted architecture of the model being rendered ("" when it
+// has none). An installed LoRA / ControlNet whose trusted architecture differs
+// is refused before the render: against the wrong base it fails deep in sd.cpp
+// or draws garbage. Only facts are compared (trustedArch) — a guessed arch, or
+// a raw path on either side, leaves the judgement to sd.cpp, and passing the
+// LoRA / ControlNet by path is how to overrule a record known to be wrong.
 func resolveAuxModel(ref, kind string, base profile.Arch, get func(string) (store.InstalledModel, bool)) (string, error) {
 	if ref == "" {
 		return "", nil
@@ -197,10 +233,11 @@ func resolveAuxModel(ref, kind string, base profile.Arch, get func(string) (stor
 		if im.Kind != kind {
 			return "", fmt.Errorf("%q is a %s, not a %s", ref, kindNoun(im.Kind), kindNoun(kind))
 		}
-		if archKnown(base) && archKnown(im.Profile.Arch) && im.Profile.Arch != base {
+		if aux := trustedArch(im); archKnown(base) && aux != "" && aux != base {
 			return "", fmt.Errorf("%s %q is for %s and the model is %s: against another architecture it fails "+
-				"inside sd.cpp or draws garbage — pick a %s one, or pass the file by path to leave it to sd.cpp",
-				kindNoun(kind), ref, im.Profile.Arch, base, base)
+				"inside sd.cpp or draws garbage — pick a %s one, re-register a mislabelled one with --arch, "+
+				"or pass the %s file by path to leave it to sd.cpp",
+				kindNoun(kind), ref, aux, base, base, kindNoun(kind))
 		}
 		return im.Path, nil
 	}

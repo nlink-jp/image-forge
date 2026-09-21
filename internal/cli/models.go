@@ -444,9 +444,12 @@ func modelsImport(args []string) error {
 	if nm == "" {
 		nm = strings.TrimSuffix(filepath.Base(abs), filepath.Ext(abs))
 	}
-	arch := profile.Detect(nm)
+	arch, archSource := profile.Detect(nm), store.ArchDetected
 	if *archFlag != "" {
-		arch = profile.Arch(*archFlag)
+		if arch, err = parseArch(*archFlag); err != nil {
+			return fmt.Errorf("models import: %w", err)
+		}
+		archSource = store.ArchFromFlag
 	}
 
 	prof := auxProfile(kind, nm, arch)
@@ -461,7 +464,7 @@ func modelsImport(args []string) error {
 	}
 	reg.Add(store.InstalledModel{
 		Name: nm, Kind: kind, Path: abs, VAEPath: vaePath,
-		Profile: prof, Rating: profile.RatingSafe, TriggerWords: triggers,
+		Profile: prof, ArchSource: archSource, Rating: profile.RatingSafe, TriggerWords: triggers,
 	})
 	if err := reg.Save(); err != nil {
 		return err
@@ -595,6 +598,7 @@ func modelsPull(args []string) error {
 		triggers    []string
 		regName     = *nameOverride
 		known       bool
+		archSource  = store.ArchFromCatalog
 	)
 	if e, ok := catalog.Find(ref); ok {
 		known = true
@@ -677,8 +681,12 @@ func modelsPull(args []string) error {
 		// prior behavior — base diffusion, arch auto-detected from the name.
 		kind = overrideKind
 		arch := profile.Detect(regName)
+		archSource = store.ArchDetected
 		if *archFlag != "" {
-			arch = profile.Arch(*archFlag)
+			if arch, err = parseArch(*archFlag); err != nil {
+				return fmt.Errorf("models pull: %w", err)
+			}
+			archSource = store.ArchFromFlag
 		}
 		prof = auxProfile(kind, regName, arch)
 		rating = profile.RatingSafe
@@ -739,7 +747,7 @@ func modelsPull(args []string) error {
 	}
 	reg.Add(store.InstalledModel{
 		Name: regName, Kind: kind, Path: dest, VAEPath: vaePath,
-		Profile: prof, Rating: rating, License: license,
+		Profile: prof, ArchSource: archSource, Rating: rating, License: license,
 		LicenseFlags: licFlags, Attribution: attribution, TriggerWords: triggers,
 	})
 	if err := reg.Save(); err != nil {
@@ -841,6 +849,7 @@ func pullMultiComponent(e catalog.Entry, regName string, conf config.Config) err
 		VAEPath:      vae,
 		Components:   store.Components{DiffusionModel: diff, ClipL: clipL, ClipG: clipG, T5XXL: t5, LLM: llm},
 		Profile:      e.Profile(),
+		ArchSource:   store.ArchFromCatalog,
 		Rating:       e.Rating,
 		License:      e.License,
 		LicenseFlags: e.LicenseFlags,
@@ -892,7 +901,14 @@ func modelsQuantize(args []string) error {
 
 	prof := src.Profile
 	prof.Name = outName
-	reg.Add(store.InstalledModel{Name: outName, Path: outPath, Profile: prof, Rating: src.Rating, License: src.License})
+	// A quantized copy has its source's architecture, and is as trusted as the
+	// source was; under the new name, a pre-0.28.0 catalog source would no
+	// longer be recognised, so its trust is written down now.
+	archSource := src.ArchSource
+	if archSource == "" && trustedArch(src) != "" {
+		archSource = store.ArchFromCatalog
+	}
+	reg.Add(store.InstalledModel{Name: outName, Path: outPath, Profile: prof, ArchSource: archSource, Rating: src.Rating, License: src.License})
 	if err := reg.Save(); err != nil {
 		return err
 	}

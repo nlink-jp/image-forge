@@ -23,6 +23,15 @@ type Components struct {
 	LLM            string `json:"llm,omitempty"`
 }
 
+// Where an installed model's architecture came from. Only the first two are
+// facts: a detected arch is profile.Detect's guess from the file name, which is
+// SDXL whenever nothing in the name matches.
+const (
+	ArchFromCatalog = "catalog"  // the curated catalog entry's own
+	ArchFromFlag    = "flag"     // given with --arch
+	ArchDetected    = "detected" // guessed from the name
+)
+
 // InstalledModel is a registered, ready-to-use model. Either Path (a single-file
 // checkpoint) or Components (multi-component) is set.
 type InstalledModel struct {
@@ -33,8 +42,12 @@ type InstalledModel struct {
 	VAEPath    string          `json:"vae_path,omitempty"`
 	Components Components      `json:"components,omitempty"`
 	Profile    profile.Profile `json:"profile"`
-	Rating     profile.Rating  `json:"rating,omitempty"`
-	License    string          `json:"license,omitempty"`
+	// ArchSource says where Profile.Arch came from (ADR-0006): ArchFromCatalog,
+	// ArchFromFlag, or ArchDetected. "" is a model registered before 0.28.0,
+	// which recorded no source.
+	ArchSource string         `json:"arch_source,omitempty"`
+	Rating     profile.Rating `json:"rating,omitempty"`
+	License    string         `json:"license,omitempty"`
 	// LicenseFlags are notable usage restrictions (non-commercial / no-derivatives
 	// / attribution / share-alike), recorded at install so a front-end can surface
 	// them for the installed model without consulting the catalog.

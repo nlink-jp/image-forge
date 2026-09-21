@@ -180,10 +180,13 @@ The registry holds four **kinds** (`--kind diffusion|lora|controlnet|upscaler`):
 a base diffusion model, plus three auxiliary kinds that aren't renderable on
 their own. LoRA and ControlNet entries record the base **architecture** they were
 trained against, so incompatible combinations can be caught up front (ADR-0006):
-`gen`, `serve` and the MCP server refuse an installed LoRA or ControlNet recorded
-for another architecture than the installed model, before anything loads. A file
-given by path, for the model or the add-on, has no recorded architecture and is
-left to sd.cpp — which is also how to overrule a record you know is wrong.
+`gen`, `serve` and the MCP server refuse an installed LoRA or ControlNet made for
+another architecture than the installed model, before anything loads. Only
+architectures that are facts are compared — the catalog's own, or one given with
+`--arch` (validated: `sd15|sdxl|sd35|flux|zimage|anima`; Pony, Illustrious and
+NoobAI are `sdxl`). An install that named no `--arch` records a guess from the
+file name, which is not compared. To overrule a record you know is wrong,
+re-register with `--arch`, or pass the LoRA / ControlNet file by path.
 
 ```sh
 image-forge models pull lcm-lora-sdxl          # a LoRA, like any other model
