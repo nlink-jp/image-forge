@@ -109,9 +109,18 @@ func TestWorkDirComesFromRequestMeta(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.srv.Call(ctx, "generate", args); err != nil {
+	out, err := h.srv.Call(ctx, "generate", args)
+	if err != nil {
 		t.Fatalf("generate with only a _meta work dir: %v", err)
 	}
+	// Wait for the job: it writes into the workspace, and a test that returns
+	// first races the temporary directory's removal.
+	sub, _ := out.(map[string]any)
+	jobID, _ := sub["job_id"].(string)
+	if jobID == "" {
+		t.Fatalf("no job_id: %+v", out)
+	}
+	h.pollDone(jobID)
 }
 
 // A schema test catches a renamed argument; it does not catch a sentence. The
