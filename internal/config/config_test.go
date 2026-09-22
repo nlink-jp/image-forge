@@ -178,3 +178,14 @@ func TestEmbedMetadata_ExplicitFalse(t *testing.T) {
 		t.Error("explicit embed = true should enable embedding")
 	}
 }
+
+// A relative XDG_CONFIG_HOME is invalid by the XDG spec and ignored.
+func TestPathIgnoresARelativeXDGConfigHome(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("IMAGE_FORGE_CONFIG", "")
+	t.Setenv("XDG_CONFIG_HOME", "cfg")
+	if got, want := Path(), filepath.Join(home, ".config", "image-forge", "config.toml"); got != want {
+		t.Errorf("Path() with a relative XDG_CONFIG_HOME = %q, want %q", got, want)
+	}
+}

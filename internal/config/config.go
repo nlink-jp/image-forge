@@ -158,12 +158,13 @@ func expandHome(p string) string {
 // Path is the config file location, matching the other util-series tools:
 // $IMAGE_FORGE_CONFIG if set, else $XDG_CONFIG_HOME/image-forge/config.toml, else
 // ~/.config/image-forge/config.toml. (The data directory — registry and models —
-// is separate; see store.Home.)
+// is separate; see store.Home.) A relative XDG_CONFIG_HOME is ignored, as the
+// XDG spec says.
 func Path() string {
 	if p := os.Getenv("IMAGE_FORGE_CONFIG"); p != "" {
 		return p
 	}
-	if x := os.Getenv("XDG_CONFIG_HOME"); x != "" {
+	if x := os.Getenv("XDG_CONFIG_HOME"); x != "" && filepath.IsAbs(x) {
 		return filepath.Join(x, "image-forge", "config.toml")
 	}
 	h, _ := os.UserHomeDir()
@@ -172,6 +173,9 @@ func Path() string {
 
 // legacyPath is the pre-v0.5 location ($IMAGE_FORGE_HOME/config.toml, in the data
 // dir), read as a fallback so existing configs keep working.
+// LegacyPath is the pre-v0.5 config location, still read as a fallback.
+func LegacyPath() string { return legacyPath() }
+
 func legacyPath() string {
 	return filepath.Join(store.Home(), "config.toml")
 }

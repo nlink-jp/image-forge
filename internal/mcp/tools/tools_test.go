@@ -640,3 +640,28 @@ func TestMissingInputErrorNamesThePath(t *testing.T) {
 		t.Errorf("error does not name the absolute path it looked for: %q", msg)
 	}
 }
+
+// The workspace passed CheckBeneath, but it may contain a server directory
+// (work_dir=~/.local with workspace_id=share contains the data directory):
+// an input that resolves into one is refused, judged as the file actually read.
+func TestAWorkspaceInputInAServerDirectoryIsRefused(t *testing.T) {
+	root := seedWorkspace(t, "proj")
+	srvDir := filepath.Join(root, "proj", "image-forge")
+	if err := os.MkdirAll(srvDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(srvDir, "config.toml"), []byte("hf_token = \"x\""), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	resolver := workdir.NewResolver(srvDir)
+	srv := mcpserver.New("image-forge-mcp", "test",
+		transport.NewStdioTransport(strings.NewReader(""), io.Discard), nil)
+	Register(srv, &Deps{DefaultModel: "m", WS: workspace.NewManager(resolver.CheckBeneath), WorkDir: resolver,
+		Render: &fakeRenderer{seed: 1}, Jobs: job.NewManager(context.Background())})
+	raw, _ := json.Marshal(map[string]any{"workspace_id": "proj", "work_dir": root, "prompt": "x", "init": "image-forge/config.toml"})
+	_, err := srv.Call(context.Background(), "generate", raw)
+	var te *toolerr.Error
+	if !errors.As(err, &te) || te.Code != toolerr.CodePathNotAllowed {
+		t.Errorf("generate with an init in a server directory = %v, want %s", err, toolerr.CodePathNotAllowed)
+	}
+}

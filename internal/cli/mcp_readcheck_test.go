@@ -188,3 +188,31 @@ func TestTheRendererJudgesRawPathsBeforeTheEngine(t *testing.T) {
 	}, nil)
 	wantRefused(t, "Render with an unset read guard", err)
 }
+
+// A config file set with IMAGE_FORGE_CONFIG outside image-forge's own
+// directory protects the file, not the directory holding it — ~/image-forge.toml
+// must not make the home directory a server directory. The legacy file in the
+// data directory is protected too.
+func TestAConfigFileProtectsItselfNotTheDirectoryItSitsIn(t *testing.T) {
+	home, _ := guardHome(t)
+	file := filepath.Join(home, "image-forge.toml")
+	write(t, file)
+	t.Setenv("IMAGE_FORGE_CONFIG", file)
+	wd, _, reads := mcpGuards()
+	project := filepath.Join(home, "project")
+	if err := os.MkdirAll(project, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wd.Validate(project); err != nil {
+		t.Errorf("a work directory beside the config file was refused: %v", err)
+	}
+	none := func(string) bool { return false }
+	wantRefused(t, "the config file as a LoRA", mcpReadRefused(reads, none, []string{file + ":1"}, "", ""))
+	legacy := filepath.Join(store.Home(), "config.toml")
+	write(t, legacy)
+	wantRefused(t, "the legacy config file as a ControlNet", mcpReadRefused(reads, none, nil, legacy, ""))
+	lora := filepath.Join(home, "loras", "style.safetensors")
+	if err := mcpReadRefused(reads, none, []string{lora + ":1"}, "", ""); err != nil {
+		t.Errorf("a LoRA in the home directory was refused: %v", err)
+	}
+}

@@ -63,6 +63,17 @@ func NewResolver(serverDirs ...string) Resolver {
 	})}
 }
 
+// NewResolverFor builds the resolver from the places this server names itself:
+// directories (pathguard.ServerDir), and files such as a config file that may
+// hold tokens, which get their own words. A place without an absolute path
+// refuses every call.
+func NewResolverFor(places ...pathguard.Place) Resolver {
+	return Resolver{r: pgwd.NewResolver(pgwd.Options{
+		Protected:    places,
+		RequiredHint: requiredHint,
+	})}
+}
+
 // Resolve returns the validated work directory for one call: the tool's
 // work_dir argument, else the runtime hint in the request's `_meta`, else an
 // error. The returned path is absolute and symlink-resolved.
@@ -76,12 +87,6 @@ func (r Resolver) Validate(dir string) (string, error) {
 	resolved, err := r.r.Validate(dir)
 	return resolved, toolErr(err)
 }
-
-// Sensitive reports why a path may not be read on a caller's say-so, or ""
-// when it may be. Callers own the error code, since what an unreadable path
-// means differs per tool. Pass every spelling you have — as the caller gave
-// it, and symlink-resolved. An unknown home directory refuses.
-func Sensitive(paths ...string) string { return pgwd.Sensitive(paths...) }
 
 // LocalPath reports why a file a call names may not be read — pathguard's
 // Local policy plus this resolver's server directories — or "". Pass the path

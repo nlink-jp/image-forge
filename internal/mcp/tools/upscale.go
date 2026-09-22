@@ -82,7 +82,7 @@ func registerUpscale(srv *mcpserver.Server, d *Deps) {
 		if err != nil {
 			return nil, err
 		}
-		inputAbs, err := resolveInput(ws, in.Input)
+		inputAbs, err := resolveInput(ws, d.WorkDir, in.Input)
 		if err != nil {
 			return nil, err
 		}

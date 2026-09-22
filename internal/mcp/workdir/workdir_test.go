@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nlink-jp/pathguard"
+
 	"github.com/nlink-jp/image-forge/internal/mcp/mcpserver"
 	"github.com/nlink-jp/image-forge/internal/mcp/toolerr"
 )
@@ -209,78 +211,6 @@ func resolve(t *testing.T, dir string) string {
 	return got
 }
 
-// TestSensitiveNamesTheCredentialLocations covers the read blacklist: a LoRA,
-// ControlNet or hires model may be a raw path, so the floor has to hold here. The list is the runtimes' (~/.kube, ~/.netrc are new with ADR-0010).
-func TestSensitiveNamesTheCredentialLocations(t *testing.T) {
-	home := resolve(t, t.TempDir())
-	t.Setenv("HOME", home)
-	for _, rel := range []string{".ssh", ".ssh/id_rsa", ".aws/credentials", ".gnupg", ".config/gcloud/x",
-		".claude/settings.json", ".codex/auth.json", "Library/Keychains/login.keychain-db",
-		".kube/config", ".netrc", ".config/gh/hosts.yml", ".SSH/id_rsa"} {
-		if why := Sensitive(filepath.Join(home, rel)); why == "" {
-			t.Errorf("Sensitive(~/%s) = \"\", want a reason", rel)
-		}
-	}
-	// The Local policy: a credential name outside your home is not a secret of
-	// yours — an evidence copy, a project's .npmrc (the Outbound policy would
-	// refuse these).
-	for _, p := range []string{filepath.Join(home, "Downloads", "style.safetensors"), "/private/tmp/x.safetensors",
-		"/srv/evidence/home/bob/.ssh/id_rsa", "/srv/app/.npmrc", "/srv/x/credentials.json"} {
-		if why := Sensitive(p); why != "" {
-			t.Errorf("Sensitive(%q) = %q, want it accepted", p, why)
-		}
-	}
-}
-
-// A .env file holds credentials wherever it sits; its committed templates do
-// not.
-func TestSensitiveCatchesDotEnvAnywhereButItsTemplates(t *testing.T) {
-	t.Setenv("HOME", resolve(t, t.TempDir()))
-	for _, p := range []string{"/srv/app/.env", "/srv/app/.env.production", "/srv/app/.ENV"} {
-		if why := Sensitive(p); why == "" {
-			t.Errorf("Sensitive(%q) = \"\", want a reason", p)
-		}
-	}
-	for _, p := range []string{"/srv/app/environment.csv", "/srv/app/.env.example"} {
-		if why := Sensitive(p); why != "" {
-			t.Errorf("Sensitive(%q) = %q, want it accepted", p, why)
-		}
-	}
-}
-
-// TestSensitiveWhenTheBlacklistedTreeIsItselfASymlink is the case that was
-// missed until the server was driven for real: on this machine ~/.ssh is a
-// symlink into a cloud-sync folder, so resolving the path first made it stop
-// looking like ~/.ssh and the check passed a private key straight through.
-func TestSensitiveWhenTheBlacklistedTreeIsItselfASymlink(t *testing.T) {
-	home := resolve(t, t.TempDir())
-	t.Setenv("HOME", home)
-	real := filepath.Join(resolve(t, t.TempDir()), "synced-ssh")
-	if err := os.MkdirAll(real, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(real, filepath.Join(home, ".ssh")); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
-	key := filepath.Join(real, "id_rsa")
-	if err := os.WriteFile(key, []byte("x"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	planted := filepath.Join(resolve(t, t.TempDir()), "innocent.m4a")
-	if err := os.Symlink(key, planted); err != nil {
-		t.Skipf("symlinks unavailable: %v", err)
-	}
-	for name, p := range map[string]string{
-		"through the ~/.ssh link": filepath.Join(home, ".ssh", "id_rsa"),
-		"at the link's target":    key,
-		"through a planted link":  planted,
-	} {
-		if why := Sensitive(p); why == "" {
-			t.Errorf("a key named %s must be refused", name)
-		}
-	}
-}
-
 // Every server directory given is protected, not only the first.
 func TestEveryServerDirectoryIsProtected(t *testing.T) {
 	a, b := resolve(t, t.TempDir()), resolve(t, t.TempDir())
@@ -289,5 +219,23 @@ func TestEveryServerDirectoryIsProtected(t *testing.T) {
 		if _, err := r.Validate(dir); code(t, err) != toolerr.CodeWorkDirDenied {
 			t.Errorf("Validate(%q) = %v, want work_dir_denied", dir, err)
 		}
+	}
+}
+
+// A file place is protected as the file, with its own words; its directory is
+// not a server directory unless it is given as one.
+func TestAFilePlaceProtectsTheFileNotItsDirectory(t *testing.T) {
+	dir := resolve(t, t.TempDir())
+	cfg := filepath.Join(dir, "image-forge.toml")
+	r := NewResolverFor(pathguard.Place{Path: cfg, Kind: pathguard.Protected, Reason: "server_dir", Why: "it is this server's config file"})
+	if why := r.LocalPath(cfg, cfg); !strings.Contains(why, "config file") {
+		t.Errorf("LocalPath(config file) = %q, want a refusal naming the config file", why)
+	}
+	other := filepath.Join(dir, "style.safetensors")
+	if why := r.LocalPath(other, other); why != "" {
+		t.Errorf("a file beside the config file was refused: %s", why)
+	}
+	if _, err := r.Validate(dir); err != nil {
+		t.Errorf("the config file's directory was refused as a work_dir: %v", err)
 	}
 }

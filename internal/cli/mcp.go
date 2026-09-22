@@ -11,6 +11,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/nlink-jp/pathguard"
+
 	"github.com/nlink-jp/image-forge/internal/config"
 	"github.com/nlink-jp/image-forge/internal/engine"
 	"github.com/nlink-jp/image-forge/internal/mcp/job"
@@ -106,9 +108,36 @@ type residentRenderer struct {
 //     plus the config directory, which may hold hf_token and civitai_token —
 //     not the models directory, where LoRAs are read from.
 func mcpGuards() (workdir.Resolver, *workspace.Manager, workdir.Resolver) {
-	cfgDir := filepath.Dir(config.Path())
-	wd := workdir.NewResolver(store.Home(), store.ModelsDir(), cfgDir)
-	return wd, workspace.NewManager(wd.CheckBeneath), workdir.NewResolver(cfgDir)
+	cfg := configPlaces()
+	server := append([]pathguard.Place{
+		pathguard.ServerDir(store.Home(), ""),
+		pathguard.ServerDir(store.ModelsDir(), ""),
+	}, cfg...)
+	wd := workdir.NewResolverFor(server...)
+	return wd, workspace.NewManager(wd.CheckBeneath), workdir.NewResolverFor(cfg...)
+}
+
+// configPlaces are this server's configuration: the file config.Path() names
+// and the legacy file in the data directory, either of which may hold hf_token
+// and civitai_token; and the directory holding the config file only when it
+// is image-forge's own (the default or $XDG_CONFIG_HOME form) — a config file
+// put at ~/image-forge.toml must not make the home directory a server
+// directory. A relative config path is made absolute the way the loader reads
+// it, from the working directory.
+func configPlaces() []pathguard.Place {
+	file := config.Path()
+	if abs, err := filepath.Abs(file); err == nil {
+		file = abs
+	}
+	configFile := func(p string) pathguard.Place {
+		return pathguard.Place{Path: p, Kind: pathguard.Protected, Reason: "server_dir",
+			Why: "it is this server's config file " + p + ", which may hold tokens"}
+	}
+	places := []pathguard.Place{configFile(file), configFile(config.LegacyPath())}
+	if dir := filepath.Dir(file); filepath.Base(dir) == "image-forge" {
+		places = append(places, pathguard.ServerDir(dir, "which holds its configuration"))
+	}
+	return places
 }
 
 func (a *residentRenderer) Render(ctx context.Context, req tools.RenderRequest, report func(fraction float64, message string)) (int64, error) {

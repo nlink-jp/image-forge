@@ -12,6 +12,7 @@ import (
 	"github.com/nlink-jp/image-forge/internal/mcp/job"
 	"github.com/nlink-jp/image-forge/internal/mcp/mcpserver"
 	"github.com/nlink-jp/image-forge/internal/mcp/toolerr"
+	"github.com/nlink-jp/image-forge/internal/mcp/workdir"
 	"github.com/nlink-jp/image-forge/internal/mcp/workspace"
 )
 
@@ -110,7 +111,7 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
     "hires_scale": {"type": "number", "description": "hires upscale factor (default: profile or 1.5)"},
     "hires_denoise": {"type": "number", "description": "hires denoise strength 0..1 (default: profile or 0.5)"},
     "hires_upscaler": {"type": "string", "enum": ["latent", "lanczos", "nearest", "model"], "description": "hires upscaler (default: the model profile, else config [hires] upscaler, which by default picks an ESRGAN — the configured default_model, or the only one installed — else latent)"},
-    "hires_model": {"type": "string", "description": "installed upscaler name (see list_models), or a raw path to an upscaler file, for hires_upscaler=model; a raw path in a credential location is refused"}
+    "hires_model": {"type": "string", "description": "installed upscaler name (see list_models), or a raw path to an upscaler file, for hires_upscaler=model; a raw path in a credential or agent-control location, this server's config, or a .env file is refused"}
   },
   "additionalProperties": false
 }`),
@@ -162,17 +163,17 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
 		// Resolve + verify input images (init/mask). They are agent-placed inside
 		// the workspace and referenced by workspace-relative paths; hand the engine
 		// the absolute path only after os.Root confirms it is a real file inside.
-		initAbs, err := resolveInput(ws, in.Init)
+		initAbs, err := resolveInput(ws, d.WorkDir, in.Init)
 		if err != nil {
 			return nil, err
 		}
-		maskAbs, err := resolveInput(ws, in.Mask)
+		maskAbs, err := resolveInput(ws, d.WorkDir, in.Mask)
 		if err != nil {
 			return nil, err
 		}
 		// The control image is a workspace file (like init/mask); the ControlNet
 		// model is a registry name / path, resolved downstream by buildRender.
-		controlAbs, err := resolveInput(ws, in.Control)
+		controlAbs, err := resolveInput(ws, d.WorkDir, in.Control)
 		if err != nil {
 			return nil, err
 		}
@@ -262,7 +263,7 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
 // resolveInput validates an optional workspace-relative input image and returns
 // its absolute path, verifying it is a real file inside the workspace. Empty in
 // => empty out (no input).
-func resolveInput(ws *workspace.Workspace, rel string) (string, error) {
+func resolveInput(ws *workspace.Workspace, wd workdir.Resolver, rel string) (string, error) {
 	if rel == "" {
 		return "", nil
 	}
@@ -273,7 +274,14 @@ func resolveInput(ws *workspace.Workspace, rel string) (string, error) {
 	if err := ws.VerifyRegular(cleaned); err != nil {
 		return "", err
 	}
-	return ws.Path(cleaned), nil
+	abs := ws.Path(cleaned)
+	// The workspace passed CheckBeneath, but it may contain a server
+	// directory — work_dir=~/.local with workspace_id=share contains the data
+	// directory and its legacy config.toml. Judge the file actually read.
+	if why := wd.LocalPath(abs, abs); why != "" {
+		return "", toolerr.Newf(toolerr.CodePathNotAllowed, "%q is refused: %s", rel, why)
+	}
+	return abs, nil
 }
 
 // sprintfSeed builds "<base>-<seed>.png".
