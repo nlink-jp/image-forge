@@ -284,6 +284,7 @@ voice-/video-studio の MCP サーバー同様 **file-mediated**（ツールは�
 拒否するので、指定したディレクトリの外には何も書かれない。
 生成は1〜2分かかるため**非同期** — `generate` は即座に `job_id` を返し、クライアントが
 ポーリングする。
+別の Unicode 正規化の名前とハードリンクはまだ通る。限界は [ADR-0010](docs/ja/adr/0010-pathguard.ja.md) に挙げる。
 
 ツール:
 

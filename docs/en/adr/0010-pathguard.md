@@ -108,9 +108,9 @@ chrome-pilot-mcp found; here it was measured with the home directory redirected 
   stat'ed when it is resolved, so the order matters).
 - `TestExistenceIsNotRevealed` (internal/mcp/tools) calls `generate` and `upscale` with the same path
   while a file is there and after it is removed and compares the whole answer. Four mutations (the
-  input check's old order, the input floor removed, the model floor removed, the hires model resolved
-  before it is judged) all fail by assertion.
-- Known limits, all in pathguard and recorded for its next release:
+  input check's old order and the input floor removed, caught there; the model floor removed and the
+  hires model resolved before it is judged, caught in internal/cli) all fail by assertion.
+- Known limits in pathguard, recorded for its next release:
   - A `..` that climbs out through an entry of a credential directory — in the path, or in the target
     of a planted link — is judged where it leads, not where it passes, so the answer can still show
     whether that entry is a link and where its target lies: pathguard judges cleaned forms, not the
@@ -118,8 +118,12 @@ chrome-pilot-mcp found; here it was measured with the home directory redirected 
   - `work_dir` is validated by pathguard/workdir in the order organization ADR-022 §4 sets (not found
     before denied), so a `work_dir` naming a credential directory is answered by whether it exists.
   - A link target with a non-ASCII name spelled in another Unicode normalisation is found by identity
-    only while it exists (pathguard does not normalise), and so is a hard link to a credential file
-    made elsewhere. Whoever can make a hard link already reaches the file.
+    only while it exists (pathguard does not normalise). A hard link made elsewhere is refused only when
+    it is to a file that is itself a place on the floor (`~/.netrc`, `~/.docker/config.json`, …), and
+    only while it exists; one to a file inside a credential directory (`~/.ssh/id_rsa`) or to a `.env`
+    is not refused at all — a directory is compared by its own identity, not by its files'.
+- The judgement and the read are two steps, and a link swapped in between them is followed: a
+  check-to-use race, not closed here (closing it means judging what was opened, by its descriptor).
 
 ## References
 

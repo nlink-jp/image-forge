@@ -307,6 +307,7 @@ real directory under `work_dir`: a symlink planted at
 outside the directory you named. Generation is **async** — a
 render takes a minute or two, so the server returns a `job_id` immediately and
 the client polls.
+Two spellings still get past it — a name in another Unicode normalisation and a hard link; the limits are listed in [ADR-0010](docs/en/adr/0010-pathguard.md).
 
 Tools:
 
