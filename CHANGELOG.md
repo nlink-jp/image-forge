@@ -4,6 +4,12 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- nlink-jp/pathguard v0.3.0 (no behaviour change here).
+
 ## [0.29.1] - 2026-09-22
 
 ### Security

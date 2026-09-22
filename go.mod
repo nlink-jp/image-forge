@@ -4,4 +4,4 @@ go 1.26
 
 require github.com/BurntSushi/toml v1.6.0
 
-require github.com/nlink-jp/pathguard v0.2.0
+require github.com/nlink-jp/pathguard v0.3.0
