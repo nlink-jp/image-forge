@@ -19,8 +19,13 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `~/.terraform.d`, `~/.gemini`, `~/.config/mcp-bridge`, `~/.netrc`, `~/.npmrc`,
   `~/.pypirc`, `~/.git-credentials`, `~/.vault-token`, `~/.docker/config.json`,
   `~/.claude.json`, `~/.bash_history`, `~/.zsh_history`), under every spelling of
-  any refused place, in Linux `/etc`, and whenever the home directory cannot be
-  determined. `work_dir_denied` carries `reason` in its `details`.
+  any refused place, wherever a link directly inside one of those directories
+  points (a `~/.ssh/config` that links into a sync folder protects the file it
+  points at), in the account's own home too when `$HOME` names another, and
+  whenever the home directory cannot be determined. `work_dir_denied` carries
+  `reason` in its `details`.
+- A relative `XDG_DATA_HOME` is ignored, as the XDG spec says; it put the data
+  directory under the working directory.
 
 ### Security
 

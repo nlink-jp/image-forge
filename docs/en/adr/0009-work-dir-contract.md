@@ -1,6 +1,7 @@
 # ADR-0009: Take the work dir as a per-call `work_dir`, and drop the default root and the launch flag
 
-- Status: Accepted
+- Status: Accepted — its implementation (the checks of the work directory) is replaced by
+  ADR-0010 (nlink-jp/pathguard)
 - Date: 2026-09-13
 
 ## Context

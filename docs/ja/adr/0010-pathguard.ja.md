@@ -45,7 +45,11 @@ MCP サーバーの挙動が変わる（CHANGELOG に書く）:
   （`~/.kube`、`~/.config/gh`、`~/.azure`、`~/.terraform.d`、`~/.gemini`、`~/.config/mcp-bridge`、
   `~/.netrc`、`~/.npmrc`、`~/.pypirc`、`~/.git-credentials`、`~/.vault-token`、`~/.docker/config.json`、
   `~/.claude.json`、`~/.bash_history`、`~/.zsh_history`）。床のどの場所についても、大文字小文字の違い・
-  リンク・ファームリンクなど、あらゆる綴り。Linux の `/etc` を `work_dir` にすること。
+  リンク・ファームリンクなど、あらゆる綴り。それらのディレクトリの直下にあるリンクの指す先（同期フォルダへの
+  リンクになった `~/.ssh/config` なら、その指す先のファイル）。`$HOME` がアカウントのホームと違うときは、
+  両方を守る。
+- 相対パスの `XDG_DATA_HOME` は、XDG の仕様どおり無視する（データディレクトリが作業ディレクトリの下に
+  できていた。今は、このサーバー自身のディレクトリが絶対パスでないと、すべての呼び出しが拒まれる）。
 - **ホームが分からなければ、どの `work_dir` も拒む**。以前は通していた。
 - `work_dir_denied` の `details` に `reason` が加わる。
 - 1 回の検査は約 2 ms（pathguard の実測）。生成の時間に比べて無視できる。

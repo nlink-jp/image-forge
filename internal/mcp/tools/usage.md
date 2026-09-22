@@ -70,7 +70,8 @@ Required: `workspace_id`, `prompt`.
   facts — `list_models` marks those `arch_trusted: true`; a guessed arch is never
   compared. A raw path is read where it lies, so one in a credential or
   agent-control location (`~/.ssh`, `~/.aws`, `~/.config/gh`, … — the list
-  gem-agent and lagent use, under any spelling) or a `.env` file is refused with
+  gem-agent and lagent use, under any spelling, and wherever a link directly
+  inside one of those directories points) or a `.env` file is refused with
   `path_not_allowed`. The same holds for `control_net` and `hires_model`.
 - `control_net` — a ControlNet installed name or path (see
   `list_models` scope with `kind` `controlnet`). Loaded with the base model, so
@@ -135,7 +136,7 @@ workspace).
 | work_dir_invalid | not absolute, started with `~`, or contained `..` |
 | work_dir_not_found | not there, or not a directory — it is yours, so this is a typo; the server does not create it |
 | work_dir_not_writable | the server cannot write there |
-| work_dir_denied | a system location, your home directory itself, a credential or agent-control location, or this server's own data or models directory — under any spelling |
+| work_dir_denied | a system location, your home directory itself, a credential or agent-control location (or where a link directly inside one points), this server's own data or models directory — under any spelling — or the home directory cannot be determined; `details.reason` says which: `system_dir`, `home_dir`, `sensitive_path`, `server_dir`, `home_unknown`, `unconfigured`, `unresolvable_path` |
 | invalid_workspace_id | match [a-zA-Z0-9_-]{1,64} |
 | invalid_arguments | fix the flagged argument (e.g. output_name must be a plain file name; mask requires init) |
 | invalid_scope | list_models scope must be installed|catalog|all |

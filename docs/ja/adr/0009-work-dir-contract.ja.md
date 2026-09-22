@@ -1,6 +1,6 @@
 # ADR-0009: work dir は呼び出しごとの `work_dir` で受け取り、既定ルートと起動フラグを捨てる
 
-- Status: Accepted
+- Status: Accepted —— その実装（work dir の検査）は ADR-0010（nlink-jp/pathguard）で置き換えた
 - Date: 2026-09-13
 
 ## Context
