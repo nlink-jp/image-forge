@@ -1,6 +1,7 @@
 package store
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/nlink-jp/image-forge/internal/profile"
@@ -138,5 +139,20 @@ func TestReferencedFilesDedupesShared(t *testing.T) {
 	}
 	if len(ref) != 3 { // shared.vae counted once
 		t.Errorf("ReferencedFiles = %v, want 3 distinct", ref)
+	}
+}
+
+// A relative XDG_DATA_HOME is invalid by the XDG spec and ignored.
+func TestHomeIgnoresARelativeXDGDataHome(t *testing.T) {
+	t.Setenv("IMAGE_FORGE_HOME", "")
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_DATA_HOME", "data")
+	if got, want := Home(), filepath.Join(home, ".local", "share", "image-forge"); got != want {
+		t.Errorf("Home() with a relative XDG_DATA_HOME = %q, want %q", got, want)
+	}
+	t.Setenv("XDG_DATA_HOME", "/xdg")
+	if got, want := Home(), filepath.Join("/xdg", "image-forge"); got != want {
+		t.Errorf("Home() with XDG_DATA_HOME = %q, want %q", got, want)
 	}
 }

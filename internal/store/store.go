@@ -163,12 +163,15 @@ type Registry struct {
 }
 
 // Home is the image-forge data directory. Overridable via IMAGE_FORGE_HOME
-// (tests) or XDG_DATA_HOME.
+// (tests) or XDG_DATA_HOME. A relative XDG_DATA_HOME is ignored, as the XDG
+// spec says: it would put the data directory under whatever the working
+// directory is, and the MCP work-directory check refuses every call when this
+// server's own directory is not absolute.
 func Home() string {
 	if h := os.Getenv("IMAGE_FORGE_HOME"); h != "" {
 		return h
 	}
-	if x := os.Getenv("XDG_DATA_HOME"); x != "" {
+	if x := os.Getenv("XDG_DATA_HOME"); x != "" && filepath.IsAbs(x) {
 		return filepath.Join(x, "image-forge")
 	}
 	h, _ := os.UserHomeDir()
