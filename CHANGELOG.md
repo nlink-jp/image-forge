@@ -10,11 +10,12 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 - **Path judgement moved to [nlink-jp/pathguard](https://github.com/nlink-jp/pathguard)**
   (ADR-0010). `internal/mcp/workdir` is now an adapter onto it; the MCP server
-  builds it with `workdir.NewResolver(store.Home(), store.ModelsDir())`. Places
+  wires its guards in one place, `mcpGuards`. Places
   are compared by file identity and by names folded the way the disk folds
   them, instead of by name.
-- A `work_dir` is now **refused** in the models directory when `models_dir`
-  moves it outside the data directory, in the real places under your home from
+- A `work_dir` is now **refused** in this server's config directory
+  (`~/.config/image-forge`), in the models directory when `models_dir` moves it
+  outside the data directory, in the real places under your home from
   the list gem-agent and lagent use (newly `~/.kube`, `~/.config/gh`, `~/.azure`,
   `~/.terraform.d`, `~/.gemini`, `~/.config/mcp-bridge`, `~/.netrc`, `~/.npmrc`,
   `~/.pypirc`, `~/.git-credentials`, `~/.vault-token`, `~/.docker/config.json`,
@@ -25,15 +26,28 @@ project adheres to [Semantic Versioning](https://semver.org/).
   whenever the home directory cannot be determined. `work_dir_denied` carries
   `reason` in its `details`.
 - A relative `XDG_DATA_HOME` is ignored, as the XDG spec says; it put the data
-  directory under the working directory.
+  directory under the working directory. Other relative server directories — a
+  relative `IMAGE_FORGE_HOME`, `IMAGE_FORGE_MODELS_DIR` or `models_dir`, or an
+  unset `HOME` — now make every MCP call fail with `work_dir_denied` naming the
+  path, rather than protecting nothing; give them absolute paths.
 
 ### Security
 
 - **Raw LoRA, ControlNet and hires model paths from MCP are judged.** They are
   read wherever they lie and were not checked at all, so a credential file
-  could be loaded as a LoRA. One in a credential or agent-control location, or a
-  `.env` file, is now refused with `path_not_allowed` before the render.
-  Registry names, the CLI and the GUI's `serve` loop are unchanged.
+  could be loaded as a LoRA. One in a credential or agent-control location, in
+  this server's config directory (which may hold `hf_token`), a `.env` file, or
+  a path holding a NUL byte (C stops at it) is now refused with
+  `path_not_allowed` before the render — and before anything stats it, so a
+  refusal does not say whether the file exists. An installed name is resolved by
+  the registry, as before, and is not judged as a path. The CLI and the GUI's
+  `serve` loop are unchanged.
+- **The workspace directory is judged, not only `work_dir`.** `work_dir=~/.config`
+  with `workspace_id=gh` made the workspace `~/.config/gh`, a credential
+  directory; PNGs were written into it and workspace-relative inputs read from
+  it. `<work_dir>/<workspace_id>` is now refused with `work_dir_denied` wherever
+  `work_dir` itself would be. The hole was present since the work-directory
+  contract (ADR-0009).
 
 ### Tests
 

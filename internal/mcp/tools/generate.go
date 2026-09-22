@@ -110,7 +110,7 @@ func registerGenerate(srv *mcpserver.Server, d *Deps) {
     "hires_scale": {"type": "number", "description": "hires upscale factor (default: profile or 1.5)"},
     "hires_denoise": {"type": "number", "description": "hires denoise strength 0..1 (default: profile or 0.5)"},
     "hires_upscaler": {"type": "string", "enum": ["latent", "lanczos", "nearest", "model"], "description": "hires upscaler (default: the model profile, else config [hires] upscaler, which by default picks an ESRGAN — the configured default_model, or the only one installed — else latent)"},
-    "hires_model": {"type": "string", "description": "installed upscaler name for hires_upscaler=model (see list_models)"}
+    "hires_model": {"type": "string", "description": "installed upscaler name (see list_models), or a raw path to an upscaler file, for hires_upscaler=model; a raw path in a credential location is refused"}
   },
   "additionalProperties": false
 }`),

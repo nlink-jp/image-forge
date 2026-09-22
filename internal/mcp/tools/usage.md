@@ -29,7 +29,9 @@ output/              rendered PNGs                         (server-written)
 - Input images (`init`, `mask`, `control`) are referenced by paths **relative to
   the workspace** — place them in the workspace first.
 - The server never reads or writes outside the workspace (kernel-enforced;
-  symlinks inside the workspace that point outside fail with `path_not_allowed`).
+  symlinks inside the workspace that point outside fail with `path_not_allowed`),
+  with one exception: the model files it loads — installed models, and a LoRA,
+  ControlNet or hires model you name by a raw path (see those arguments).
   The workspace directory itself is checked too: if `<work_dir>/<workspace_id>`
   is a symlink rather than a real directory, the call is refused instead of
   silently working somewhere else.
@@ -71,8 +73,11 @@ Required: `workspace_id`, `prompt`.
   compared. A raw path is read where it lies, so one in a credential or
   agent-control location (`~/.ssh`, `~/.aws`, `~/.config/gh`, … — the list
   gem-agent and lagent use, under any spelling, and wherever a link directly
-  inside one of those directories points) or a `.env` file is refused with
-  `path_not_allowed`. The same holds for `control_net` and `hires_model`.
+  inside one of those directories points), in this server's config directory
+  (`~/.config/image-forge`, which may hold tokens), or a `.env` file is refused
+  with `path_not_allowed`, whether or not it exists. The same holds for
+  `control_net` and `hires_model`. An installed name is never judged as a path:
+  the registry resolves it to its own file.
 - `control_net` — a ControlNet installed name or path (see
   `list_models` scope with `kind` `controlnet`). Loaded with the base model, so
   **changing it reloads the base**. Ships for SD1.5 (`controlnet-canny-sd15`) and
@@ -89,8 +94,8 @@ Required: `workspace_id`, `prompt`.
   (`latent`|`lanczos`|`nearest`|`model`; default: the model profile, else the
   config's `[hires] upscaler`, whose default `auto` picks an ESRGAN — the
   configured `[upscaler] default_model`, or the only one installed — else
-  latent), and `hires_model` (an installed upscaler name for
-  `hires_upscaler=model`; without it the same pick applies, and when it finds
+  latent), and `hires_model` (an installed upscaler name, or a raw path to an
+  upscaler file, for `hires_upscaler=model`; without it the same pick applies, and when it finds
   none — no ESRGAN installed, or two or more and no `default_model` — the pass
   falls back to latent). hires roughly doubles render time
   and raises peak memory.
@@ -136,7 +141,7 @@ workspace).
 | work_dir_invalid | not absolute, started with `~`, or contained `..` |
 | work_dir_not_found | not there, or not a directory — it is yours, so this is a typo; the server does not create it |
 | work_dir_not_writable | the server cannot write there |
-| work_dir_denied | a system location, your home directory itself, a credential or agent-control location (or where a link directly inside one points), this server's own data or models directory — under any spelling — or the home directory cannot be determined; `details.reason` says which: `system_dir`, `home_dir`, `sensitive_path`, `server_dir`, `home_unknown`, `unconfigured`, `unresolvable_path` |
+| work_dir_denied | a system location, your home directory itself, a credential or agent-control location (or where a link directly inside one points), this server's own data, models or config directory — under any spelling — or the home directory cannot be determined; for `work_dir`, and for the workspace directory `<work_dir>/<workspace_id>` it would use. `details.reason` says which: `system_dir`, `home_dir`, `sensitive_path`, `server_dir`, `home_unknown`, `unconfigured`, `unresolvable_path` |
 | invalid_workspace_id | match [a-zA-Z0-9_-]{1,64} |
 | invalid_arguments | fix the flagged argument (e.g. output_name must be a plain file name; mask requires init) |
 | invalid_scope | list_models scope must be installed|catalog|all |

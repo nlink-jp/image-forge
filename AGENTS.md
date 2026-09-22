@@ -75,10 +75,13 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   `internal/mcp/workdir` only takes `_meta` from the context and carries
   pathguard's errors onto `toolerr` (ADR-0010). Do not add a location list or a
   name comparison here; a fix to the judgement is a pathguard release and a
-  dependency bump. The resolver is built in `internal/cli/mcp.go` with
-  `workdir.NewResolver(store.Home(), store.ModelsDir())`; a zero `Resolver`
-  refuses every call, tests included. Raw LoRA / ControlNet / hires paths from
-  MCP are judged by `mcpReadRefused` before a render — any new argument the
+  dependency bump. `mcpGuards` in `internal/cli/mcp.go` wires every guard: the
+  work-directory resolver (data, models and config directories), the workspace
+  manager (`workspace.NewManager(check)` judges `<work_dir>/<workspace_id>`),
+  and the read guard for raw model paths (floor + config directory). A zero
+  `Resolver` or a Manager without a check refuses every call, tests included.
+  Raw LoRA / ControlNet / hires paths from MCP are judged by `mcpReadRefused`
+  before anything stats them, skipping installed names — any new argument the
   engine reads by path goes through it too.
 
 - **A model's licence comes from the card of the weights, not from the repo the

@@ -291,11 +291,14 @@ generated PNGs land in its `output/`. There is no flag and no default: a
 directory the server picked is one the caller may not be able to open, which
 would make the returned path useless. A `work_dir` in a system location, your
 home directory itself, a credential or agent-control location, or this server's
-own data or models directory is refused, and so is a LoRA, ControlNet or hires
-model named by a raw path in a credential location — under any spelling
+own data, models or config directory is refused — and so is a workspace
+`<work_dir>/<workspace_id>` that would land in one. A LoRA, ControlNet or hires
+model named by a raw path in a credential or agent-control location, in this
+server's config directory, or a `.env` file is refused too; installed names are
+the registry's. All under any spelling
 ([nlink-jp/pathguard](https://github.com/nlink-jp/pathguard) makes that
-judgement). Every path the server touches is confined
-to that workspace by the kernel, and the workspace directory itself must be a
+judgement). Apart from the model files it loads, every path the server touches
+is confined to that workspace by the kernel, and the workspace directory itself must be a
 real directory under `work_dir`: a symlink planted at
 `<work_dir>/<workspace_id>` is refused rather than followed, so nothing lands
 outside the directory you named. Generation is **async** — a

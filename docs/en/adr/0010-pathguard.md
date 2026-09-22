@@ -34,13 +34,21 @@ lagent's.
 - **Raw paths an MCP call names are judged.** `loras` and `control_net` are installed names or raw
   paths (ADR-0006), and `hires_model` is an installed upscaler or a file; a raw path is read by the
   engine wherever it lies. None of them was checked, so a credential file could be loaded as a LoRA.
-  Before the render, every value is judged with `Sensitive` as the path it would be, and a refused
-  one returns `path_not_allowed`. A registry name judged that way refuses nothing, since installed
-  models live in the models directory. The CLI and the GUI's `serve` loop are a person's own choice and are
+  Before the render — and before anything stats it, since a different stat result would say whether
+  the file exists — every value the registry does not know is judged by the read guard, and a refused
+  one returns `path_not_allowed`. The read guard is the floor plus the config directory (which may
+  hold `hf_token`), not the models directory (LoRAs are read from it). An installed name is resolved
+  by the registry to its own file, which is what is opened, so it is not judged as a path — judging a
+  name as a path judges the server's working directory (a runtime started in `~/.claude` found every
+  installed LoRA refused). The CLI and the GUI's `serve` loop are a person's own choice and are
   not judged.
 - The tests of the judgement itself are in pathguard. What stays here are the adapter's tests (taking
   `_meta`, carrying the error across, the protected place, a zero value refusing) and the existing
   contract tests.
+
+- The wiring is one function, `mcpGuards`, which the tests use: the work-directory resolver (protecting
+  the data, models and config directories), the workspace manager that judges every workspace with it,
+  and the read guard.
 
 ## Consequences
 
@@ -62,6 +70,15 @@ The MCP server behaves differently (the CHANGELOG says so):
 - One check costs about 2 ms (measured in pathguard) — nothing next to a render.
 
 With no copy here, a fix to the judgement is a pathguard release and a one-line dependency update.
+
+## Amendment (2026-09-22): judge the directory actually used
+
+An independent review found that checking only `work_dir` let `work_dir=~/.config` with
+`workspace_id=gh` make the workspace `~/.config/gh`; the hole dates from the ADR-0009 copy.
+`workspace.NewManager(check)` takes the judgement as a required argument, and `EnsureUnder` judges
+`<work_dir>/<workspace_id>` with `workdir.Resolver.CheckBeneath` (pathguard v0.2.0) before making or
+using it. A Manager without one refuses every workspace. pathguard v0.2.0 also refuses a path holding
+a NUL byte.
 
 ## References
 
