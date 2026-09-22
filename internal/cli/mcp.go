@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -65,16 +66,14 @@ func runMCP(args []string) error {
 	srv := mcpserver.New("image-forge-mcp", mcpVersion,
 		transport.NewStdioTransport(os.Stdin, mcpOut), logger)
 	srv.SetInstructions(tools.Instructions)
+	workDir, workspaces, reads := mcpGuards()
 	tools.Register(srv, &tools.Deps{
 		DefaultModel: conf.DefaultModel,
-		WS:           workspace.NewManager(),
-		// The server's own directories are off limits as a destination: the
-		// data directory, and the models directory, which models_dir can move
-		// outside it (ADR-0009, ADR-0010).
-		WorkDir:    workdir.NewResolver(store.Home(), store.ModelsDir()),
-		Render:     &residentRenderer{re: re},
-		Upscale:    &engineUpscaler{},
-		ListModels: func(scope string) (any, error) { return ListModels(scope) },
+		WS:           workspaces,
+		WorkDir:      workDir,
+		Render:       &residentRenderer{re: re, reads: reads},
+		Upscale:      &engineUpscaler{},
+		ListModels:   func(scope string) (any, error) { return ListModels(scope) },
 		// Wire the server's SIGINT/SIGTERM-cancellable ctx so shutdown stops the
 		// worker and drops queued jobs (rather than the Background() default).
 		Jobs:   job.NewManager(ctx),
@@ -91,11 +90,40 @@ func runMCP(args []string) error {
 // structured model_not_found), then drives ResidentEngine and translates its
 // engine.Event stream into the tools progress callback.
 type residentRenderer struct {
-	re *ResidentEngine
+	re    *ResidentEngine
+	reads workdir.Resolver // judges raw model paths (mcpGuards)
+}
+
+// mcpGuards builds the MCP server's path guards — the one place they are
+// wired, so a test holds the wiring rather than a copy of it:
+//   - the work-directory resolver, refusing this server's own directories as
+//     a destination: the data directory, the models directory (which
+//     models_dir can move outside it) and the config directory (ADR-0009,
+//     ADR-0010);
+//   - the workspace manager, which judges every <work_dir>/<workspace_id>
+//     with it before making it;
+//   - the read guard for raw LoRA / ControlNet / hires model paths: the floor
+//     plus the config directory, which may hold hf_token and civitai_token —
+//     not the models directory, where LoRAs are read from.
+func mcpGuards() (workdir.Resolver, *workspace.Manager, workdir.Resolver) {
+	cfgDir := filepath.Dir(config.Path())
+	wd := workdir.NewResolver(store.Home(), store.ModelsDir(), cfgDir)
+	return wd, workspace.NewManager(wd.CheckBeneath), workdir.NewResolver(cfgDir)
 }
 
 func (a *residentRenderer) Render(ctx context.Context, req tools.RenderRequest, report func(fraction float64, message string)) (int64, error) {
 	if err := ensureInstalled(req.Model); err != nil {
+		return 0, err
+	}
+	// Judge the raw paths before anything opens or stats them: resolving
+	// hires_model stats a raw path, and "not a file" versus "refused" would
+	// tell a caller whether a credential file exists.
+	reg, err := store.Load()
+	if err != nil {
+		return 0, toolerr.Newf(toolerr.CodeRenderFailed, "load registry: %v", err)
+	}
+	installed := func(n string) bool { _, ok := reg.Get(n); return ok }
+	if err := mcpReadRefused(a.reads, installed, req.LoRAs, req.ControlNet, req.HiresModel); err != nil {
 		return 0, err
 	}
 
@@ -103,9 +131,6 @@ func (a *residentRenderer) Render(ctx context.Context, req tools.RenderRequest, 
 	hiresModel, err := resolveHiresModel(req.HiresModel)
 	if err != nil {
 		return 0, toolerr.Newf(toolerr.CodeInvalidArguments, "%v", err)
-	}
-	if err := mcpReadRefused(req.LoRAs, req.ControlNet, hiresModel); err != nil {
-		return 0, err
 	}
 
 	rr := RenderRequest{
@@ -150,12 +175,13 @@ func (a *residentRenderer) Render(ctx context.Context, req tools.RenderRequest, 
 // read. LoRA and ControlNet references are installed names or raw paths
 // (ADR-0006), and a hires model is an installed upscaler or a file; a raw path
 // is read wherever it lies, so it must not be a credential or agent-control
-// location (organization ADR-021 §7, pathguard's Local policy, which follows
-// links itself). Every value is judged as the path it would be: a registry
-// name judged that way refuses nothing, since installed models live in the
-// models directory. The CLI and the GUI's serve loop are a person's own choice
-// and are not judged.
-func mcpReadRefused(loras []string, controlNet, hiresModel string) error {
+// location, nor this server's config directory (organization ADR-021 §7;
+// pathguard's Local policy, which follows links and refuses a NUL byte, which
+// C would stop at). An installed name is skipped: the registry resolves it to
+// the file it names, which is what is opened, and judging the name as a path
+// would judge the server's working directory instead. The CLI and the GUI's
+// serve loop are a person's own choice and are not judged.
+func mcpReadRefused(reads workdir.Resolver, installed func(string) bool, loras []string, controlNet, hiresModel string) error {
 	refs := make([]string, 0, len(loras)+2)
 	for _, l := range loras {
 		p, _, _ := strings.Cut(l, ":")
@@ -163,10 +189,10 @@ func mcpReadRefused(loras []string, controlNet, hiresModel string) error {
 	}
 	refs = append(refs, controlNet, hiresModel)
 	for _, ref := range refs {
-		if ref == "" {
+		if ref == "" || installed(ref) {
 			continue
 		}
-		if why := workdir.Sensitive(ref); why != "" {
+		if why := reads.LocalPath(ref, ref); why != "" {
 			return toolerr.Newf(toolerr.CodePathNotAllowed, "%q is refused: %s", ref, why)
 		}
 	}

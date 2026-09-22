@@ -77,13 +77,14 @@ func newHarness(t *testing.T, rend *fakeRenderer) *harness {
 		rend = &fakeRenderer{seed: 12345}
 	}
 	ups := &fakeUpscaler{}
-	def := workspace.NewManager()
+	resolver := workdir.NewResolver(t.TempDir())
+	def := workspace.NewManager(resolver.CheckBeneath)
 	srv := mcpserver.New("image-forge-mcp", "test",
 		transport.NewStdioTransport(strings.NewReader(""), io.Discard), nil)
 	Register(srv, &Deps{
 		DefaultModel: "",
 		WS:           def,
-		WorkDir:      workdir.NewResolver(t.TempDir()),
+		WorkDir:      resolver,
 		Render:       rend,
 		Upscale:      ups,
 		ListModels: func(scope string) (any, error) {
@@ -225,11 +226,12 @@ func TestGenerateModelRequired(t *testing.T) {
 
 func TestGenerateDefaultModel(t *testing.T) {
 	// With a configured default model, no model arg is needed.
-	def := workspace.NewManager()
+	resolver := workdir.NewResolver(t.TempDir())
+	def := workspace.NewManager(resolver.CheckBeneath)
 	rend := &fakeRenderer{seed: 9}
 	srv := mcpserver.New("image-forge-mcp", "test",
 		transport.NewStdioTransport(strings.NewReader(""), io.Discard), nil)
-	Register(srv, &Deps{DefaultModel: "cfg-default", WS: def, WorkDir: workdir.NewResolver(t.TempDir()), Render: rend, Jobs: job.NewManager(context.Background())})
+	Register(srv, &Deps{DefaultModel: "cfg-default", WS: def, WorkDir: resolver, Render: rend, Jobs: job.NewManager(context.Background())})
 	root := seedWorkspace(t, "proj")
 	raw, _ := json.Marshal(map[string]any{"workspace_id": "proj", "work_dir": root, "prompt": "x"})
 	out, err := srv.Call(context.Background(), "generate", raw)

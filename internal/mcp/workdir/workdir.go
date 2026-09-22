@@ -83,6 +83,21 @@ func (r Resolver) Validate(dir string) (string, error) {
 // it, and symlink-resolved. An unknown home directory refuses.
 func Sensitive(paths ...string) string { return pgwd.Sensitive(paths...) }
 
+// LocalPath reports why a file a call names may not be read — pathguard's
+// Local policy plus this resolver's server directories — or "". Pass the path
+// as the caller gave it and its resolved form (the same value twice when it
+// may not exist).
+func (r Resolver) LocalPath(raw, resolved string) string {
+	_, why := r.r.LocalPath(raw, resolved)
+	return why
+}
+
+// CheckBeneath reports why dir — <work_dir>/<workspace_id>, the directory a
+// call actually uses, which may not exist yet — may not be used, as a
+// work_dir_denied toolerr, or nil. The workspace manager calls it before it
+// makes or uses a workspace.
+func (r Resolver) CheckBeneath(dir string) error { return toolErr(r.r.CheckBeneath(dir)) }
+
 // toolErr carries a pathguard refusal onto toolerr with the same code,
 // message and details; any other error passes through.
 func toolErr(err error) error {
