@@ -89,10 +89,20 @@ chrome-pilot-mcp の独立レビューで見つかった型で、ここでは HO
 - `resolveInput` は、読むファイル（`ws.Path(rel)`）を床に掛けてから `VerifyRegular` する。pathguard がパス上の
   リンクを自分で辿るので、置き場所を別に求める必要は無い。
 - 生のパスで渡す LoRA・ControlNet・hires のモデルは、以前から何かが開く前に判定していた（`mcpReadRefused`）。
-  15 組で答えが同じであることを `TestModelPathExistenceIsNotRevealed` が固定する。
+  15 組で答えが同じであることを `TestModelPathExistenceIsNotRevealed` が、レンダラーの答えでも同じであることを
+  `TestTheRendererAnswersModelPathsAlike` が固定する（hires のモデルは解決時に stat されるので順序が効く）。
 - `TestExistenceIsNotRevealed`（internal/mcp/tools）は、同じパスをファイルがある状態と消した状態で `generate` と
-  `upscale` を呼び、答え全体を比べる。3 つの変異（入力の判定の順序を戻す・入力の床を外す・モデルの床を外す）は
-  すべてアサーションで落ちた。
+  `upscale` を呼び、答え全体を比べる。4 つの変異（入力の判定の順序を戻す・入力の床を外す・モデルの床を外す・
+  hires のモデルを判定の前に解決する）はすべてアサーションで落ちた。
+- 既知の限界（いずれも pathguard 側。次のリリースに向けて記録）:
+  - 資格情報ディレクトリの項目を通って `..` で抜けるパス（パス自体でも、仕掛けたリンクの行き先でも）は、通った場所
+    ではなく行き着く場所で判定されるので、その項目がリンクか・行き先がどこかが答えに出うる。pathguard が判定するのは
+    Clean した形で、歩いた途中のディレクトリではない。
+  - `work_dir` は pathguard/workdir が組織 ADR-022 §4 の順序（not found が denied より先）で検証するので、資格情報の
+    ディレクトリを指す `work_dir` は、存在するかどうかで答えが変わる。
+  - 非 ASCII 名のリンク先を別の Unicode 正規化で綴ると、同一性で拒むのはそれが存在するときだけになる（pathguard は
+    正規化しない）。別の場所に作った資格情報ファイルへのハードリンクも同じ。ハードリンクを作れる者はすでにそのファイルに
+    届いている。
 
 ## References
 

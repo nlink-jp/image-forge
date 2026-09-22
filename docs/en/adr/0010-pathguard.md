@@ -103,10 +103,23 @@ chrome-pilot-mcp found; here it was measured with the home directory redirected 
 - `resolveInput` judges the file it will read (`ws.Path(rel)`) before `VerifyRegular`. pathguard
   follows the links on the path itself, so no separate placement is needed.
 - Raw LoRA, ControlNet and hires model paths were already judged before anything opens them
-  (`mcpReadRefused`); `TestModelPathExistenceIsNotRevealed` pins that 15 pairs get the same answer.
+  (`mcpReadRefused`); `TestModelPathExistenceIsNotRevealed` pins that 15 pairs get the same answer,
+  and `TestTheRendererAnswersModelPathsAlike` that the renderer's answer does too (a hires model is
+  stat'ed when it is resolved, so the order matters).
 - `TestExistenceIsNotRevealed` (internal/mcp/tools) calls `generate` and `upscale` with the same path
-  while a file is there and after it is removed and compares the whole answer. Three mutations (the
-  input check's old order, the input floor removed, the model floor removed) all fail by assertion.
+  while a file is there and after it is removed and compares the whole answer. Four mutations (the
+  input check's old order, the input floor removed, the model floor removed, the hires model resolved
+  before it is judged) all fail by assertion.
+- Known limits, all in pathguard and recorded for its next release:
+  - A `..` that climbs out through an entry of a credential directory — in the path, or in the target
+    of a planted link — is judged where it leads, not where it passes, so the answer can still show
+    whether that entry is a link and where its target lies: pathguard judges cleaned forms, not the
+    directories a walk passes through.
+  - `work_dir` is validated by pathguard/workdir in the order organization ADR-022 §4 sets (not found
+    before denied), so a `work_dir` naming a credential directory is answered by whether it exists.
+  - A link target with a non-ASCII name spelled in another Unicode normalisation is found by identity
+    only while it exists (pathguard does not normalise), and so is a hard link to a credential file
+    made elsewhere. Whoever can make a hard link already reaches the file.
 
 ## References
 

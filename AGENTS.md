@@ -84,9 +84,10 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   `VerifyRegular` asks whether they exist — the other order answered "not in the
   workspace" for a missing `.env` and "refused" for an existing one (ADR-0010,
   amendment v0.29.1). `TestExistenceIsNotRevealed` (internal/mcp/tools) and
-  `TestModelPathExistenceIsNotRevealed` (internal/cli) compare the whole answer
-  for a path with and without its file; three mutations of the order are caught
-  by assertion. A zero
+  `TestModelPathExistenceIsNotRevealed` / `TestTheRendererAnswersModelPathsAlike`
+  (internal/cli) compare the answer for a path with and without its file — the
+  last through `residentRenderer.Render`, so resolving a hires model before
+  judging it fails; four mutations are caught by assertion. A zero
   `Resolver` or a Manager without a check refuses every call, tests included.
   Raw LoRA / ControlNet / hires paths from MCP are judged by `mcpReadRefused`
   before anything stats them, skipping installed names — any new argument the
