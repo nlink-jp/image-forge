@@ -4,6 +4,37 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- **Path judgement moved to [nlink-jp/pathguard](https://github.com/nlink-jp/pathguard)**
+  (ADR-0010). `internal/mcp/workdir` is now an adapter onto it; the MCP server
+  builds it with `workdir.NewResolver(store.Home(), store.ModelsDir())`. Places
+  are compared by file identity and by names folded the way the disk folds
+  them, instead of by name.
+- A `work_dir` is now **refused** in the models directory when `models_dir`
+  moves it outside the data directory, in the real places under your home from
+  the list gem-agent and lagent use (newly `~/.kube`, `~/.config/gh`, `~/.azure`,
+  `~/.terraform.d`, `~/.gemini`, `~/.config/mcp-bridge`, `~/.netrc`, `~/.npmrc`,
+  `~/.pypirc`, `~/.git-credentials`, `~/.vault-token`, `~/.docker/config.json`,
+  `~/.claude.json`, `~/.bash_history`, `~/.zsh_history`), under every spelling of
+  any refused place, in Linux `/etc`, and whenever the home directory cannot be
+  determined. `work_dir_denied` carries `reason` in its `details`.
+
+### Security
+
+- **Raw LoRA, ControlNet and hires model paths from MCP are judged.** They are
+  read wherever they lie and were not checked at all, so a credential file
+  could be loaded as a LoRA. One in a credential or agent-control location, or a
+  `.env` file, is now refused with `path_not_allowed` before the render.
+  Registry names, the CLI and the GUI's `serve` loop are unchanged.
+
+### Tests
+
+- `TestWorkDirComesFromRequestMeta` waits for its job; returning first raced the
+  removal of the temporary directory the job writes into.
+
 ## [0.28.0] - 2026-09-22
 
 ### Added

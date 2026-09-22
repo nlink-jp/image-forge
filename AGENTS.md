@@ -71,6 +71,16 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
 
 ## Gotchas
 
+- **The path judgement is nlink-jp/pathguard's, not this repository's.**
+  `internal/mcp/workdir` only takes `_meta` from the context and carries
+  pathguard's errors onto `toolerr` (ADR-0010). Do not add a location list or a
+  name comparison here; a fix to the judgement is a pathguard release and a
+  dependency bump. The resolver is built in `internal/cli/mcp.go` with
+  `workdir.NewResolver(store.Home(), store.ModelsDir())`; a zero `Resolver`
+  refuses every call, tests included. Raw LoRA / ControlNet / hires paths from
+  MCP are judged by `mcpReadRefused` before a render — any new argument the
+  engine reads by path goes through it too.
+
 - **A model's licence comes from the card of the weights, not from the repo the
   bytes come from.** Most entries download from a quantization or mirror repo
   (`second-state/…-GGUF`, `city96/…-gguf`, a re-upload), which can declare a

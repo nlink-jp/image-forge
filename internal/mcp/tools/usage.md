@@ -68,7 +68,10 @@ Required: `workspace_id`, `prompt`.
   resolves to its file. An installed LoRA or ControlNet made for another
   architecture than the model is refused before loading when both arches are
   facts — `list_models` marks those `arch_trusted: true`; a guessed arch is never
-  compared.
+  compared. A raw path is read where it lies, so one in a credential or
+  agent-control location (`~/.ssh`, `~/.aws`, `~/.config/gh`, … — the list
+  gem-agent and lagent use, under any spelling) or a `.env` file is refused with
+  `path_not_allowed`. The same holds for `control_net` and `hires_model`.
 - `control_net` — a ControlNet installed name or path (see
   `list_models` scope with `kind` `controlnet`). Loaded with the base model, so
   **changing it reloads the base**. Ships for SD1.5 (`controlnet-canny-sd15`) and
@@ -127,12 +130,12 @@ workspace).
 | model_not_found | the named model is not installed; call list_models (scope=installed); the user pulls catalog models with the CLI |
 | no_runtime | this build has no diffusion runtime (built without cgo_sdcpp); the user must install the engine build |
 | input_not_found | place the referenced init/mask image in the workspace, then retry |
-| path_not_allowed | use workspace-relative input paths; symlinks out of the workspace are rejected, as is a workspace directory that is itself a symlink |
+| path_not_allowed | use workspace-relative input paths; symlinks out of the workspace are rejected, as is a workspace directory that is itself a symlink, and a LoRA / ControlNet / hires model path in a credential or agent-control location |
 | work_dir_required | no `work_dir` argument and no `_meta` hint — pass the absolute path of a directory you can read back |
 | work_dir_invalid | not absolute, started with `~`, or contained `..` |
 | work_dir_not_found | not there, or not a directory — it is yours, so this is a typo; the server does not create it |
 | work_dir_not_writable | the server cannot write there |
-| work_dir_denied | a system location, your home directory itself, or a credential directory |
+| work_dir_denied | a system location, your home directory itself, a credential or agent-control location, or this server's own data or models directory — under any spelling |
 | invalid_workspace_id | match [a-zA-Z0-9_-]{1,64} |
 | invalid_arguments | fix the flagged argument (e.g. output_name must be a plain file name; mask requires init) |
 | invalid_scope | list_models scope must be installed|catalog|all |

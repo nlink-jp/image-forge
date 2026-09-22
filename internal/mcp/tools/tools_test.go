@@ -15,6 +15,7 @@ import (
 	"github.com/nlink-jp/image-forge/internal/mcp/mcpserver"
 	"github.com/nlink-jp/image-forge/internal/mcp/toolerr"
 	"github.com/nlink-jp/image-forge/internal/mcp/transport"
+	"github.com/nlink-jp/image-forge/internal/mcp/workdir"
 	"github.com/nlink-jp/image-forge/internal/mcp/workspace"
 )
 
@@ -82,6 +83,7 @@ func newHarness(t *testing.T, rend *fakeRenderer) *harness {
 	Register(srv, &Deps{
 		DefaultModel: "",
 		WS:           def,
+		WorkDir:      workdir.NewResolver(t.TempDir()),
 		Render:       rend,
 		Upscale:      ups,
 		ListModels: func(scope string) (any, error) {
@@ -227,7 +229,7 @@ func TestGenerateDefaultModel(t *testing.T) {
 	rend := &fakeRenderer{seed: 9}
 	srv := mcpserver.New("image-forge-mcp", "test",
 		transport.NewStdioTransport(strings.NewReader(""), io.Discard), nil)
-	Register(srv, &Deps{DefaultModel: "cfg-default", WS: def, Render: rend, Jobs: job.NewManager(context.Background())})
+	Register(srv, &Deps{DefaultModel: "cfg-default", WS: def, WorkDir: workdir.NewResolver(t.TempDir()), Render: rend, Jobs: job.NewManager(context.Background())})
 	root := seedWorkspace(t, "proj")
 	raw, _ := json.Marshal(map[string]any{"workspace_id": "proj", "work_dir": root, "prompt": "x"})
 	out, err := srv.Call(context.Background(), "generate", raw)

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/nlink-jp/image-forge/internal/config"
@@ -67,9 +68,10 @@ func runMCP(args []string) error {
 	tools.Register(srv, &tools.Deps{
 		DefaultModel: conf.DefaultModel,
 		WS:           workspace.NewManager(),
-		// The model's own directory is off limits as a destination: the
-		// model store lives there (ADR-0009).
-		WorkDir:    workdir.Resolver{Denied: []string{store.Home()}},
+		// The server's own directories are off limits as a destination: the
+		// data directory, and the models directory, which models_dir can move
+		// outside it (ADR-0009, ADR-0010).
+		WorkDir:    workdir.NewResolver(store.Home(), store.ModelsDir()),
 		Render:     &residentRenderer{re: re},
 		Upscale:    &engineUpscaler{},
 		ListModels: func(scope string) (any, error) { return ListModels(scope) },
@@ -101,6 +103,9 @@ func (a *residentRenderer) Render(ctx context.Context, req tools.RenderRequest, 
 	hiresModel, err := resolveHiresModel(req.HiresModel)
 	if err != nil {
 		return 0, toolerr.Newf(toolerr.CodeInvalidArguments, "%v", err)
+	}
+	if err := mcpReadRefused(req.LoRAs, req.ControlNet, hiresModel); err != nil {
+		return 0, err
 	}
 
 	rr := RenderRequest{
@@ -139,6 +144,33 @@ func (a *residentRenderer) Render(ctx context.Context, req tools.RenderRequest, 
 	close(events)
 	<-done
 	return seed, err
+}
+
+// mcpReadRefused judges the raw paths an MCP call names for the engine to
+// read. LoRA and ControlNet references are installed names or raw paths
+// (ADR-0006), and a hires model is an installed upscaler or a file; a raw path
+// is read wherever it lies, so it must not be a credential or agent-control
+// location (organization ADR-021 §7, pathguard's Local policy, which follows
+// links itself). Every value is judged as the path it would be: a registry
+// name judged that way refuses nothing, since installed models live in the
+// models directory. The CLI and the GUI's serve loop are a person's own choice
+// and are not judged.
+func mcpReadRefused(loras []string, controlNet, hiresModel string) error {
+	refs := make([]string, 0, len(loras)+2)
+	for _, l := range loras {
+		p, _, _ := strings.Cut(l, ":")
+		refs = append(refs, p)
+	}
+	refs = append(refs, controlNet, hiresModel)
+	for _, ref := range refs {
+		if ref == "" {
+			continue
+		}
+		if why := workdir.Sensitive(ref); why != "" {
+			return toolerr.Newf(toolerr.CodePathNotAllowed, "%q is refused: %s", ref, why)
+		}
+	}
+	return nil
 }
 
 // engineUpscaler adapts engine.Upscale to the tools.Upscaler interface: it
