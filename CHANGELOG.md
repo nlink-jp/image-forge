@@ -4,6 +4,20 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.29.1] - 2026-09-22
+
+### Security
+
+- **Whether an input image exists no longer changes the answer.** An `init`,
+  `mask`, `control` or upscale `input` that is a `.env`, lies in this server's
+  own directories (a workspace can contain them: `work_dir=~/.local` with
+  `workspace_id=share`), or is where a link directly inside a credential directory
+  points was refused when the file was there and answered `input_not_found`
+  when it was not, so the answer told the caller which of them exist. It is
+  now judged before anything looks for it (ADR-0010, amendment). Raw LoRA,
+  ControlNet and hires model paths were already judged first; tests now pin
+  that, through the renderer's answer too.
+
 ## [0.29.0] - 2026-09-22
 
 ### Changed
