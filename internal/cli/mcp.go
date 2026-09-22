@@ -120,8 +120,9 @@ func mcpGuards() (workdir.Resolver, *workspace.Manager, workdir.Resolver) {
 // configPlaces are this server's configuration: the file config.Path() names
 // and the legacy file in the data directory, either of which may hold hf_token
 // and civitai_token; and the directory holding the config file only when it
-// is image-forge's own (the default or $XDG_CONFIG_HOME form) — a config file
-// put at ~/image-forge.toml must not make the home directory a server
+// is image-forge's own — the default or $XDG_CONFIG_HOME form, i.e. when
+// IMAGE_FORGE_CONFIG is unset. A config file put at ~/image-forge.toml, or in a
+// source checkout named image-forge, must not make its directory a server
 // directory. A relative config path is made absolute the way the loader reads
 // it, from the working directory.
 func configPlaces() []pathguard.Place {
@@ -134,7 +135,8 @@ func configPlaces() []pathguard.Place {
 			Why: "it is this server's config file " + p + ", which may hold tokens"}
 	}
 	places := []pathguard.Place{configFile(file), configFile(config.LegacyPath())}
-	if dir := filepath.Dir(file); filepath.Base(dir) == "image-forge" {
+	if os.Getenv("IMAGE_FORGE_CONFIG") == "" {
+		dir := filepath.Dir(file)
 		places = append(places, pathguard.ServerDir(dir, "which holds its configuration"))
 	}
 	return places

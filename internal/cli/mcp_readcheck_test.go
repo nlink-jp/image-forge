@@ -216,3 +216,33 @@ func TestAConfigFileProtectsItselfNotTheDirectoryItSitsIn(t *testing.T) {
 		t.Errorf("a LoRA in the home directory was refused: %v", err)
 	}
 }
+
+// A relative IMAGE_FORGE_CONFIG is judged where the loader reads it, from the
+// working directory, and protects that file only; and a config file kept in a
+// directory that merely happens to be named image-forge does not make that
+// directory a server directory.
+func TestARelativeOrSourceCheckoutConfigProtectsOnlyTheFile(t *testing.T) {
+	home, _ := guardHome(t)
+	checkout := filepath.Join(home, "src", "image-forge")
+	file := filepath.Join(checkout, "config.toml")
+	write(t, file)
+	saved, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(checkout); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(saved) })
+	t.Setenv("IMAGE_FORGE_CONFIG", "config.toml")
+	wd, _, reads := mcpGuards()
+	none := func(string) bool { return false }
+	wantRefused(t, "the relative config file, named absolutely", mcpReadRefused(reads, none, nil, file, ""))
+	lora := filepath.Join(checkout, "lora.safetensors")
+	if err := mcpReadRefused(reads, none, []string{lora + ":1"}, "", ""); err != nil {
+		t.Errorf("a file beside the config file in a checkout was refused: %v", err)
+	}
+	if _, err := wd.Validate(checkout); err != nil {
+		t.Errorf("the checkout holding the config file was refused as a work_dir: %v", err)
+	}
+}
