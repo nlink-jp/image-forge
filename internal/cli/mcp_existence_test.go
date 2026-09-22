@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -9,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/nlink-jp/image-forge/internal/mcp/toolerr"
+	"github.com/nlink-jp/image-forge/internal/mcp/tools"
+	"github.com/nlink-jp/image-forge/internal/store"
 )
 
 // A raw LoRA, ControlNet or hires model path is judged before anything opens
@@ -67,6 +70,57 @@ func TestModelPathExistenceIsNotRevealed(t *testing.T) {
 			m := answer(which, c.arg)
 			if e != m || !strings.HasPrefix(e, toolerr.CodePathNotAllowed+" ") {
 				t.Errorf("%s %s:\n  existing: %s\n  missing:  %s\n  want the same path_not_allowed", which, c.name, e, m)
+			}
+		}
+	}
+}
+
+// The same pairs through the renderer, which is what a job answers with: a raw
+// hires model is stat'ed when it is resolved, so it must be judged first. (A
+// path the floor lets through goes on to the engine, which this plain build
+// does not have; every case here is one the floor refuses.)
+func TestTheRendererAnswersModelPathsAlike(t *testing.T) {
+	home, cfgDir := guardHome(t)
+	reg, err := store.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	modelFile := filepath.Join(t.TempDir(), "m.gguf")
+	write(t, modelFile)
+	reg.Add(store.InstalledModel{Name: "m", Path: modelFile})
+	if err := reg.Save(); err != nil {
+		t.Fatal(err)
+	}
+	_, _, reads := mcpGuards()
+	r := &residentRenderer{reads: reads}
+	answer := func(which, p string) string {
+		req := tools.RenderRequest{Model: "m"}
+		if which == "lora" {
+			req.LoRAs = []string{p + ":0.8"}
+		} else {
+			req.HiresModel = p
+		}
+		_, err := r.Render(context.Background(), req, nil)
+		var te *toolerr.Error
+		if !errors.As(err, &te) {
+			return fmt.Sprint(err)
+		}
+		return te.Code + " | " + te.Message
+	}
+	for _, p := range []string{
+		filepath.Join(home, ".aws", "m.safetensors"),
+		filepath.Join(home, ".ssh", "id_ed25519"),
+		filepath.Join(cfgDir, "config.toml"),
+	} {
+		for _, which := range []string{"lora", "hires_model"} {
+			write(t, p)
+			e := answer(which, p)
+			if err := os.Remove(p); err != nil {
+				t.Fatal(err)
+			}
+			m := answer(which, p)
+			if e != m || !strings.HasPrefix(e, toolerr.CodePathNotAllowed+" ") {
+				t.Errorf("Render with %s %s:\n  existing: %s\n  missing:  %s\n  want the same path_not_allowed", which, p, e, m)
 			}
 		}
 	}

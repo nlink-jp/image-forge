@@ -28,8 +28,10 @@ import (
 // there and once after it is removed — and the whole answer (code, message,
 // details) must be the same both times, and a refusal.
 //
-// The layer observed is the tool call, the answer a caller receives; the home
-// directory is a temporary one, so no real credential directory is touched.
+// The layer observed is the tool call, the answer a caller receives. The home
+// directory is a temporary one: nothing is created, read or written in a real
+// credential directory (pathguard still lists the account's own, for the links
+// inside them).
 func TestExistenceIsNotRevealed(t *testing.T) {
 	base := realDir(t, t.TempDir())
 	home := filepath.Join(base, "home")
@@ -62,15 +64,12 @@ func TestExistenceIsNotRevealed(t *testing.T) {
 		d, _ := json.Marshal(te.Details)
 		return fmt.Sprintf("%s | %s | %s", te.Code, te.Message, d)
 	}
-	for _, c := range []struct {
-		name, rel, leaf string
-		refused         bool
-	}{
-		{"a .env file", filepath.Join("sub", ".env"), filepath.Join(ws, "sub", ".env"), true},
-		{"this server's own directory", filepath.Join("srv", "config.toml"), filepath.Join(server, "config.toml"), true},
-		{"where a link in ~/.ssh leads", "ssh_config.png", filepath.Join(ws, "ssh_config.png"), true},
-		{"a planted link to a credential file", "lnk_file.png", filepath.Join(home, ".aws", "planted.png"), true},
-		{"through a planted link to a credential directory", filepath.Join("lnk_dir", "via.png"), filepath.Join(home, ".aws", "via.png"), true},
+	for _, c := range []struct{ name, rel, leaf string }{
+		{"a .env file", filepath.Join("sub", ".env"), filepath.Join(ws, "sub", ".env")},
+		{"this server's own directory", filepath.Join("srv", "config.toml"), filepath.Join(server, "config.toml")},
+		{"where a link in ~/.ssh leads", "ssh_config.png", filepath.Join(ws, "ssh_config.png")},
+		{"a planted link to a credential file", "lnk_file.png", filepath.Join(home, ".aws", "planted.png")},
+		{"through a planted link to a credential directory", filepath.Join("lnk_dir", "via.png"), filepath.Join(home, ".aws", "via.png")},
 	} {
 		for _, call := range []struct{ tool, key string }{{"generate", "init"}, {"upscale", "input"}} {
 			t.Run(call.tool+"/"+c.name, func(t *testing.T) {
@@ -80,7 +79,7 @@ func TestExistenceIsNotRevealed(t *testing.T) {
 					t.Fatal(err)
 				}
 				m := answer(call.tool, call.key, c.rel)
-				if c.refused && !strings.HasPrefix(e, toolerr.CodePathNotAllowed+" ") {
+				if !strings.HasPrefix(e, toolerr.CodePathNotAllowed+" ") {
 					t.Errorf("existing: %s\n  want path_not_allowed", e)
 				}
 				if e != m {
