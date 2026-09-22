@@ -88,6 +88,26 @@ An independent review found that checking only `work_dir` let `work_dir=~/.confi
 using it. A Manager without one refuses every workspace. pathguard v0.2.0 also refuses a path holding
 a NUL byte.
 
+## Amendment (2026-09-22, v0.29.1): whether a file exists never changes the answer
+
+Workspace input images (`init`, `mask`, `control`, upscale `input`) were checked for existence with
+`VerifyRegular` before the floor judged them. A workspace can contain places on the floor
+(`work_dir=~/.local` with `workspace_id=share` holds this server's data directory; a `.env`; the
+target of a link in `~/.ssh` when the workspace is in that sync folder), so such an input got
+`path_not_allowed` when it was there and `input_not_found` when it was not — the answer told the
+caller which of them exist. It is the class the independent reviews of slack-mcp-extender and
+chrome-pilot-mcp found; here it was measured with the home directory redirected to a temporary one
+(6 of 10 pairs got different answers; the 4 planted links out of the workspace were refused by the
+`os.Root` whether or not their targets existed).
+
+- `resolveInput` judges the file it will read (`ws.Path(rel)`) before `VerifyRegular`. pathguard
+  follows the links on the path itself, so no separate placement is needed.
+- Raw LoRA, ControlNet and hires model paths were already judged before anything opens them
+  (`mcpReadRefused`); `TestModelPathExistenceIsNotRevealed` pins that 15 pairs get the same answer.
+- `TestExistenceIsNotRevealed` (internal/mcp/tools) calls `generate` and `upscale` with the same path
+  while a file is there and after it is removed and compares the whole answer. Three mutations (the
+  input check's old order, the input floor removed, the model floor removed) all fail by assertion.
+
 ## References
 
 - Organization ADR-021 (the work-dir contract of the file-mediated MCP servers)

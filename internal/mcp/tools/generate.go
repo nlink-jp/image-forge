@@ -271,15 +271,19 @@ func resolveInput(ws *workspace.Workspace, wd workdir.Resolver, rel string) (str
 	if err != nil {
 		return "", err
 	}
-	if err := ws.VerifyRegular(cleaned); err != nil {
-		return "", err
-	}
 	abs := ws.Path(cleaned)
 	// The workspace passed CheckBeneath, but it may contain a server
 	// directory — work_dir=~/.local with workspace_id=share contains the data
-	// directory and its legacy config.toml. Judge the file actually read.
+	// directory and its legacy config.toml — a .env, or the file a link in
+	// ~/.ssh leads to. Judge the file actually read, and judge it before
+	// anything asks whether it is there: "not in the workspace" against
+	// "refused" would tell the caller which of them exist. pathguard follows
+	// the links on the path itself.
 	if why := wd.LocalPath(abs, abs); why != "" {
 		return "", toolerr.Newf(toolerr.CodePathNotAllowed, "%q is refused: %s", rel, why)
+	}
+	if err := ws.VerifyRegular(cleaned); err != nil {
+		return "", err
 	}
 	return abs, nil
 }

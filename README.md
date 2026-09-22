@@ -295,7 +295,9 @@ own data, models or config directory is refused — and so is a workspace
 `<work_dir>/<workspace_id>` that would land in one. A LoRA, ControlNet or hires
 model named by a raw path in a credential or agent-control location, in this
 server's config directory, or a `.env` file is refused too; installed names are
-the registry's. All under any spelling
+the registry's. So is an input image in the workspace that is a `.env`, lies in
+this server's own directories, or is where a link inside a credential directory
+points. All under any spelling and whether or not the file is there
 ([nlink-jp/pathguard](https://github.com/nlink-jp/pathguard) makes that
 judgement). Apart from the model files it loads, every path the server touches
 is confined to that workspace by the kernel, and the workspace directory itself must be a

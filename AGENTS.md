@@ -80,7 +80,13 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   manager (`workspace.NewManager(check)` judges `<work_dir>/<workspace_id>`),
   and the read guard for raw model paths (floor + the config files, and the
   config directory only when it is image-forge's own — `configPlaces`).
-  Workspace inputs are judged as the file they resolve to (`resolveInput`). A zero
+  Workspace inputs are judged as the file they resolve to (`resolveInput`), before
+  `VerifyRegular` asks whether they exist — the other order answered "not in the
+  workspace" for a missing `.env` and "refused" for an existing one (ADR-0010,
+  amendment v0.29.1). `TestExistenceIsNotRevealed` (internal/mcp/tools) and
+  `TestModelPathExistenceIsNotRevealed` (internal/cli) compare the whole answer
+  for a path with and without its file; three mutations of the order are caught
+  by assertion. A zero
   `Resolver` or a Manager without a check refuses every call, tests included.
   Raw LoRA / ControlNet / hires paths from MCP are judged by `mcpReadRefused`
   before anything stats them, skipping installed names — any new argument the

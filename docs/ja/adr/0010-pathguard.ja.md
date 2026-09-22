@@ -77,6 +77,23 @@ MCP サーバーの挙動が変わる（CHANGELOG に書く）:
 `workdir.Resolver.CheckBeneath`（pathguard v0.2.0）で判定する。判定の無い Manager はすべてのワークスペースを
 拒む。pathguard v0.2.0 は NUL バイトを含むパスも拒む。
 
+## Amendment (2026-09-22, v0.29.1): ファイルの有無で答えを変えない
+
+ワークスペース内の入力画像（`init`・`mask`・`control`・upscale の `input`）は、`VerifyRegular` で存在を確かめて
+から床に掛けていた。ワークスペースは床の場所を含み得る（`work_dir=~/.local` と `workspace_id=share` はこのサーバーの
+データディレクトリを含む。`.env`、`~/.ssh` 内のリンクが同期フォルダを指すならその行き先）ので、それらは、あれば
+`path_not_allowed`、無ければ `input_not_found` になり、答えがどれが存在するかを教えていた。slack-mcp-extender と
+chrome-pilot-mcp の独立レビューで見つかった型で、ここでは HOME を一時ディレクトリにしたテストで実測した（10 組中
+6 組で答えが違った。仕掛けたリンクで外へ出る 4 組は `os.Root` が存在に関係なく拒んでいた）。
+
+- `resolveInput` は、読むファイル（`ws.Path(rel)`）を床に掛けてから `VerifyRegular` する。pathguard がパス上の
+  リンクを自分で辿るので、置き場所を別に求める必要は無い。
+- 生のパスで渡す LoRA・ControlNet・hires のモデルは、以前から何かが開く前に判定していた（`mcpReadRefused`）。
+  15 組で答えが同じであることを `TestModelPathExistenceIsNotRevealed` が固定する。
+- `TestExistenceIsNotRevealed`（internal/mcp/tools）は、同じパスをファイルがある状態と消した状態で `generate` と
+  `upscale` を呼び、答え全体を比べる。3 つの変異（入力の判定の順序を戻す・入力の床を外す・モデルの床を外す）は
+  すべてアサーションで落ちた。
+
 ## References
 
 - 組織 ADR-021（ファイル渡し MCP サーバーの work dir 契約）
