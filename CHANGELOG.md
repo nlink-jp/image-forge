@@ -14,7 +14,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
   are compared by file identity and by names folded the way the disk folds
   them, instead of by name.
 - A `work_dir` is now **refused** in this server's config directory
-  (`~/.config/image-forge`), in the models directory when `models_dir` moves it
+  (`~/.config/image-forge`, or the `$XDG_CONFIG_HOME` form — a config file set
+  elsewhere with `IMAGE_FORGE_CONFIG` protects the file, not the directory it
+  sits in), in the models directory when `models_dir` moves it
   outside the data directory, in the real places under your home from
   the list gem-agent and lagent use (newly `~/.kube`, `~/.config/gh`, `~/.azure`,
   `~/.terraform.d`, `~/.gemini`, `~/.config/mcp-bridge`, `~/.netrc`, `~/.npmrc`,
@@ -29,19 +31,24 @@ project adheres to [Semantic Versioning](https://semver.org/).
   directory under the working directory. Other relative server directories — a
   relative `IMAGE_FORGE_HOME`, `IMAGE_FORGE_MODELS_DIR` or `models_dir`, or an
   unset `HOME` — now make every MCP call fail with `work_dir_denied` naming the
-  path, rather than protecting nothing; give them absolute paths.
+  path, rather than protecting nothing; give them absolute paths. A relative
+  `XDG_CONFIG_HOME` is ignored like `XDG_DATA_HOME`, and a relative
+  `IMAGE_FORGE_CONFIG` is judged from the working directory, as it is read.
 
 ### Security
 
 - **Raw LoRA, ControlNet and hires model paths from MCP are judged.** They are
   read wherever they lie and were not checked at all, so a credential file
   could be loaded as a LoRA. One in a credential or agent-control location, in
-  this server's config directory (which may hold `hf_token`), a `.env` file, or
+  this server's config file or directory or the legacy config file in the data
+  directory (which may hold `hf_token`), a `.env` file, or
   a path holding a NUL byte (C stops at it) is now refused with
   `path_not_allowed` before the render — and before anything stats it, so a
   refusal does not say whether the file exists. An installed name is resolved by
   the registry, as before, and is not judged as a path. The CLI and the GUI's
-  `serve` loop are unchanged.
+  `serve` loop are unchanged. A workspace input (`init`, `mask`, `control`,
+  `input`) that resolves into one of this server's own directories is refused
+  too: a workspace may contain one (`work_dir=~/.local`, `workspace_id=share`).
 - **The workspace directory is judged, not only `work_dir`.** `work_dir=~/.config`
   with `workspace_id=gh` made the workspace `~/.config/gh`, a credential
   directory; PNGs were written into it and workspace-relative inputs read from

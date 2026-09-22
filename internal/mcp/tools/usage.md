@@ -136,7 +136,7 @@ workspace).
 | model_not_found | the named model is not installed; call list_models (scope=installed); the user pulls catalog models with the CLI |
 | no_runtime | this build has no diffusion runtime (built without cgo_sdcpp); the user must install the engine build |
 | input_not_found | place the referenced init/mask image in the workspace, then retry |
-| path_not_allowed | use workspace-relative input paths; symlinks out of the workspace are rejected, as is a workspace directory that is itself a symlink, and a LoRA / ControlNet / hires model path in a credential or agent-control location |
+| path_not_allowed | use workspace-relative input paths; symlinks out of the workspace are rejected, as is a workspace directory that is itself a symlink, and an input that resolves into this server's own directories; a LoRA / ControlNet / hires model path in a credential or agent-control location, this server's config file or directory, or a `.env` file is refused too |
 | work_dir_required | no `work_dir` argument and no `_meta` hint — pass the absolute path of a directory you can read back |
 | work_dir_invalid | not absolute, started with `~`, or contained `..` |
 | work_dir_not_found | not there, or not a directory — it is yours, so this is a typo; the server does not create it |

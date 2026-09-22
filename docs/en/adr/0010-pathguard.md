@@ -29,7 +29,8 @@ lagent's.
     the data directory (`store.Home()`) and **the models directory (`store.ModelsDir()`)**, which
     `models_dir` can move outside the data directory and which was not protected until now. An empty
     or relative path refuses every call rather than protecting nothing,
-  - `Sensitive` — `pathguard/workdir.Sensitive` (the Local policy), passed through.
+  - `NewResolverFor(places...)` and `LocalPath` — naming its own places (a config file is protected as
+    the file) and judging reads.
 - The call sites (`Resolve`, `Validate`) do not change. What changes is the one line that builds the resolver (`internal/cli/mcp.go`) and the tests that built it as a zero value.
 - **Raw paths an MCP call names are judged.** `loras` and `control_net` are installed names or raw
   paths (ADR-0006), and `hires_model` is an installed upscaler or a file; a raw path is read by the
@@ -46,6 +47,13 @@ lagent's.
   `_meta`, carrying the error across, the protected place, a zero value refusing) and the existing
   contract tests.
 
+- The config files (`config.Path()`, and the legacy `config.toml` in the data directory) are protected
+  as files; their directory only when it is image-forge's own (the default or `$XDG_CONFIG_HOME`
+  form), so `IMAGE_FORGE_CONFIG=~/image-forge.toml` does not make the home directory a server
+  directory. A relative `XDG_CONFIG_HOME` is ignored.
+- Workspace inputs (`init`, `mask`, `control`, `input`) are judged, as the file they resolve to, with
+  the work-directory resolver's `LocalPath`: a workspace that passed `CheckBeneath` may still contain a
+  server directory (`work_dir=~/.local`, `workspace_id=share`).
 - The wiring is one function, `mcpGuards`, which the tests use: the work-directory resolver (protecting
   the data, models and config directories), the workspace manager that judges every workspace with it,
   and the read guard.

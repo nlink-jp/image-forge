@@ -25,7 +25,8 @@ ADR-0009 以来、`work_dir` の検証（資格情報の位置の検査を含む
     （`store.Home()`）と、**モデルのディレクトリ（`store.ModelsDir()`）**。後者は `models_dir` で
     データディレクトリの外へ移せるのに、これまで守られていなかった。空や相対のパスは何も守らない
     のではなく、すべての呼び出しを拒ませる、
-  - `Sensitive` —— `pathguard/workdir.Sensitive`（Local の方針）をそのまま出す。
+  - `NewResolverFor(places...)` と `LocalPath` —— 守る場所を自分で名指す（設定ファイルは、そのファイルとして
+    守る）ことと、読み取りの判定。
 - 呼び出し箇所（`Resolve`・`Validate`）は変えない。変わるのは組み立ての 1 行（`internal/cli/mcp.go`）と、ゼロ値で組み立てていたテストだけである。
 - **MCP から渡された生のパスを判定する。** `loras` と `control_net` は登録名か生のパス（ADR-0006）、
   `hires_model` は導入済みの upscaler かファイルで、生のパスはどこにあってもエンジンが読む。これまでは
@@ -40,6 +41,11 @@ ADR-0009 以来、`work_dir` の検証（資格情報の位置の検査を含む
 - 判定そのもののテストは pathguard にある。ここに残すのはアダプタのテスト（`_meta` の取り出し、
   エラーの写し、守る場所、ゼロ値が拒むこと）と、既存の契約テストである。
 
+- 設定ファイル（`config.Path()`、旧来のデータディレクトリの `config.toml`）はファイルとして守り、そのディレクトリは
+  image-forge 自身のもの（既定または `$XDG_CONFIG_HOME` の形）のときだけ守る。`IMAGE_FORGE_CONFIG=~/image-forge.toml`
+  でホーム全体がサーバーのディレクトリにならないように。相対パスの `XDG_CONFIG_HOME` は無視する。
+- ワークスペースの入力（`init`・`mask`・`control`・`input`）は、解決した先を work dir の検査器の `LocalPath` で判定する。
+  ワークスペースは `CheckBeneath` を通っても、サーバーのディレクトリを含みうる（`work_dir=~/.local`、`workspace_id=share`）。
 - 配線は `mcpGuards` 1 か所にまとめ、テストはそれを使う: work dir の検査器（データ・モデル・設定の
   ディレクトリを守る）、それで各ワークスペースを判定するワークスペースの管理者、読み取り用の検査器。
 

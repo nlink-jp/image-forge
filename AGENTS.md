@@ -78,7 +78,9 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   dependency bump. `mcpGuards` in `internal/cli/mcp.go` wires every guard: the
   work-directory resolver (data, models and config directories), the workspace
   manager (`workspace.NewManager(check)` judges `<work_dir>/<workspace_id>`),
-  and the read guard for raw model paths (floor + config directory). A zero
+  and the read guard for raw model paths (floor + the config files, and the
+  config directory only when it is image-forge's own — `configPlaces`).
+  Workspace inputs are judged as the file they resolve to (`resolveInput`). A zero
   `Resolver` or a Manager without a check refuses every call, tests included.
   Raw LoRA / ControlNet / hires paths from MCP are judged by `mcpReadRefused`
   before anything stats them, skipping installed names — any new argument the
