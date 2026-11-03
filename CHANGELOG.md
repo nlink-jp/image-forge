@@ -4,6 +4,17 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.29.3] - 2026-11-04
+
+### Security
+
+- **Checking that `work_dir` is writable no longer writes anything.** The
+  check comes from nlink-jp/pathguard, now v0.3.1 (nlink-jp/pathguard#1). It
+  used to create and remove a probe file by name after judging the directory
+  by name, so a path component swapped for a link in between could put the
+  probe inside a protected place. It is now `access(2)` (`W_OK|X_OK`),
+  which writes nothing.
+
 ## [0.29.2] - 2026-09-22
 
 ### Changed
