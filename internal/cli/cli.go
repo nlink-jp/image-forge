@@ -25,9 +25,17 @@ func Run(version string, args []string) error {
 		return errors.New("no subcommand given")
 	}
 	// Honor a config-relocated models directory (e.g. onto a bigger disk) before
-	// any subcommand resolves paths. Best-effort: a missing/invalid config must
-	// not break `version`/`help`.
-	if conf, err := config.Load(); err == nil {
+	// any subcommand resolves paths. A missing config is fine and an invalid one
+	// must not break `version`/`help`; every other subcommand stops on it, since
+	// working on without models_dir would put models — or remove them — in the
+	// default directory instead of the one the config names.
+	switch args[0] {
+	case "version", "--version", "-v", "help", "--help", "-h":
+	default:
+		conf, err := config.Load()
+		if err != nil {
+			return fmt.Errorf("config: %w", err)
+		}
 		if d := conf.ModelsDirResolved(); d != "" {
 			store.SetModelsDir(d)
 		}

@@ -79,3 +79,23 @@ func TestHaveFile(t *testing.T) {
 		t.Error("non-empty file should be reused")
 	}
 }
+
+// An invalid config (an unknown key, now that it is read strictly) stops the
+// subcommands that resolve model paths, rather than letting them work on the
+// default models directory; version and help still answer.
+func TestRun_InvalidConfigStopsSubcommandsButNotVersion(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(p, []byte("models_dri = \"/elsewhere\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("IMAGE_FORGE_CONFIG", p)
+	t.Cleanup(func() { store.SetModelsDir("") })
+	if err := Run("dev", []string{"models", "list"}); err == nil {
+		t.Fatal("models list ran with an invalid config")
+	}
+	for _, args := range [][]string{{"version"}, {"help"}} {
+		if err := Run("dev", args); err != nil {
+			t.Errorf("%v with an invalid config: %v", args, err)
+		}
+	}
+}
