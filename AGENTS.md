@@ -59,7 +59,7 @@ internal/store/             installed-model registry (JSON) at $IMAGE_FORGE_HOME
                             InstalledModel.Files() lists a model's weight files;
                             Registry.ReferencedFiles() is the in-use set for gc/purge
 internal/config/            optional config.toml (default_model/output/allow_nsfw/tokens/
-                            [performance] flash_attn + vae_tiling; BurntSushi/toml)
+                            [performance] flash_attn + vae_tiling; nlink-jp/toml, strict: an unknown key is an error)
 internal/download/          HF (hf:owner/repo/file) / URL fetch with progress; token from caller
 internal/engine/            Session interface (Open loads once, Render renders many); output.go
                             (pure, tested); pngmeta.go (pure: tEXt/iTXt writer for embedded

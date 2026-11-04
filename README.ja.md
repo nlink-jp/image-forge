@@ -340,7 +340,8 @@ listing から読んだか**である。多くのエントリはバイト自体�
   `[upscaler] default_model` の ESRGAN、無ければ唯一インストール済みのもの、それも無ければ内蔵
   latent）を設定。
   [`config.example.toml`](config.example.toml) をコピーして編集。（v0.5前の場所
-  `$IMAGE_FORGE_HOME/config.toml` も後方互換で読む。）
+  `$IMAGE_FORGE_HOME/config.toml` も後方互換で読む。）設定ファイルにある知らないキー
+  （打ち間違いなど）は黙って無視せず、そのキー名を示してエラーにする。
 - **Flash attention**（opt-in）: `[performance] flash_attn = true`（または `gen
   --flash-attn`）。Apple Silicon では native 解像度で中立、**大きい/hires** 描画でのみ
   わずかに高速。出力が少し変わるため、同一 seed の出力を安定させるべく既定はオフ。

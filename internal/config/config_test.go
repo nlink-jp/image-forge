@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -187,5 +188,45 @@ func TestPathIgnoresARelativeXDGConfigHome(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", "cfg")
 	if got, want := Path(), filepath.Join(home, ".config", "image-forge", "config.toml"); got != want {
 		t.Errorf("Path() with a relative XDG_CONFIG_HOME = %q, want %q", got, want)
+	}
+}
+
+// A key the config does not know — a typo, or a setting from another tool —
+// is refused with its name rather than silently ignored.
+func TestLoadRefusesUnknownKeys(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(p, []byte("[performance]\nflash_atn = true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("IMAGE_FORGE_CONFIG", p)
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "performance.flash_atn") {
+		t.Fatalf("Load = %v, want an error naming performance.flash_atn", err)
+	}
+}
+
+// [mcp] workspace_root was withdrawn by ADR-0009. A config still carrying it
+// is told why and what replaces it, not that the key is unknown.
+func TestLoadNamesTheRemovedWorkspaceRoot(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(p, []byte("[mcp]\nworkspace_root = \"/tmp/ws\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("IMAGE_FORGE_CONFIG", p)
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "[mcp] workspace_root was removed in ADR-0009") ||
+		!strings.Contains(err.Error(), "work_dir") {
+		t.Fatalf("Load = %v, want the ADR-0009 removal message", err)
+	}
+}
+
+// An empty [mcp] table, left after deleting the key, still loads.
+func TestLoadAcceptsAnEmptyMCPTable(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(p, []byte("[mcp]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("IMAGE_FORGE_CONFIG", p)
+	if _, err := Load(); err != nil {
+		t.Fatalf("Load: %v", err)
 	}
 }

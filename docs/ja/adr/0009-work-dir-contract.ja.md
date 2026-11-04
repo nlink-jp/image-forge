@@ -38,6 +38,8 @@ pcap-analyzer-mcp（ADR-0008）で確定済み。ここは受け取る側であ�
 
 - **破壊的。** `workspace_root` を送る呼び出しは新しい名前を告げて拒否される。
   `[mcp] workspace_root` を書いた config は効かなくなる（キーは無視される）。
+  *（2026-11-04 追記: config を nlink-jp/toml で厳格に読むようになったので、このキーは
+  無視せず、起動時にこの ADR と `work_dir` を示して拒否する。）*
   `--workspace-root` を書いた登録行ではサーバーが起動しなくなる —— フラグが無くなった
   ため、`image-forge mcp` は「flag provided but not defined: -workspace-root」で終了する。
   登録行から削除すること

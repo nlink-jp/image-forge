@@ -3,11 +3,13 @@
 package config
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
 	"github.com/nlink-jp/image-forge/internal/store"
+	"github.com/nlink-jp/toml"
 )
 
 // Config holds user settings. Tokens here are a fallback; the matching
@@ -132,8 +134,9 @@ func (c Config) HiresUpscaler() string {
 // It is empty: workspace_root was its only key, and ADR-0009 removed it along
 // with the built-in default it fell back to. The workspace is
 // <work_dir>/<workspace_id>/, and work_dir is named by the caller on every
-// call. The type stays so a config that still carries [mcp] decodes; the
-// leftover key is ignored, as the TOML decoder ignores every unknown key.
+// call. The type stays so that [mcp] is a known table; the one key it held,
+// workspace_root, is refused by name (ADR-0009, amended 2026-11-04), not as
+// an unknown key a typo would be.
 type MCPConfig struct {
 }
 
@@ -205,6 +208,16 @@ func Load() (Config, error) {
 		return c, nil
 	}
 	if _, err := toml.DecodeFile(p, &c); err != nil {
+		var unknown *toml.UnknownKeysError
+		if errors.As(err, &unknown) {
+			for _, k := range unknown.Keys {
+				if k.String() == "mcp.workspace_root" {
+					return c, fmt.Errorf("config %s: [mcp] workspace_root was removed in ADR-0009: "+
+						"the workspace is <work_dir>/<workspace_id>/, and every MCP call names work_dir. "+
+						"Delete the key (and the [mcp] table if it is now empty)", p)
+				}
+			}
+		}
 		return c, err
 	}
 	if c.Output == "" {

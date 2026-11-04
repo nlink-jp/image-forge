@@ -46,7 +46,9 @@ lagent), neither MCP's `roots` nor the environment reaches half of them.
 
 - **Breaking.** A call sending `workspace_root` is refused with the new name
   named. A config carrying `[mcp] workspace_root` stops taking effect: the key is
-  ignored. A registration line carrying `--workspace-root` stops the server from
+  ignored. *(Amended 2026-11-04: since the config is decoded strictly, with
+  nlink-jp/toml, the key is refused at startup with this ADR and `work_dir` named,
+  rather than ignored.)* A registration line carrying `--workspace-root` stops the server from
   starting — the flag is gone, so `image-forge mcp` exits with "flag provided but
   not defined: -workspace-root"; remove it from the line
 - `internal/mcp/workdir` is the same file as in voice-scribe / pcap-analyzer / gem-scribe

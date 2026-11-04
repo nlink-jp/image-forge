@@ -369,7 +369,8 @@ Downloads come from Hugging Face / Civitai / direct URLs. Provide tokens via
   defaults to `"auto"` — the ESRGAN named by `[upscaler] default_model`, or the
   only one installed, else the built-in latent). See [`config.example.toml`](config.example.toml)
   — copy it and edit. (The pre-v0.5 location, `$IMAGE_FORGE_HOME/config.toml`, is
-  still read as a fallback.)
+  still read as a fallback.) A key the file does not know — a typo, say — is an
+  error that names it, not a setting silently ignored.
 - **Flash attention** (opt-in): `[performance] flash_attn = true` (or `gen
   --flash-attn`). On Apple Silicon it is neutral at native resolution and a modest
   win only on **large / hires** renders; it changes outputs slightly, so it is off
