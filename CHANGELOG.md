@@ -4,6 +4,30 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.30.0] - 2026-11-04
+
+### Changed
+
+- **An unknown key in `config.toml` is now an error** that names the key,
+  where it used to be skipped without a word. A typo such as
+  `[performance] flash_atn` no longer leaves a setting that seems to do
+  nothing. Remove or correct the key the message names.
+- **`[mcp] workspace_root` is refused by name.** ADR-0009 withdrew it and the
+  key was ignored since; it now stops the config with the reason and what
+  replaces it (`work_dir` on every MCP call). Delete the key, and the `[mcp]`
+  table if it is then empty. ADR-0009 records the amendment.
+- **The config file is read by nlink-jp/toml** (v0.1.1) instead of the
+  third-party `BurntSushi/toml`, so the tool carries no TOML code from
+  outside the organization.
+
+### Fixed
+
+- **An invalid config stops every subcommand but `version` and `help`.** The
+  config was loaded best-effort, so an invalid one silently dropped
+  `models_dir` and `models pull`, `rm` or `gc` worked on the default models
+  directory instead of the one the config names. They now stop with the
+  config's error, as `gen` and `mcp` already did.
+
 ## [0.29.3] - 2026-11-04
 
 ### Security
