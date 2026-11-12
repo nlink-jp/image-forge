@@ -108,6 +108,7 @@ func TestCheckSize(t *testing.T) {
 		{"hires target aligned up past the limit", ArchQwenImage21, 1024, 1024, 1.41, "hires.fix would render 1472x1472"},
 		{"hires over", ArchQwenImage21, 1024, 1024, 1.5, "hires.fix would render 1536x1536"},
 		{"hires off ignores the scale", ArchQwenImage21, 1024, 1024, 0, ""},
+		{"not a size is the engine's default", ArchQwenImage21, -3000, -3000, 0, ""},
 		{"sdxl has no limit", ArchSDXL, 4096, 4096, 2, ""},
 		{"an arch that is not a fact", "", 4096, 4096, 2, ""},
 	}

@@ -32,15 +32,20 @@ The cause is one function in ggml's Metal backend. Nothing image-forge passes to
   Nothing else changes; the conversion rules are removed.
 - Patches are files in this repository, listed in order in `third_party/patches/series` with the
   directory each applies in. The submodule pointer still names an unmodified upstream commit.
-- `scripts/vendor-patches.sh apply` runs before the library is built (`make deps`), and the library
-  is rebuilt when a patch or the series changes.
-- `scripts/vendor-patches.sh verify` (`make verify-vendor`) runs on every engine build. It fails
-  unless each patched directory is exactly its pinned commit plus its patches: every patch present,
-  and the directory's diff touching the same files by the same line counts. A hand edit to the
-  vendored tree, or a patch that no longer describes it, cannot be linked into a binary.
+- `make deps` runs on every engine build. It applies the patches (`scripts/vendor-patches.sh apply`)
+  and then lets cmake decide what is stale, so a moved pin, a changed patch or a library built before
+  a patch is rebuilt, not linked as it is.
+- `scripts/vendor-patches.sh verify` (`make verify-vendor`) runs on every engine build. It covers the
+  vendored checkout and every submodule inside it, and fails unless each sits on the commit its
+  parent records, holds no untracked file, and differs from that commit only as its patches do (the
+  same files by the same line counts; for a directory with no patch, not at all). A hand edit
+  anywhere in the vendored tree, a patch dropped from the series while still in the tree, or a patch
+  that no longer describes the tree stops the build. What it compares is file names and line counts,
+  not content: an edit confined to the lines a patch already changed is not seen.
 - The submodule is marked `ignore = dirty` in `.gitmodules`, because its working copy now always
-  differs from the pinned commit; the pin itself is still tracked, and `verify` is what watches the
-  content.
+  differs from the pinned commit. That also means `git describe --dirty`, which names the build, no
+  longer reflects the vendored tree; the pin itself is still tracked, and `verify` is what watches
+  the content.
 - One patch is one decision and one ADR. A second patch gets its own.
 
 ## Consequences
@@ -51,8 +56,9 @@ The cause is one function in ggml's Metal backend. Nothing image-forge passes to
   `make deps`. If the patch no longer applies, the build stops and says so — that is the moment to
   check whether upstream fixed the backend (render `flux1-schnell` with the patch removed) and drop
   the patch, not to force it.
-- The patch is in a submodule of the submodule. `git submodule update --recursive` refuses to move
-  that tree while the patch is applied; revert first.
+- The patch is in a submodule of the submodule. While it is applied, `git submodule update
+  --recursive` either refuses to move that tree (when the new commit touches the patched file) or
+  carries the edit across unexamined; revert first, so that `apply` is what decides.
 - The defect is upstream's. Reporting it there is the repository owner's call; this ADR does not
   depend on it.
 

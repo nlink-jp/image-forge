@@ -522,9 +522,18 @@ func checkRenderSize(arch profile.Arch, req engine.Request) error {
 	scale := 0.0
 	if req.Hires {
 		scale = req.HiresScale
+		// The engine passes on only a positive scale; for anything else (0,
+		// negative, NaN) sd.cpp keeps its own default, and that is what renders.
+		if !(scale > 0) {
+			scale = sdcppDefaultHiresScale
+		}
 	}
 	return profile.CheckSize(arch, w, h, scale)
 }
+
+// sdcppDefaultHiresScale is the hires scale sd.cpp uses when none is set
+// (sd_hires_params_init).
+const sdcppDefaultHiresScale = 2.0
 
 // renderSize is the size a render starts from. The engine sizes the output to
 // the init image, and then to the control image, when one is given — the

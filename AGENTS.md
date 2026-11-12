@@ -152,17 +152,18 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   decline, and sd.cpp's own per-call cast runs. Patches live in
   `third_party/patches/` with a `series` file; `make deps` applies them and
   `make verify-vendor` (run by every `build-engine`) fails unless the vendored
-  tree is exactly the pin plus the patches — never edit the vendored tree by
+  checkout and every submodule inside it sit on their pinned commits, hold no
+  untracked file, and differ from those commits only by the patches — never edit the vendored tree by
   hand. **To move the sd.cpp pin: `scripts/vendor-patches.sh revert`, move it,
   `make deps`**; if the patch no longer applies, render `flux1-schnell` without
   it before deciding. A conversion through `tensor_type_rules` was tried first
   and is not enough: sd.cpp exempts input/output layers and embedders from any
   rule. The submodule is `ignore = dirty` in `.gitmodules` for this reason.
 - **Build sd.cpp with `-DSD_METAL=ON`, not `-DGGML_METAL=ON`.** Only the former
-  compiles sd.cpp's own Metal extensions (`src/core/metal`, INT8 kernels). The
-  Makefile's `deps` rebuilds when the static lib is missing or a vendored patch
-  changed — not when the submodule moved; after moving it, re-run the two cmake
-  commands of that target by hand.
+  compiles sd.cpp's own Metal extensions (`src/core/metal`, INT8 kernels). `make deps`
+  runs on every engine build: it applies the vendored patches and lets cmake
+  decide what is stale, so a moved pin or a changed patch is rebuilt without
+  any manual step.
 - **sd.cpp's C API changed at master-1090**: `generate_image` and `upscale`
   return one `sd_image_generation_result_t*` that owns the pixels, freed with
   `free_sd_image_generation_result` (no per-image `free`).

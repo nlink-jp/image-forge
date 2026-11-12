@@ -7,16 +7,24 @@
 #   apply   Apply each patch that is not applied yet, in series order. A patch
 #           that neither is applied nor applies cleanly stops the build: the
 #           pinned upstream moved under it and the patch needs a decision.
-#   verify  Fail unless every patched directory is exactly "pinned upstream +
-#           its patches": each patch is present, and the directory's diff
-#           against its pinned commit touches the same files by the same line
-#           counts as the patches do. A hand edit to the vendored tree, or a
-#           patch that no longer describes it, fails here.
+#   verify  Fail unless the vendored sources are exactly "pinned upstream + the
+#           patches". For the vendored checkout and every submodule inside it:
+#           it sits on the commit its parent records; it has no untracked
+#           file; and its tracked files differ from that commit only as the
+#           patches listed for it do (same files, same line counts) — for a
+#           directory with no patch, not at all. A hand edit anywhere in the
+#           vendored tree, a patch dropped from the series while still in the
+#           tree, or a patch that no longer describes the tree fails here.
+#           Build output is ignored by upstream's .gitignore, so it is not
+#           seen as untracked.
 #   revert  Remove the patches, in reverse order — do this before moving the
-#           stable-diffusion.cpp pin, then apply again and see what breaks.
+#           stable-diffusion.cpp pin, then `make deps` and see what breaks.
 #
 # The vendored trees are git checkouts pinned by the submodule pointer, so the
 # pinned upstream is already on disk and no network is needed.
+#
+# Two patches may touch one file only if their hunks do not overlap: apply
+# decides "already applied" per patch by reversing it.
 
 set -eu
 
@@ -50,29 +58,38 @@ case "$MODE" in
     ;;
   revert)
     entries | sed '1!G;h;$!d' | while read -r patch dir; do
+      [ -f "$PATCH_DIR/$patch" ] || die "series names a missing patch: $patch"
+      [ -d "$ROOT/$dir" ] || die "$patch: no such directory: $dir"
       if git -C "$ROOT/$dir" apply --reverse --check "$PATCH_DIR/$patch" 2>/dev/null; then
         git -C "$ROOT/$dir" apply --reverse "$PATCH_DIR/$patch"
         echo "[vendor-patches] reverted $patch"
+      else
+        echo "[vendor-patches] $patch is not applied in $dir; nothing to revert"
       fi
     done
     ;;
   verify)
     entries | while read -r patch dir; do
       [ -f "$PATCH_DIR/$patch" ] || die "series names a missing patch: $patch"
+      [ -d "$ROOT/$dir" ] || die "$patch: no such directory: $dir"
       git -C "$ROOT/$dir" apply --reverse --check "$PATCH_DIR/$patch" 2>/dev/null ||
         die "$patch is not applied in $dir (run: make deps)"
     done
-    for dir in $(entries | awk '{print $2}' | sort -u); do
+    # Every vendored checkout sits on the commit its parent records.
+    moved=$(git -C "$ROOT" submodule status --recursive | grep -v '^ ' || true)
+    [ -z "$moved" ] || die "a vendored checkout is not on its pinned commit:
+$moved"
+    git -C "$ROOT" submodule status --recursive | awk '{print $2}' | while read -r dir; do
+      extra=$(git -C "$ROOT/$dir" status --porcelain --ignore-submodules=all | grep '^??' || true)
+      [ -z "$extra" ] || die "$dir holds files that are not upstream's:
+$extra"
       want=$(entries | awk -v d="$dir" '$2 == d {print $1}' | while read -r patch; do
                git -C "$ROOT/$dir" apply --numstat "$PATCH_DIR/$patch"
              done | shape)
-      have=$(git -C "$ROOT/$dir" diff --numstat | shape)
-      [ "$want" = "$have" ] || {
-        echo "[vendor-patches] $dir differs from its pinned commit by more than its patches:" >&2
-        echo "  patches: $want" >&2
-        echo "  tree:    $have" >&2
-        exit 1
-      }
+      have=$(git -C "$ROOT/$dir" diff HEAD --numstat --ignore-submodules=all | shape)
+      [ "$want" = "$have" ] || die "$dir differs from its pinned commit other than by its patches:
+  patches: ${want:-(none)}
+  tree:    ${have:-(none)}"
     done
     echo "[vendor-patches] OK: the vendored trees are the pinned upstream plus $(entries | wc -l | tr -d ' ') patch(es)"
     ;;

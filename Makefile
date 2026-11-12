@@ -35,23 +35,20 @@ build-engine: deps verify-vendor
 	@mkdir -p $(DIST)
 	CGO_ENABLED=1 go build -tags cgo_sdcpp -ldflags "$(LDFLAGS)" -o $(DIST)/$(BINARY) .
 
-## deps: build stable-diffusion.cpp into static libraries (Metal backend)
-deps: $(SD_LIB)
-
-# Local patches to the vendored sources (third_party/patches/series, ADR-0011).
-# The library is rebuilt whenever a patch or the series changes, and the patches
-# are applied before it is built.
-VENDOR_PATCHES := third_party/patches/series $(wildcard third_party/patches/*.patch)
-
-$(SD_LIB): $(VENDOR_PATCHES)
+## deps: build stable-diffusion.cpp into static libraries (Metal backend).
+## Always runs: the local patches (third_party/patches/series, ADR-0011) are
+## applied first, and cmake decides what is stale — so a moved submodule pin, a
+## changed patch or a library built before a patch can never be linked as is.
+## An up-to-date tree costs a few seconds.
+deps:
 	@scripts/vendor-patches.sh apply
-	cmake -S $(SD_DIR) -B $(SD_BUILD) -DCMAKE_BUILD_TYPE=Release \
+	@test -f $(SD_BUILD)/CMakeCache.txt || cmake -S $(SD_DIR) -B $(SD_BUILD) -DCMAKE_BUILD_TYPE=Release \
 		-DSD_METAL=ON -DSD_BUILD_SHARED_LIBS=OFF -DSD_BUILD_EXAMPLES=OFF
-	cmake --build $(SD_BUILD) --config Release -j
+	@cmake --build $(SD_BUILD) --config Release -j
 
 ## verify-vendor: the vendored trees are exactly the pinned upstream plus the
-## recorded patches. Runs on every engine build, so a binary cannot be linked
-## from a tree someone edited by hand or from one a patch no longer describes.
+## recorded patches (scripts/vendor-patches.sh says what is compared). Runs on
+## every engine build.
 verify-vendor:
 	@scripts/vendor-patches.sh verify
 

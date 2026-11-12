@@ -3,6 +3,7 @@ package cli
 import (
 	"image"
 	"image/png"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -258,5 +259,21 @@ func TestEveryRenderPathRefusesAnInitImageTheArchRendersBroken(t *testing.T) {
 	err = runGen([]string{"-p", "x", "-m", "qwen-fact", "-init", big, "-hires", "off", "-o", filepath.Join(dir, "o.png")})
 	if err == nil || !strings.Contains(err.Error(), "1536x1536 is too large for qwenimage21") {
 		t.Errorf("gen: err = %v, want the size refusal", err)
+	}
+}
+
+// A hires scale that is not positive is not "no hires": the engine drops it
+// and sd.cpp renders at its own default of 2.0, which is over the limit from
+// the default size. Zero, negative and NaN must all be judged as that.
+func TestANonPositiveHiresScaleIsJudgedAsSdcppsDefault(t *testing.T) {
+	for _, scale := range []float64{0, -1, math.NaN()} {
+		req := engine.Request{Width: 1024, Height: 1024, Hires: true, HiresScale: scale}
+		err := checkRenderSize(profile.ArchQwenImage21, req)
+		if err == nil || !strings.Contains(err.Error(), "hires.fix would render 2048x2048") {
+			t.Errorf("scale %v: err = %v, want the refusal of sd.cpp's default 2x", scale, err)
+		}
+	}
+	if err := checkRenderSize(profile.ArchQwenImage21, engine.Request{Width: 1024, Height: 1024, HiresScale: 0}); err != nil {
+		t.Errorf("hires off: %v", err)
 	}
 }

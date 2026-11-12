@@ -191,6 +191,9 @@ func CheckSize(a Arch, width, height int, hiresScale float64) error {
 	if limit == 0 {
 		return nil
 	}
+	if width <= 0 || height <= 0 {
+		return nil // not a size: the engine falls back to its own default
+	}
 	m := sizeMultiple(a)
 	side := int(math.Sqrt(float64(limit))) / m * m
 	w, h := alignUp(width, m), alignUp(height, m)
