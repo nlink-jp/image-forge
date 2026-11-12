@@ -473,6 +473,30 @@ func Default() []Entry {
 			Notes: "Efficient turbo model. Multi-component (DiT + Qwen-3-4B LLM + VAE), ~20 GB.",
 		},
 		{
+			// Three files from three repos, under two licences. The DiT (a GGUF
+			// conversion by sd.cpp's author) and the VAE (Comfy-Org's repackage) are
+			// Qwen-Image-2.1 weights: the Qwen Research License of Qwen/Qwen-Image-2.1
+			// governs both — neither conversion repo states terms of its own that
+			// could replace it (leejet's declares none; Comfy-Org's points back at
+			// the same LICENSE). The text encoder is Qwen's own GGUF of Qwen3-VL-8B,
+			// which is Apache-2.0.
+			//
+			// The VAE is this model's own: the Qwen-Image 1.x VAE that the Anima
+			// entries share will not decode its latents.
+			Name: "qwen-image-2.1", Arch: profile.ArchQwenImage21, Prediction: profile.PredEps,
+			Rating: profile.RatingSafe, License: "Qwen Research License Agreement: use, copies, modifications and derivative works are for non-commercial purposes only, which the licence defines as research or evaluation (commercial use needs a separate licence from Tongyi Lab); the licence does not carve out generated outputs; the attribution notice and a copy of the licence must travel with any redistributed copy or derivative",
+			LicenseSource: "Qwen/Qwen-Image-2.1 LICENSE; the text encoder is Apache-2.0 (Qwen/Qwen3-VL-8B-Instruct)",
+			LicenseFlags:  []string{LicenseNonCommercial, LicenseAttribution},
+			Attribution:   "Qwen is licensed under the Qwen RESEARCH LICENSE AGREEMENT, Copyright (c) 2026 Hangzhou Tongyi Laboratory Technology Co., Ltd. All Rights Reserved.",
+			MinRAMGB:      16, RecRAMGB: 32,
+			Source: Source{
+				DiffusionModel: "leejet/Qwen-Image-2.1-GGUF/qwen_image_2.1-Q4_K.gguf",
+				LLM:            "Qwen/Qwen3-VL-8B-Instruct-GGUF/Qwen3VL-8B-Instruct-Q4_K_M.gguf",
+				VAE:            "Comfy-Org/Qwen-Image-2.1/vae/qwen_image_2.1_vae_bf16.safetensors",
+			},
+			Notes: "Qwen-Image-2.1 (7B DiT), text-to-image. Multi-component (GGUF Q4_K DiT + Qwen3-VL-8B Q4_K_M LLM + its own VAE), ~10 GB. Not distilled: CFG 6 / 40 steps / euler, negative prompts work. Sizes must be multiples of 32; 1024x1024 and 1280x1280 render correctly, 1536x1536 and above come out broken. About 20 minutes per image on an M2 Max at the defaults. Research-only weights. Image editing with reference images is not wired yet.",
+		},
+		{
 			Name: "noobai-xl-vpred", Arch: profile.ArchSDXL, Prediction: profile.PredVPred,
 			Rating: profile.RatingExplicit, License: "Fair AI Public License 1.0-SD (copyleft: model derivatives must keep the same license)",
 			LicenseSource: "Laxhar/noobai-XL-Vpred-1.0",

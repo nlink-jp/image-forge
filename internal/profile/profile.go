@@ -16,8 +16,13 @@ const (
 	ArchZImage Arch = "zimage"
 	// ArchAnima is CircleStone Labs / Comfy Org's 2B anime model — its own
 	// architecture (sd.cpp: VERSION_ANIMA, Qwen conditioner), not an SDXL derivative.
-	ArchAnima   Arch = "anima"
-	ArchUnknown Arch = "unknown"
+	ArchAnima Arch = "anima"
+	// ArchQwenImage21 is Qwen-Image-2.1 (sd.cpp: VERSION_QWEN_IMAGE_2_1): a 7B
+	// single-stream DiT conditioned by the Qwen3-VL-8B LLM, with its own VAE.
+	// It shares nothing loadable with Qwen-Image 1.x — neither the DiT nor the
+	// VAE — so it is an architecture of its own, not a "qwen" family.
+	ArchQwenImage21 Arch = "qwenimage21"
+	ArchUnknown     Arch = "unknown"
 )
 
 // Prediction is the noise-prediction parameterization.
@@ -78,6 +83,10 @@ type Profile struct {
 func Detect(name string) Arch {
 	n := strings.ToLower(name)
 	switch {
+	// Before the "xl"/"3.5" substring cases below: a name such as
+	// "qwen_image_2.1-Q4_K" must not fall through to the SDXL default.
+	case strings.Contains(n, "qwen-image-2.1"), strings.Contains(n, "qwen_image_2.1"), strings.Contains(n, "qwenimage21"):
+		return ArchQwenImage21
 	case strings.Contains(n, "sd15"), strings.Contains(n, "v1-5"), strings.Contains(n, "v1.5"), strings.Contains(n, "sd-1.5"):
 		return ArchSD15
 	case strings.Contains(n, "sd3"), strings.Contains(n, "sd-3"), strings.Contains(n, "3.5"):
@@ -120,6 +129,13 @@ func ArchDefaults(a Arch) Profile {
 		// The turbo release we ship is distilled: "use with CFG 1 and 8-12 steps".
 		// At CFG 1 a negative prompt has no effect, so don't invite one.
 		return Profile{Arch: a, Prediction: PredEps, Sampler: "euler", Steps: 10, CFG: 1, Width: 1024, Height: 1024, NegativeOK: false}
+	case ArchQwenImage21:
+		// Not distilled: true CFG with a negative prompt. Sampler and CFG are the
+		// values of sd.cpp's own Qwen-Image-2.1 guide (euler, 6.0); 40 steps is
+		// the model card's example. 1024x1024 is the default because it renders
+		// correctly and larger does not: 1280x1280 is still correct, 1536x1536
+		// and 2048x2048 came out broken (see AGENTS.md).
+		return Profile{Arch: a, Prediction: PredEps, Sampler: "euler", Steps: 40, CFG: 6, Width: 1024, Height: 1024, NegativeOK: true}
 	default:
 		return Profile{Arch: ArchUnknown, Prediction: PredEps, Sampler: "euler_a", Steps: 25, CFG: 7, Width: 512, Height: 512, NegativeOK: true}
 	}

@@ -425,7 +425,7 @@ func modelsImport(args []string) error {
 	pathArg := args[0]
 	fs := flag.NewFlagSet("models import", flag.ContinueOnError)
 	name := fs.String("name", "", "registry name (default: file base name)")
-	archFlag := fs.String("arch", "", "architecture: sdxl|sd15|sd35|flux|zimage|anima (default: auto-detect)")
+	archFlag := fs.String("arch", "", "architecture: sdxl|sd15|sd35|flux|zimage|anima|qwenimage21 (default: auto-detect)")
 	vae := fs.String("vae", "", "path to an external VAE")
 	kindFlag := fs.String("kind", "", "model kind: lora|controlnet|upscaler (default: a base diffusion model)")
 	triggerFlag := fs.String("trigger", "", "comma-separated LoRA trigger words (prompt tokens that activate it)")
@@ -571,7 +571,7 @@ func modelsPull(args []string) error {
 	// Overrides for a ref that is NOT a catalog name (raw hf:/civitai:/url). A
 	// catalog entry carries its own kind/arch/triggers and ignores these (ADR-0007).
 	kindFlag := fs.String("kind", "", "kind for a non-catalog ref: lora|controlnet|upscaler (default: base diffusion)")
-	archFlag := fs.String("arch", "", "architecture for a non-catalog ref: sdxl|sd15|sd35|flux|zimage|anima (default: auto-detect)")
+	archFlag := fs.String("arch", "", "architecture for a non-catalog ref: sdxl|sd15|sd35|flux|zimage|anima|qwenimage21 (default: auto-detect)")
 	triggerFlag := fs.String("trigger", "", "comma-separated LoRA trigger words for a non-catalog ref")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err

@@ -59,7 +59,7 @@ config）が要る。トークンはログから秘匿される — **絶対に�
 
 | 項目 | 選び方 |
 | --- | --- |
-| `Arch` | `ArchSDXL` / `ArchSD15` / `ArchSD35` / `ArchFlux` / `ArchZImage` / `ArchAnima`。Pony・Illustrious は `ArchSDXL`。 |
+| `Arch` | `ArchSDXL` / `ArchSD15` / `ArchSD35` / `ArchFlux` / `ArchZImage` / `ArchAnima` / `ArchQwenImage21`。Pony・Illustrious は `ArchSDXL`。 |
 | `Prediction` | ほぼ `PredEps`。v-prediction モデル（NoobAI v-pred 等）は `PredVPred`。 |
 | `Rating` | `RatingSafe` / `RatingQuestionable` / `RatingExplicit`。NSFW可のアニメ/Pony → `Questionable`、NSFW寄り → `Explicit`。`Questionable`/`Explicit` は `--allow-nsfw` 必須。フラグがゲート、ratingは正直な信号。判断は利用者に委ねる。 |
 | `License` | 上流ライセンス。コミュニティマージで不明瞭なら `(verify)` / "see Civitai listing" を付す。 |

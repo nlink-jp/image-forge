@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/nlink-jp/image-forge/internal/profile"
@@ -383,5 +384,50 @@ func TestAnimaCivitaiComponentEntries(t *testing.T) {
 		if !e.NeedsOptIn() {
 			t.Errorf("%s: NSFW-capable Civitai anime model should require the opt-in", name)
 		}
+	}
+}
+
+// qwen-image-2.1 is assembled from three repos. The pieces that matter: it is a
+// multi-component entry with an LLM encoder; its VAE is its own (the Qwen-Image
+// 1.x VAE the Anima entries share cannot decode its latents); and the terms are
+// the research licence of the weights' publisher, not the conversion repos'.
+func TestQwenImage21Entry(t *testing.T) {
+	var e *Entry
+	entries := Default()
+	for i := range entries {
+		if entries[i].Name == "qwen-image-2.1" {
+			e = &entries[i]
+		}
+	}
+	if e == nil {
+		t.Fatal("qwen-image-2.1 is not in the catalog")
+	}
+	if e.Arch != profile.ArchQwenImage21 {
+		t.Errorf("arch = %q", e.Arch)
+	}
+	if !e.IsMultiComponent() || e.Source.DiffusionModel == "" || e.Source.LLM == "" {
+		t.Errorf("source must be multi-component with a DiT and an LLM: %+v", e.Source)
+	}
+	if !strings.Contains(e.Source.VAE, "qwen_image_2.1_vae") {
+		t.Errorf("VAE = %q, want the Qwen-Image-2.1 VAE", e.Source.VAE)
+	}
+	for _, other := range entries {
+		if other.Arch == profile.ArchAnima && other.Source.VAE == e.Source.VAE {
+			t.Errorf("%s shares a VAE with qwen-image-2.1; the two are not interchangeable", other.Name)
+		}
+	}
+	flags := strings.Join(e.LicenseFlags, ",")
+	if !strings.Contains(flags, LicenseNonCommercial) || !strings.Contains(flags, LicenseAttribution) {
+		t.Errorf("license flags = %v, want non-commercial + attribution", e.LicenseFlags)
+	}
+	if e.Attribution == "" {
+		t.Error("attribution text is empty though the licence requires the notice")
+	}
+	if !strings.HasPrefix(e.LicenseSource, "Qwen/Qwen-Image-2.1") {
+		t.Errorf("licence source = %q, want the publisher's repo, not a conversion repo", e.LicenseSource)
+	}
+	p := e.Profile()
+	if p.CFG != 6 || p.Steps != 40 || !p.NegativeOK {
+		t.Errorf("profile cfg/steps/negative = %v/%d/%v, want 6/40/true", p.CFG, p.Steps, p.NegativeOK)
 	}
 }

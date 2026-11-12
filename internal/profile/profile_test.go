@@ -36,14 +36,20 @@ func TestArchDefaults_Unknown(t *testing.T) {
 
 func TestDetect(t *testing.T) {
 	cases := map[string]Arch{
-		"animagine-xl-4.0":     ArchSDXL,
-		"ponyDiffusionV6XL":    ArchSDXL,
-		"noobai-XL-Vpred":      ArchSDXL,
-		"illustrious-xl-v1":    ArchSDXL,
-		"sd15-pruned":          ArchSD15,
-		"v1-5-emaonly":         ArchSD15,
-		"FLUX.1-schnell":       ArchFlux,
-		"z-image-turbo":        ArchZImage,
+		"animagine-xl-4.0":  ArchSDXL,
+		"ponyDiffusionV6XL": ArchSDXL,
+		"noobai-XL-Vpred":   ArchSDXL,
+		"illustrious-xl-v1": ArchSDXL,
+		"sd15-pruned":       ArchSD15,
+		"v1-5-emaonly":      ArchSD15,
+		"FLUX.1-schnell":    ArchFlux,
+		"z-image-turbo":     ArchZImage,
+		// Qwen-Image-2.1 under each spelling its files and repos use. None may
+		// reach the SDXL default, and "2.1" must not be read as another family.
+		"qwen-image-2.1":       ArchQwenImage21,
+		"qwen_image_2.1-Q4_K":  ArchQwenImage21,
+		"Qwen-Image-2.1-Turbo": ArchQwenImage21,
+		"qwen_image_2.1_bf16":  ArchQwenImage21,
 		"stable-diffusion-3.5": ArchSD35,
 		"mystery-model":        ArchSDXL, // default is SDXL
 	}
@@ -51,5 +57,24 @@ func TestDetect(t *testing.T) {
 		if got := Detect(name); got != want {
 			t.Errorf("Detect(%q) = %q, want %q", name, got, want)
 		}
+	}
+}
+
+// Qwen-Image-2.1 is not distilled: unlike the other LLM-conditioned entries
+// (Z-Image turbo, Anima turbo) it needs real CFG and takes a negative prompt.
+// Inheriting a turbo default (CFG 1, no negative) would render it washed out.
+func TestArchDefaults_QwenImage21(t *testing.T) {
+	p := ArchDefaults(ArchQwenImage21)
+	if p.Arch != ArchQwenImage21 {
+		t.Fatalf("arch = %q", p.Arch)
+	}
+	if p.CFG != 6 || p.Steps != 40 || p.Sampler != "euler" {
+		t.Errorf("cfg/steps/sampler = %v/%d/%q, want 6/40/euler", p.CFG, p.Steps, p.Sampler)
+	}
+	if !p.NegativeOK {
+		t.Error("NegativeOK = false; this model runs true CFG and uses a negative prompt")
+	}
+	if p.Width%32 != 0 || p.Height%32 != 0 {
+		t.Errorf("default size %dx%d is not a multiple of 32", p.Width, p.Height)
 	}
 }

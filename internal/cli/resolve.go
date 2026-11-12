@@ -132,6 +132,7 @@ func derivedArchSource(src store.InstalledModel) string {
 // knownArches are the values --arch accepts, in the order the error lists them.
 var knownArches = []profile.Arch{
 	profile.ArchSD15, profile.ArchSDXL, profile.ArchSD35, profile.ArchFlux, profile.ArchZImage, profile.ArchAnima,
+	profile.ArchQwenImage21,
 }
 
 // parseArch validates an --arch value, case-insensitively. A value stored as

@@ -39,6 +39,7 @@ var licenceSources = map[string]string{
 	"sd35-medium":                      "stabilityai/stable-diffusion-3.5-medium",
 	"sd35-large":                       "stabilityai/stable-diffusion-3.5-large",
 	"z-image-turbo":                    "Tongyi-MAI/Z-Image",
+	"qwen-image-2.1":                   "Qwen/Qwen-Image-2.1 LICENSE; the text encoder is Apache-2.0 (Qwen/Qwen3-VL-8B-Instruct)",
 	"noobai-xl-vpred":                  "Laxhar/noobai-XL-Vpred-1.0",
 	"anima-turbo":                      "circlestone-labs/Anima LICENSE.md",
 	"realesrgan-x4plus":                "github.com/xinntao/Real-ESRGAN",

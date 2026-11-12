@@ -9,7 +9,7 @@ resolution, sampler, prediction type, quantization) inside **model profiles** so
 users never hand-tune them. Series: **util-series**. Local-diffusion counterpart to
 `gem-image` (cloud Gemini).
 
-Status: **v0.17.0 released** (public, signed + notarized). **Phase 1 + Phase 2
+Status: **released** (public, signed + notarized; versions are in CHANGELOG.md). **Phase 1 + Phase 2
 complete.** inpaint (`gen --init --mask`) wired + E2E-verified. `gen` txt2img/img2img/inpaint/
 LoRA, `models` list/import/pull/open/quantize/relocate/rm/gc, resident `serve`, config.toml — all E2E
 on M2 Max (SD1.5 + Animagine XL / SDXL, q8_0, LCM-LoRA, NoobAI v-pred). v-prediction
@@ -261,7 +261,23 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   CFG 1 — the ArchFlux default). `flux1-dev` is NOT: it needs ~20 steps, so its
   catalog entry sets the per-entry `Steps` override (also `CFG` available). sd.cpp's
   `distilled_guidance` default (3.5) is already the right Flux guidance, so nothing
-  else is needed. Qwen-Image would need a new arch (`profile` has none) — deferred.
+  else is needed.
+- **Qwen-Image-2.1 is `ArchQwenImage21`, text-to-image only.** It shares no
+  loadable part with Qwen-Image 1.x: the Anima entries use the 1.x VAE, which
+  cannot decode its latents, so never point it at that file. sd.cpp picks the
+  model up from the DiT's tensors; the profile only supplies euler / CFG 6 /
+  40 steps / 1024. Measured on an M2 Max: 1024x1024 takes ~30 s per step at
+  CFG 6 and ~15 s at CFG 1 (the unconditional pass is skipped), flash attention
+  saves ~10%; peak memory footprint at 1024x1024 is ~10.5 GB. **Sizes above
+  ~1280x1280 render broken**: 1024 (4096 tokens) and 1280 (6400) are correct,
+  1536 (9216) and 2048 (16384) are blurred, banded and ignore the prompt, at
+  any step count and with or without flash attention. The break coincides with
+  `max_image_seq_len = 8192` in sd.cpp's scheduler for this model
+  (`denoiser.hpp`), but the cause was not established and nothing refuses the
+  size. "no vision weights
+  detected" on stderr is expected — the text encoder GGUF has no vision tower,
+  which only editing needs. Not wired: Turbo (it needs `custom_sigmas`) and
+  editing (reference images + `llm_vision_path`).
 - **Flow/DiT guidance knobs (`Request.Guidance`/`FlowShift`/`SLGScale`/`ImgCFG`).**
   Map to `g.sample_params.guidance.distilled_guidance` / `.flow_shift` / `.slg` /
   `.img_cfg`. Each 0 keeps sd.cpp's default; sd.cpp ignores knobs that don't apply to

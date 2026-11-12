@@ -2,7 +2,7 @@
 
 A local diffusion image-generation engine and model-management CLI for macOS
 (Apple Silicon). Run modern models — anime-focused (Animagine XL, Illustrious,
-Pony family) and general high-quality (FLUX, SD3.5, Z-Image) — locally, **without
+Pony family) and general high-quality (FLUX, SD3.5, Z-Image, Qwen-Image-2.1) — locally, **without
 touching a single internal setting**.
 
 Every per-model gotcha (CLIP-skip, the dedicated SDXL fp16-fix VAE, native
@@ -183,7 +183,7 @@ trained against, so incompatible combinations can be caught up front (ADR-0006):
 `gen`, `serve` and the MCP server refuse an installed LoRA or ControlNet made for
 another architecture than the installed model, before anything loads. Only
 architectures that are facts are compared — the catalog's own, or one given with
-`--arch` (validated: `sd15|sdxl|sd35|flux|zimage|anima`; Pony, Illustrious and
+`--arch` (validated: `sd15|sdxl|sd35|flux|zimage|anima|qwenimage21`; Pony, Illustrious and
 NoobAI are `sdxl`). An install that named no `--arch` records a guess from the
 registered name (`--name`, else the file name), which is not compared. To overrule a record you know is wrong,
 re-register with `--arch`, or pass the LoRA / ControlNet file by path.
@@ -241,7 +241,7 @@ non-catalog ref.
   silently installed as a base model (ADR-0007). Overrides are ignored (with a
   note) for catalog names, which stay authoritative.
 - **import** registers a model file you already have; the architecture is
-  auto-detected from the name (override with `--arch sdxl|sd15|sd35|flux|zimage|anima`),
+  auto-detected from the name (override with `--arch sdxl|sd15|sd35|flux|zimage|anima|qwenimage21`),
   and `--kind` / `--trigger` tag a local LoRA/ControlNet/upscaler just as on `pull`.
 - **quantize** converts a registered model to a GGUF at `--to` ∈
   `q8_0 q5_0 q5_1 q4_0 q4_1 q2_k q3_k q4_k q5_k q6_k f16 f32`, baking in its VAE, and
@@ -352,6 +352,27 @@ Downloads come from Hugging Face / Civitai / direct URLs. Provide tokens via
 > **v-prediction models** (NoobAI, Illustrious v2) work: the model's profile sets the
 > v-prediction parameterization automatically (override with `--prediction v|eps|auto`).
 > Epsilon-prediction models (Animagine XL 4.0, Illustrious v1, Pony) also work.
+
+### Qwen-Image-2.1
+
+```sh
+image-forge models pull qwen-image-2.1        # ~10 GB: DiT (Q4_K) + Qwen3-VL-8B + its VAE
+image-forge gen -m qwen-image-2.1 -o cat.png \
+  -p "a lovely cat holding a sign that says 'image-forge', photo, soft daylight"
+```
+
+- **Text-to-image only.** Qwen-Image-2.1 Turbo and image editing with reference
+  images are not supported yet.
+- **Research and evaluation only.** The weights are under the Qwen Research
+  License: no commercial use, and the licence makes no exception for generated
+  images. `models list` shows the terms and the attribution notice.
+- **It is slow.** The profile's defaults — 1024x1024, 40 steps, CFG 6, euler —
+  take about 20 minutes on an M2 Max; `--flash-attn` saves roughly a tenth.
+  The model is not distilled, so fewer steps cost quality.
+- **Keep the image at or below about 1280x1280.** Width and height must be
+  multiples of 32. 1024x1024 and 1280x1280 render correctly; 1536x1536 and
+  2048x2048 come out broken — a blurred, banded image that ignores the prompt,
+  after 35 and 51 minutes. Nothing stops you from asking for those sizes.
 
 ## Configuration
 

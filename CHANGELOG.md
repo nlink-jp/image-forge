@@ -6,6 +6,16 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Qwen-Image-2.1, text-to-image** — catalog entry `qwen-image-2.1` and a new
+  architecture `qwenimage21` (`--arch qwenimage21` for your own files). It is
+  assembled from the Q4_K DiT, the Qwen3-VL-8B text encoder and the model's
+  own VAE, about 10 GB. Defaults are 1024x1024, 40 steps, CFG 6, euler; a
+  render takes about 20 minutes on an M2 Max. The weights are under the Qwen
+  Research License — research and evaluation only. Turbo and image editing are
+  not supported yet.
+
 ### Changed
 
 - **The bundled stable-diffusion.cpp is updated** from `master-762` (July) to

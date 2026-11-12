@@ -64,7 +64,7 @@ Start from the architecture defaults and override only the gotchas.
 
 | Field | How to pick it |
 | --- | --- |
-| `Arch` | `ArchSDXL` / `ArchSD15` / `ArchSD35` / `ArchFlux` / `ArchZImage` / `ArchAnima`. Pony & Illustrious are `ArchSDXL`. |
+| `Arch` | `ArchSDXL` / `ArchSD15` / `ArchSD35` / `ArchFlux` / `ArchZImage` / `ArchAnima` / `ArchQwenImage21`. Pony & Illustrious are `ArchSDXL`. |
 | `Prediction` | `PredEps` for almost everything; `PredVPred` for v-prediction models (e.g. NoobAI v-pred). |
 | `Rating` | `RatingSafe` / `RatingQuestionable` / `RatingExplicit`. NSFW-capable anime/Pony → `Questionable`; NSFW-leaning → `Explicit`. `Questionable`/`Explicit` require `--allow-nsfw`. The flag is the gate; the rating is your honest signal. Judgment is left to the user. |
 | `License` | The upstream license; append `(verify)` / "see Civitai listing" when a community merge's terms are unclear. |

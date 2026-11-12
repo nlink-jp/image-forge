@@ -1,7 +1,7 @@
 # image-forge
 
 macOS（Apple Silicon）向けのローカル拡散画像生成エンジン兼モデル運用 CLI。アニメ系
-（Animagine XL / Illustrious / Pony 系）から汎用高品質（FLUX / SD3.5 / Z-Image）まで、
+（Animagine XL / Illustrious / Pony 系）から汎用高品質（FLUX / SD3.5 / Z-Image / Qwen-Image-2.1）まで、
 **内部設定を一切触らずに** ローカルで動かす。
 
 モデルごとの落とし穴（CLIP-skip、SDXL fp16-fix 専用 VAE、native 解像度、sampler/steps、
@@ -173,7 +173,7 @@ ControlNet は学習時のベース**アーキテクチャ**を記録するた�
 事前に弾けます（ADR-0006）。`gen`・`serve`・MCP サーバーは、インストール済みの
 モデルと別のアーキテクチャ向けのインストール済み LoRA / ControlNet を、何かを読み込む前に
 拒否します。比べるのは事実であるアーキテクチャだけ —— カタログ自身のものか、`--arch` で
-指定したもの（検証あり: `sd15|sdxl|sd35|flux|zimage|anima`。Pony・Illustrious・NoobAI は
+指定したもの（検証あり: `sd15|sdxl|sd35|flux|zimage|anima|qwenimage21`。Pony・Illustrious・NoobAI は
 `sdxl`）です。`--arch` を付けずに登録したものは登録名（`--name`、無ければファイル名）からの
 推測を記録しており、比べません。
 誤りと分かっている記録を覆すときは、`--arch` を付けて登録し直すか、LoRA / ControlNet の
@@ -225,7 +225,7 @@ canny/depth 等の ControlNet を `models import <path> --kind controlnet` で
   指定しないと LoRA が黙ってベースモデルとして入る（ADR-0007）。カタログ名に対する上書きは
   無視され（その旨を通知）、カタログが常に正となる。
 - **import**: 手元のモデルファイルを登録。アーキは名前から自動判定（`--arch
-  sdxl|sd15|sd35|flux|zimage|anima` で上書き）。`--kind` / `--trigger` でローカルの
+  sdxl|sd15|sd35|flux|zimage|anima|qwenimage21` で上書き）。`--kind` / `--trigger` でローカルの
   LoRA/ControlNet/upscaler に印を付けられる（`pull` と同じ）。
 - **quantize**: 登録済みモデルを `--to` ∈
   `q8_0 q5_0 q5_1 q4_0 q4_1 q2_k q3_k q4_k q5_k q6_k f16 f32` の GGUF に変換し、VAE を
@@ -323,6 +323,26 @@ listing から読んだか**である。多くのエントリはバイト自体�
 > **v-prediction 系モデル**（NoobAI、Illustrious v2）も動作する。モデルのプロファイルが
 > v-prediction を自動設定する（`--prediction v|eps|auto` で上書き可）。eps 系
 > （Animagine XL 4.0、Illustrious v1、Pony）も同様に動作する。
+
+### Qwen-Image-2.1
+
+```sh
+image-forge models pull qwen-image-2.1        # 約 10 GB: DiT（Q4_K）＋ Qwen3-VL-8B ＋ 専用 VAE
+image-forge gen -m qwen-image-2.1 -o cat.png \
+  -p "a lovely cat holding a sign that says 'image-forge', photo, soft daylight"
+```
+
+- **text-to-image のみ。** Qwen-Image-2.1 Turbo と、参照画像を使う画像編集には
+  まだ対応していない。
+- **研究・評価目的に限る。** 重みは Qwen Research License で、商用利用は不可。
+  生成した画像を例外とする条項もない。条項と帰属表示は `models list` に出る。
+- **遅い。** プロファイルの既定値（1024x1024・40 ステップ・CFG 6・euler）で
+  M2 Max では約 20 分かかる。`--flash-attn` で 1 割ほど縮む。蒸留モデルでは
+  ないので、ステップを減らすと画質が落ちる。
+- **画像は 1280x1280 程度までにする。** 幅と高さは 32 の倍数であること。
+  1024x1024 と 1280x1280 は正しく生成できる。1536x1536 と 2048x2048 は、
+  35 分・51 分かけた末に、ぼやけて縞の入った、プロンプトを無視した絵になる。
+  これらのサイズを指定しても止められはしない。
 
 ## 設定
 
