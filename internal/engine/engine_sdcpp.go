@@ -29,6 +29,22 @@ static void ifg_set_progress(void* data) { sd_set_progress_callback(goProgress, 
 // whenever we are not actively rendering, so sd_progress_cb is never NULL.
 static void ifg_noop_progress(int step, int steps, float t, void* data) { (void)step; (void)steps; (void)t; (void)data; }
 static void ifg_silence_progress(void)   { sd_set_progress_callback(ifg_noop_progress, NULL); }
+
+// sd.cpp drops every log line — its own and ggml's, errors included — unless a
+// log callback is registered. Without one a failed load or a backend abort
+// leaves no reason behind. Forward warnings and errors to stderr (never stdout:
+// that is the machine channel); ifg_log_min lowers the threshold for debugging.
+#include <stdio.h>
+static int ifg_log_min = SD_LOG_WARN;
+static void ifg_log(enum sd_log_level_t level, const char* text, void* data) {
+	(void)data;
+	if ((int)level < ifg_log_min || text == NULL) return;
+	fputs(text, stderr);
+}
+static void ifg_install_log(int verbose) {
+	ifg_log_min = verbose ? SD_LOG_DEBUG : SD_LOG_WARN;
+	sd_set_log_callback(ifg_log, NULL);
+}
 */
 import "C"
 
@@ -43,8 +59,24 @@ import (
 	"runtime/cgo"
 	"sort"
 	"strings"
+	"sync"
 	"unsafe"
 )
+
+// installLog registers the sd.cpp log callback once per process. Every entry
+// point that can reach sd.cpp calls it first. IMAGE_FORGE_SDCPP_LOG=verbose
+// forwards every level instead of warnings and errors only.
+var logOnce sync.Once
+
+func installLog() {
+	logOnce.Do(func() {
+		v := 0
+		if strings.EqualFold(os.Getenv("IMAGE_FORGE_SDCPP_LOG"), "verbose") {
+			v = 1
+		}
+		C.ifg_install_log(C.int(v))
+	})
+}
 
 // quantTypes maps CLI quant names to sd.cpp weight types.
 // slgSD35Layers is the standard set of transformer layers skip-layer guidance
@@ -67,6 +99,7 @@ func Quantize(inputPath, vaePath, outputPath, quantType string) error {
 	if !ok {
 		return fmt.Errorf("sdcpp: unknown quant type %q", quantType)
 	}
+	installLog()
 	// sd.cpp's convert wraps these in std::string, so they must not be NULL —
 	// pass empty C strings when absent.
 	cIn := C.CString(inputPath)
@@ -94,6 +127,7 @@ func Open(p OpenParams) (Session, error) {
 	if p.ModelPath == "" && p.DiffusionModel == "" {
 		return nil, errors.New("sdcpp: a model path or diffusion model is required")
 	}
+	installLog()
 	var cp C.sd_ctx_params_t
 	C.sd_ctx_params_init(&cp)
 
@@ -146,6 +180,8 @@ func Open(p OpenParams) (Session, error) {
 	cp.llm_path = set(p.LLM)
 	cp.vae_path = set(p.VAEPath)
 	cp.control_net_path = set(p.ControlNet)
+	// FP8 components are converted to F16 on read: see fp8.go.
+	cp.tensor_type_rules = set(fp8TypeRules(p, fileHasFP8))
 
 	// Empty prediction leaves the init default (PREDICTION_COUNT = auto-detect);
 	// "v" forces v-prediction for models sd.cpp can't auto-detect.
@@ -384,30 +420,34 @@ func (s *sdSession) Render(ctx context.Context, req Request, events chan<- Event
 		}
 	}()
 
-	var imgs *C.sd_image_t
-	var n C.int
-	ok := bool(C.generate_image(s.ctx, &g, &imgs, &n))
+	// generate_image hands back one result object that owns every image's pixels
+	// (and sd.cpp's own generation_info, which we do not use: the PNG metadata is
+	// built here). It sets the pointer to NULL on failure; the single free below
+	// releases everything, so no per-image free.
+	var res *C.sd_image_generation_result_t
+	ok := bool(C.generate_image(s.ctx, &g, &res))
 	close(watchDone) // stop the watcher before reporting the result
+	if res != nil {
+		defer C.free_sd_image_generation_result(res)
+	}
 	if err := ctx.Err(); err != nil {
 		return err // cancelled: report context.Canceled, not a generic failure
 	}
-	if !ok || imgs == nil || n == 0 {
+	if !ok || res == nil || res.items == nil || res.count == 0 {
 		return errors.New("sdcpp: generation failed")
 	}
-	defer C.free(unsafe.Pointer(imgs))
 
-	list := unsafe.Slice(imgs, int(n))
+	n := int(res.count)
+	list := unsafe.Slice(res.items, n)
 	base := int64(g.seed) // sd.cpp uses request.seed + b for the b-th batch image
-	for i := 0; i < int(n); i++ {
+	for i := 0; i < n; i++ {
 		seed := base + int64(i)
-		path := outputPath(req.Output, i, int(n))
+		path := outputPath(req.Output, i, n)
 		var meta []PNGText
 		if req.Metadata != nil {
 			meta = req.Metadata(seed) // per-image metadata records this image's seed
 		}
-		err := saveImage(list[i], path, meta)
-		C.free(unsafe.Pointer(list[i].data))
-		if err != nil {
+		if err := saveImage(list[i].image, path, meta); err != nil {
 			return err
 		}
 		events <- Event{Kind: "done", Progress: 1, Output: path, Seed: seed}
@@ -496,6 +536,7 @@ func Upscale(p UpscaleParams) error {
 	if p.ESRGANPath == "" {
 		return errors.New("sdcpp: an ESRGAN model path is required")
 	}
+	installLog()
 	cEsrgan := C.CString(p.ESRGANPath)
 	defer C.free(unsafe.Pointer(cEsrgan))
 
@@ -536,20 +577,18 @@ func Upscale(p UpscaleParams) error {
 		defer C.ifg_silence_progress()
 	}
 
-	var out *C.sd_image_t
-	var n C.int
-	if !bool(C.upscale(ctx, ci, C.uint32_t(factor), &out, &n)) || out == nil || n == 0 {
+	// As with generate_image, the result object owns the pixels and is released
+	// by one call.
+	var res *C.sd_image_generation_result_t
+	ok := bool(C.upscale(ctx, ci, C.uint32_t(factor), &res))
+	if res != nil {
+		defer C.free_sd_image_generation_result(res)
+	}
+	if !ok || res == nil || res.items == nil || res.count == 0 {
 		return errors.New("sdcpp: upscale failed")
 	}
-	defer C.free(unsafe.Pointer(out))
-
-	list := unsafe.Slice(out, int(n))
-	saveErr := saveImage(list[0], p.OutputPath, p.Metadata)
-	for i := 0; i < int(n); i++ {
-		C.free(unsafe.Pointer(list[i].data))
-	}
-	if saveErr != nil {
-		return saveErr
+	if err := saveImage(unsafe.Slice(res.items, int(res.count))[0].image, p.OutputPath, p.Metadata); err != nil {
+		return err
 	}
 	if p.Events != nil {
 		p.Events <- Event{Kind: "done", Progress: 1, Output: p.OutputPath}

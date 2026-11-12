@@ -137,6 +137,29 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   (`redirectStdoutToStderr` in `mcp.go`) as defense-in-depth. Verify with the dummy
   stdio client (initialize→generate→check_job→PNG); a blank/garbage line on the
   response stream means something reached stdout anyway.
+- **sd.cpp drops all logs unless a log callback is registered.** That includes
+  ggml's errors (e.g. "kernel not found"), so a backend abort shows only a
+  backtrace. `installLog` in `engine_sdcpp.go` registers one at every entry
+  point (Open / Upscale / Quantize) and forwards WARN+ERROR to **stderr**;
+  `IMAGE_FORGE_SDCPP_LOG=verbose` forwards everything. Start any "it just
+  crashes" investigation there.
+- **FP8 safetensors on Metal abort without `fp8.go`.** Vendored sd.cpp
+  (master-1090) keeps F8_E4M3/E5M2 tensors at one byte; ggml's Metal
+  `supports_op` says yes to `mul_mat` with an FP8 weight but there is no
+  `kernel_mul_mm_f8_*`, so sd.cpp's own cast fallback never runs. `fp8TypeRules`
+  reads each component's safetensors header and, for FP8 files only, passes
+  per-component `tensor_type_rules` (`^text_encoders\.t5xxl\.=f16`, …) so the
+  weights are converted at load. Per component on purpose: a catch-all rule would
+  expand the quantized GGUF DiT loaded beside it. When bumping sd.cpp, render
+  `flux1-schnell` and `sd35-medium` — if upstream has fixed the backend, this
+  can go.
+- **Build sd.cpp with `-DSD_METAL=ON`, not `-DGGML_METAL=ON`.** Only the former
+  compiles sd.cpp's own Metal extensions (`src/core/metal`, INT8 kernels). The
+  Makefile's `deps` only rebuilds when the static lib is missing; after moving
+  the submodule, re-run the two cmake commands of that target by hand.
+- **sd.cpp's C API changed at master-1090**: `generate_image` and `upscale`
+  return one `sd_image_generation_result_t*` that owns the pixels, freed with
+  `free_sd_image_generation_result` (no per-image `free`).
 - **CGO static link is proven** (ADR-0001): `make build-engine` links sd.cpp + ggml
   + Metal into one 4.7 MB binary (verified on M2 Max, `image-forge version` inits
   Metal). `make deps` builds the sd.cpp static libs; the CGO flags live in

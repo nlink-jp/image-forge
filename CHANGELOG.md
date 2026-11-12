@@ -4,6 +4,30 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- **The bundled stable-diffusion.cpp is updated** from `master-762` (July) to
+  `master-1090-8b1e9df`. Existing models render as before; FLUX output is
+  visibly sharper at the same seed. The sampler and scheduler lists that
+  `gen --sampler` / `--scheduler` accept grow with it, since they are read
+  from the runtime.
+- **sd.cpp's warnings and errors are printed to stderr.** sd.cpp discards every
+  log line, its backend's included, unless a receiver is registered, and none
+  was: a failed load or a backend abort left no reason behind. Set
+  `IMAGE_FORGE_SDCPP_LOG=verbose` to see every level. Nothing is added to
+  stdout.
+
+### Fixed
+
+- **FLUX and SD3.5 keep working on the updated runtime.** The new sd.cpp holds
+  FP8 safetensors weights at one byte each, and the Metal backend it ships
+  claims to multiply them but has no kernel for it, so every render that used
+  `t5xxl_fp8_e4m3fn` — all of FLUX and SD3.5 — aborted the process. FP8
+  components are now converted to F16 as they are read, which is what sd.cpp
+  did before; memory use is unchanged from v0.30.0.
+
 ## [0.30.0] - 2026-11-04
 
 ### Changed

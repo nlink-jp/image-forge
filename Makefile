@@ -40,7 +40,7 @@ deps: $(SD_LIB)
 
 $(SD_LIB):
 	cmake -S $(SD_DIR) -B $(SD_BUILD) -DCMAKE_BUILD_TYPE=Release \
-		-DGGML_METAL=ON -DSD_BUILD_SHARED_LIBS=OFF -DSD_BUILD_EXAMPLES=OFF
+		-DSD_METAL=ON -DSD_BUILD_SHARED_LIBS=OFF -DSD_BUILD_EXAMPLES=OFF
 	cmake --build $(SD_BUILD) --config Release -j
 
 ## build-all: release binary. This tool is CGO + Metal, so Apple Silicon
