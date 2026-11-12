@@ -269,12 +269,15 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   40 steps / 1024. Measured on an M2 Max: 1024x1024 takes ~30 s per step at
   CFG 6 and ~15 s at CFG 1 (the unconditional pass is skipped), flash attention
   saves ~10%; peak memory footprint at 1024x1024 is ~10.5 GB. **Sizes above
-  ~1280x1280 render broken**: 1024 (4096 tokens) and 1280 (6400) are correct,
+  ~1280x1280 render broken**: 1024 (4096 tokens), 1280 (6400) and 1440 (8100) are correct,
   1536 (9216) and 2048 (16384) are blurred, banded and ignore the prompt, at
   any step count and with or without flash attention. The break coincides with
   `max_image_seq_len = 8192` in sd.cpp's scheduler for this model
-  (`denoiser.hpp`), but the cause was not established and nothing refuses the
-  size. "no vision weights
+  (`denoiser.hpp`); the cause was not established. `profile.CheckSize`
+  therefore refuses more than 8192 tokens (2,097,152 px) for this arch, base
+  size and hires target alike, at the two places a render is built (`gen` and
+  `buildRender`), and only when the arch is a fact (ADR-0006). If a later
+  sd.cpp renders larger sizes correctly, re-measure and lift `MaxPixels`. "no vision weights
   detected" on stderr is expected — the text encoder GGUF has no vision tower,
   which only editing needs. Not wired: Turbo (it needs `custom_sigmas`) and
   editing (reference images + `llm_vision_path`). A diffusers-format LoRA with

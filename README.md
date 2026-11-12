@@ -369,10 +369,12 @@ image-forge gen -m qwen-image-2.1 -o cat.png \
 - **It is slow.** The profile's defaults — 1024x1024, 40 steps, CFG 6, euler —
   take about 20 minutes on an M2 Max; `--flash-attn` saves roughly a tenth.
   The model is not distilled, so fewer steps cost quality.
-- **Keep the image at or below about 1280x1280.** Width and height must be
-  multiples of 32. 1024x1024 and 1280x1280 render correctly; 1536x1536 and
-  2048x2048 come out broken — a blurred, banded image that ignores the prompt,
-  after 35 and 51 minutes. Nothing stops you from asking for those sizes.
+- **The image may be at most 2,097,152 pixels** (1440x1440, or 1920x1088).
+  Width and height must be multiples of 32. Above that area the model renders
+  a blurred, banded image that ignores the prompt — 1536x1536 and 2048x2048
+  did, after 35 and 51 minutes — so `gen`, `serve` and the MCP server refuse a
+  larger size before anything loads, and a hires.fix whose target would exceed
+  it. 1024x1024, 1280x1280 and 1440x1440 were checked to render correctly.
 - **Anime style**: `anime-fusal-qwen-image-2.1` is a LoRA for this model
   (`--allow-nsfw` to pull; same research-only terms). Use it at strength
   0.6-0.8 with the author's `--cfg 1 --steps 25`, which also brings a render

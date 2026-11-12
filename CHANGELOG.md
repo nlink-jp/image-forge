@@ -14,7 +14,9 @@ project adheres to [Semantic Versioning](https://semver.org/).
   own VAE, about 10 GB. Defaults are 1024x1024, 40 steps, CFG 6, euler; a
   render takes about 20 minutes on an M2 Max. The weights are under the Qwen
   Research License — research and evaluation only. Turbo and image editing are
-  not supported yet.
+  not supported yet. An image larger than 2,097,152 pixels (1440x1440) is
+  refused, as is a hires.fix that would exceed it: above that the model
+  renders a broken image after half an hour or more.
 - **`anime-fusal-qwen-image-2.1`** — an anime-style LoRA for Qwen-Image-2.1,
   under the same research-only terms and behind `--allow-nsfw`.
 

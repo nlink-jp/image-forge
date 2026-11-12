@@ -3,7 +3,11 @@
 // prediction type, or quantization. Defaults vary per architecture.
 package profile
 
-import "strings"
+import (
+	"fmt"
+	"math"
+	"strings"
+)
 
 // Arch is a model architecture family.
 type Arch string
@@ -133,10 +137,51 @@ func ArchDefaults(a Arch) Profile {
 		// Not distilled: true CFG with a negative prompt. Sampler and CFG are the
 		// values of sd.cpp's own Qwen-Image-2.1 guide (euler, 6.0); 40 steps is
 		// the model card's example. 1024x1024 is the default because it renders
-		// correctly and larger does not: 1280x1280 is still correct, 1536x1536
-		// and 2048x2048 came out broken (see AGENTS.md).
+		// correctly and much larger does not (see MaxPixels).
 		return Profile{Arch: a, Prediction: PredEps, Sampler: "euler", Steps: 40, CFG: 6, Width: 1024, Height: 1024, NegativeOK: true}
 	default:
 		return Profile{Arch: ArchUnknown, Prediction: PredEps, Sampler: "euler_a", Steps: 25, CFG: 7, Width: 512, Height: 512, NegativeOK: true}
 	}
+}
+
+// MaxPixels is the largest image area (width x height) an architecture is
+// known to render correctly, or 0 when no limit is known.
+//
+// Qwen-Image-2.1 turns one 16x16 pixel block into one token, and sd.cpp's
+// schedule for it is defined up to 8192 tokens (FluxScheduler's
+// max_image_seq_len). Renders were checked on both sides of that: 1024x1024
+// (4096 tokens), 1280x1280 (6400) and 1440x1440 (8100) are correct; 1536x1536 (9216) and
+// 2048x2048 (16384) come out blurred and banded and ignore the prompt, after
+// 35 and 51 minutes. Why it breaks past the limit was not established, so the
+// limit is the scheduler's own number and not a finer one.
+func MaxPixels(a Arch) int {
+	if a == ArchQwenImage21 {
+		return 8192 * 16 * 16
+	}
+	return 0
+}
+
+// CheckSize refuses a render the architecture is known to draw broken: a base
+// size, or a hires.fix target (the base size times hiresScale; pass 0 when
+// hires is off), larger than MaxPixels. An architecture with no known limit,
+// and an unknown one (""), are never refused.
+func CheckSize(a Arch, width, height int, hiresScale float64) error {
+	limit := MaxPixels(a)
+	if limit == 0 {
+		return nil
+	}
+	side := int(math.Sqrt(float64(limit))) / 32 * 32
+	if width*height > limit {
+		return fmt.Errorf("%dx%d is too large for %s: it renders a broken image above %d pixels (%dx%d fits)",
+			width, height, a, limit, side, side)
+	}
+	if hiresScale > 0 {
+		// sd.cpp rounds each side of the target the same way.
+		tw, th := int(math.Round(float64(width)*hiresScale)), int(math.Round(float64(height)*hiresScale))
+		if tw*th > limit {
+			return fmt.Errorf("hires.fix would render %dx%d (%dx%d x %g), too large for %s: it renders a broken image above %d pixels; lower the hires scale or the size, or turn hires off",
+				tw, th, width, height, hiresScale, a, limit)
+		}
+	}
+	return nil
 }

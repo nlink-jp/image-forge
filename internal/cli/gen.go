@@ -170,6 +170,9 @@ func runGen(args []string) error {
 	req.HiresUpscaler = hr.Upscaler
 	req.HiresSteps = hr.Steps
 	req.HiresModel = hr.Model
+	if err := checkRenderSize(res.recordedArch(), req); err != nil {
+		return fmt.Errorf("gen: %w", err)
+	}
 
 	pred := predArg(res.Profile.Prediction)
 	if set["prediction"] {

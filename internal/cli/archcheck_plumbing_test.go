@@ -145,3 +145,51 @@ func TestModelsListReportsWhetherAnArchIsTrusted(t *testing.T) {
 		t.Errorf("arch_trusted = %v, want flagged true and guessed false", got)
 	}
 }
+
+// The size limit is wired into both ways a render is built, for the base size
+// and for the hires.fix target, and only for an architecture that is a fact.
+func TestEveryRenderPathRefusesASizeTheArchRendersBroken(t *testing.T) {
+	archRegistry(t)
+	reg, err := store.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(t.TempDir(), "w.gguf")
+	if err := os.WriteFile(file, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	reg.Add(store.InstalledModel{Name: "qwen-fact", Path: file,
+		Profile: profile.ArchDefaults(profile.ArchQwenImage21), ArchSource: store.ArchFromFlag})
+	reg.Add(store.InstalledModel{Name: "qwen-guess", Path: file,
+		Profile: profile.ArchDefaults(profile.ArchQwenImage21), ArchSource: store.ArchDetected})
+	if err := reg.Save(); err != nil {
+		t.Fatal(err)
+	}
+	big, scale := 1536, 1.5
+	off := "off"
+
+	_, _, _, _, err = buildRender(RenderRequest{Model: "qwen-fact", Width: &big, Height: &big, Hires: off})
+	if err == nil || !strings.Contains(err.Error(), "1536x1536 is too large for qwenimage21") {
+		t.Errorf("buildRender: err = %v, want the size refusal", err)
+	}
+	_, _, _, _, err = buildRender(RenderRequest{Model: "qwen-fact", Hires: "on", HiresScale: &scale})
+	if err == nil || !strings.Contains(err.Error(), "hires.fix would render 1536x1536") {
+		t.Errorf("buildRender hires: err = %v, want the hires refusal", err)
+	}
+	if _, _, _, _, err = buildRender(RenderRequest{Model: "qwen-fact", Hires: off}); err != nil {
+		t.Errorf("buildRender at the default size: %v", err)
+	}
+	if _, _, _, _, err = buildRender(RenderRequest{Model: "qwen-guess", Width: &big, Height: &big, Hires: off}); err != nil {
+		t.Errorf("a guessed arch was refused: %v", err)
+	}
+
+	out := filepath.Join(t.TempDir(), "o.png")
+	err = runGen([]string{"-p", "x", "-m", "qwen-fact", "-W", "1536", "-H", "1536", "-hires", "off", "-o", out})
+	if err == nil || !strings.Contains(err.Error(), "1536x1536 is too large for qwenimage21") {
+		t.Errorf("gen: err = %v, want the size refusal before anything loads", err)
+	}
+	err = runGen([]string{"-p", "x", "-m", "qwen-fact", "-hires", "on", "-hires-scale", "1.5", "-o", out})
+	if err == nil || !strings.Contains(err.Error(), "hires.fix would render 1536x1536") {
+		t.Errorf("gen hires: err = %v, want the hires refusal", err)
+	}
+}

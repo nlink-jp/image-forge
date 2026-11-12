@@ -138,6 +138,9 @@ func buildRender(r RenderRequest) (engine.Request, engine.OpenParams, string, in
 	req.HiresUpscaler = hr.Upscaler
 	req.HiresSteps = hr.Steps
 	req.HiresModel = hr.Model
+	if err := checkRenderSize(res.recordedArch(), req); err != nil {
+		return engine.Request{}, engine.OpenParams{}, "", 0, err
+	}
 
 	pred := predArg(res.Profile.Prediction)
 	if r.Prediction != nil {

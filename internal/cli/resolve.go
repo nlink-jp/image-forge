@@ -508,6 +508,17 @@ func resolveHires(mode string, prof profile.Profile, ov hiresOverrides, env hire
 	return r
 }
 
+// checkRenderSize refuses a size the model's architecture is known to render
+// broken (profile.CheckSize), for the base pass and for the hires.fix target.
+// Like the LoRA check it acts only on an architecture that is a fact (ADR-0006).
+func checkRenderSize(arch profile.Arch, req engine.Request) error {
+	scale := 0.0
+	if req.Hires {
+		scale = req.HiresScale
+	}
+	return profile.CheckSize(arch, req.Width, req.Height, scale)
+}
+
 // genOverrides holds per-field overrides; a nil pointer means "use the profile".
 type genOverrides struct {
 	Negative *string
