@@ -494,7 +494,7 @@ func Default() []Entry {
 				LLM:            "Qwen/Qwen3-VL-8B-Instruct-GGUF/Qwen3VL-8B-Instruct-Q4_K_M.gguf",
 				VAE:            "Comfy-Org/Qwen-Image-2.1/vae/qwen_image_2.1_vae_bf16.safetensors",
 			},
-			Notes: "Qwen-Image-2.1 (7B DiT), text-to-image. Multi-component (GGUF Q4_K DiT + Qwen3-VL-8B Q4_K_M LLM + its own VAE), ~10 GB. Not distilled: CFG 6 / 40 steps / euler, negative prompts work. Sizes must be multiples of 32; at most 2,097,152 pixels (1440x1440) — larger sizes render broken and are refused. About 20 minutes per image on an M2 Max at the defaults. Research-only weights. Image editing with reference images is not wired yet.",
+			Notes: "Qwen-Image-2.1 (7B DiT), text-to-image. Multi-component (GGUF Q4_K DiT + Qwen3-VL-8B Q4_K_M LLM + its own VAE), ~10 GB. Not distilled: CFG 6 / 40 steps / euler, negative prompts work. Sizes are rounded up to a multiple of 32; at most 2,097,152 pixels (1440x1440) — larger sizes render broken and are refused. About 20 minutes per image on an M2 Max at the defaults. Research-only weights. Image editing with reference images is not wired yet.",
 		},
 		{
 			Name: "noobai-xl-vpred", Arch: profile.ArchSDXL, Prediction: profile.PredVPred,

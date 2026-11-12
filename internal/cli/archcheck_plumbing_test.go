@@ -1,12 +1,15 @@
 package cli
 
 import (
+	"image"
+	"image/png"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/nlink-jp/image-forge/internal/catalog"
+	"github.com/nlink-jp/image-forge/internal/engine"
 	"github.com/nlink-jp/image-forge/internal/profile"
 	"github.com/nlink-jp/image-forge/internal/store"
 )
@@ -191,5 +194,69 @@ func TestEveryRenderPathRefusesASizeTheArchRendersBroken(t *testing.T) {
 	err = runGen([]string{"-p", "x", "-m", "qwen-fact", "-hires", "on", "-hires-scale", "1.5", "-o", out})
 	if err == nil || !strings.Contains(err.Error(), "hires.fix would render 1536x1536") {
 		t.Errorf("gen hires: err = %v, want the hires refusal", err)
+	}
+}
+
+// The engine sizes the output to the init image, then to the control image;
+// the requested size counts only when neither is given. The check must judge
+// the same size, or a large init image renders the broken case unrefused.
+func TestRenderSizeFollowsTheEnginesOrder(t *testing.T) {
+	sizes := map[string][2]int{"init.png": {2048, 2048}, "ctrl.png": {768, 512}}
+	sizeOf := func(p string) (int, int, bool) { s, ok := sizes[p]; return s[0], s[1], ok }
+	cases := []struct {
+		name string
+		req  engine.Request
+		w, h int
+	}{
+		{"neither", engine.Request{Width: 1024, Height: 1024}, 1024, 1024},
+		{"init", engine.Request{Width: 1024, Height: 1024, InitImage: "init.png"}, 2048, 2048},
+		{"control wins over init", engine.Request{Width: 1024, Height: 1024, InitImage: "init.png", ControlImage: "ctrl.png"}, 768, 512},
+		{"unreadable image is the engine's to report", engine.Request{Width: 1024, Height: 1024, InitImage: "gone.png"}, 1024, 1024},
+	}
+	for _, c := range cases {
+		if w, h := renderSize(c.req, sizeOf); w != c.w || h != c.h {
+			t.Errorf("%s: %dx%d, want %dx%d", c.name, w, h, c.w, c.h)
+		}
+	}
+}
+
+// End to end: a 1536x1536 init image at the default requested size is refused
+// on both paths, read from a real PNG header.
+func TestEveryRenderPathRefusesAnInitImageTheArchRendersBroken(t *testing.T) {
+	archRegistry(t)
+	reg, err := store.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	weights := filepath.Join(dir, "w.gguf")
+	if err := os.WriteFile(weights, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	reg.Add(store.InstalledModel{Name: "qwen-fact", Path: weights,
+		Profile: profile.ArchDefaults(profile.ArchQwenImage21), ArchSource: store.ArchFromFlag})
+	if err := reg.Save(); err != nil {
+		t.Fatal(err)
+	}
+	big := filepath.Join(dir, "big.png")
+	f, err := os.Create(big)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := png.Encode(f, image.NewGray(image.Rect(0, 0, 1536, 1536))); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+	if w, h, ok := imageSize(big); !ok || w != 1536 || h != 1536 {
+		t.Fatalf("imageSize = %dx%d %v", w, h, ok)
+	}
+
+	_, _, _, _, err = buildRender(RenderRequest{Model: "qwen-fact", Init: big, Hires: "off"})
+	if err == nil || !strings.Contains(err.Error(), "1536x1536 is too large for qwenimage21") {
+		t.Errorf("buildRender: err = %v, want the size refusal", err)
+	}
+	err = runGen([]string{"-p", "x", "-m", "qwen-fact", "-init", big, "-hires", "off", "-o", filepath.Join(dir, "o.png")})
+	if err == nil || !strings.Contains(err.Error(), "1536x1536 is too large for qwenimage21") {
+		t.Errorf("gen: err = %v, want the size refusal", err)
 	}
 }

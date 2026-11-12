@@ -4,6 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"image"
+	_ "image/jpeg" // imageSize reads the formats the engine decodes
+	_ "image/png"
 	"os"
 	"path/filepath"
 	"strings"
@@ -512,11 +515,48 @@ func resolveHires(mode string, prof profile.Profile, ov hiresOverrides, env hire
 // broken (profile.CheckSize), for the base pass and for the hires.fix target.
 // Like the LoRA check it acts only on an architecture that is a fact (ADR-0006).
 func checkRenderSize(arch profile.Arch, req engine.Request) error {
+	if profile.MaxPixels(arch) == 0 {
+		return nil // no limit: do not open the images
+	}
+	w, h := renderSize(req, imageSize)
 	scale := 0.0
 	if req.Hires {
 		scale = req.HiresScale
 	}
-	return profile.CheckSize(arch, req.Width, req.Height, scale)
+	return profile.CheckSize(arch, w, h, scale)
+}
+
+// renderSize is the size a render starts from. The engine sizes the output to
+// the init image, and then to the control image, when one is given — the
+// requested width and height apply only to a render with neither. This mirrors
+// that order (engine Render); sizeOf reads an image's dimensions and reports
+// false for a file it cannot read, which is left for the engine to report.
+func renderSize(req engine.Request, sizeOf func(path string) (w, h int, ok bool)) (int, int) {
+	w, h := req.Width, req.Height
+	for _, path := range []string{req.InitImage, req.ControlImage} {
+		if path == "" {
+			continue
+		}
+		if iw, ih, ok := sizeOf(path); ok {
+			w, h = iw, ih
+		}
+	}
+	return w, h
+}
+
+// imageSize reads the dimensions of a PNG or JPEG — the formats the engine
+// decodes — from its header.
+func imageSize(path string) (int, int, bool) {
+	f, err := os.Open(path)
+	if err != nil {
+		return 0, 0, false
+	}
+	defer f.Close()
+	c, _, err := image.DecodeConfig(f)
+	if err != nil {
+		return 0, 0, false
+	}
+	return c.Width, c.Height, true
 }
 
 // genOverrides holds per-field overrides; a nil pointer means "use the profile".

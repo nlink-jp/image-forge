@@ -161,23 +161,51 @@ func MaxPixels(a Arch) int {
 	return 0
 }
 
+// sizeMultiple is what sd.cpp rounds each side of an image up to before it
+// renders (its VAE scale times the model's patch size): 32 for Qwen-Image-2.1.
+// Only architectures with a MaxPixels need an entry.
+func sizeMultiple(a Arch) int {
+	if a == ArchQwenImage21 {
+		return 32
+	}
+	return 1
+}
+
+func alignUp(n, multiple int) int {
+	if r := n % multiple; r != 0 {
+		return n + multiple - r
+	}
+	return n
+}
+
 // CheckSize refuses a render the architecture is known to draw broken: a base
 // size, or a hires.fix target (the base size times hiresScale; pass 0 when
-// hires is off), larger than MaxPixels. An architecture with no known limit,
-// and an unknown one (""), are never refused.
+// hires is off), larger than MaxPixels. width and height are the size the
+// render will really start from — the init or control image's when one is
+// given. Each is judged as sd.cpp will render it, rounded up to the
+// architecture's multiple, so 1441x1441 is judged as the 1472x1472 it becomes.
+// An architecture with no known limit, and an unknown one (""), are never
+// refused.
 func CheckSize(a Arch, width, height int, hiresScale float64) error {
 	limit := MaxPixels(a)
 	if limit == 0 {
 		return nil
 	}
-	side := int(math.Sqrt(float64(limit))) / 32 * 32
-	if width*height > limit {
-		return fmt.Errorf("%dx%d is too large for %s: it renders a broken image above %d pixels (%dx%d fits)",
-			width, height, a, limit, side, side)
+	m := sizeMultiple(a)
+	side := int(math.Sqrt(float64(limit))) / m * m
+	w, h := alignUp(width, m), alignUp(height, m)
+	if w*h > limit {
+		rendered := ""
+		if w != width || h != height {
+			rendered = fmt.Sprintf(" (rendered as %dx%d)", w, h)
+		}
+		return fmt.Errorf("%dx%d%s is too large for %s: it renders a broken image above %d pixels (%dx%d fits)",
+			width, height, rendered, a, limit, side, side)
 	}
 	if hiresScale > 0 {
-		// sd.cpp rounds each side of the target the same way.
-		tw, th := int(math.Round(float64(width)*hiresScale)), int(math.Round(float64(height)*hiresScale))
+		// sd.cpp scales the aligned base size, rounds, and aligns the target up.
+		tw := alignUp(int(math.Round(float64(w)*hiresScale)), m)
+		th := alignUp(int(math.Round(float64(h)*hiresScale)), m)
 		if tw*th > limit {
 			return fmt.Errorf("hires.fix would render %dx%d (%dx%d x %g), too large for %s: it renders a broken image above %d pixels; lower the hires scale or the size, or turn hires off",
 				tw, th, width, height, hiresScale, a, limit)

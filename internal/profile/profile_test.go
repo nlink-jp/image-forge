@@ -101,7 +101,11 @@ func TestCheckSize(t *testing.T) {
 		{"one block over", ArchQwenImage21, 2048, 1056, 0, "2048x1056 is too large"},
 		{"broken 1536", ArchQwenImage21, 1536, 1536, 0, "1536x1536 is too large"},
 		{"broken 2048", ArchQwenImage21, 2048, 2048, 0, "1440x1440 fits"},
+		// sd.cpp rounds each side up to a multiple of 32 before it renders.
+		{"aligned up past the limit", ArchQwenImage21, 1441, 1441, 0, "1441x1441 (rendered as 1472x1472) is too large"},
+		{"aligned up, still within", ArchQwenImage21, 1430, 1430, 0, ""},
 		{"hires within", ArchQwenImage21, 1024, 1024, 1.25, ""},
+		{"hires target aligned up past the limit", ArchQwenImage21, 1024, 1024, 1.41, "hires.fix would render 1472x1472"},
 		{"hires over", ArchQwenImage21, 1024, 1024, 1.5, "hires.fix would render 1536x1536"},
 		{"hires off ignores the scale", ArchQwenImage21, 1024, 1024, 0, ""},
 		{"sdxl has no limit", ArchSDXL, 4096, 4096, 2, ""},
