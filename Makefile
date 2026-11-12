@@ -23,7 +23,7 @@ PKGS := $(shell go list ./... 2>/dev/null | grep -v '/third_party/')
 CODESIGN_IDENTITY ?= Developer ID Application
 NOTARY_PROFILE    ?= nlink-jp-notary
 
-.PHONY: build build-engine build-all package verify-release deps test fmt vet clean clean-deps
+.PHONY: build build-engine build-all package verify-release verify-vendor deps test fmt vet clean clean-deps
 
 ## build: scaffold binary (no diffusion runtime)
 build:
@@ -31,17 +31,29 @@ build:
 	CGO_ENABLED=1 go build -ldflags "$(LDFLAGS)" -o $(DIST)/$(BINARY) .
 
 ## build-engine: full binary with the statically-linked sd.cpp runtime
-build-engine: deps
+build-engine: deps verify-vendor
 	@mkdir -p $(DIST)
 	CGO_ENABLED=1 go build -tags cgo_sdcpp -ldflags "$(LDFLAGS)" -o $(DIST)/$(BINARY) .
 
 ## deps: build stable-diffusion.cpp into static libraries (Metal backend)
 deps: $(SD_LIB)
 
-$(SD_LIB):
+# Local patches to the vendored sources (third_party/patches/series, ADR-0011).
+# The library is rebuilt whenever a patch or the series changes, and the patches
+# are applied before it is built.
+VENDOR_PATCHES := third_party/patches/series $(wildcard third_party/patches/*.patch)
+
+$(SD_LIB): $(VENDOR_PATCHES)
+	@scripts/vendor-patches.sh apply
 	cmake -S $(SD_DIR) -B $(SD_BUILD) -DCMAKE_BUILD_TYPE=Release \
 		-DSD_METAL=ON -DSD_BUILD_SHARED_LIBS=OFF -DSD_BUILD_EXAMPLES=OFF
 	cmake --build $(SD_BUILD) --config Release -j
+
+## verify-vendor: the vendored trees are exactly the pinned upstream plus the
+## recorded patches. Runs on every engine build, so a binary cannot be linked
+## from a tree someone edited by hand or from one a patch no longer describes.
+verify-vendor:
+	@scripts/vendor-patches.sh verify
 
 ## build-all: release binary. This tool is CGO + Metal, so Apple Silicon
 ## (darwin/arm64) ONLY — cross-compilation is impossible (Metal has no

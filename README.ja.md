@@ -397,7 +397,11 @@ make build          # スキャフォールドバイナリ（ランタイム無�
 make build-engine   # sd.cpp ランタイム込みの完全版
 make test           # go test（third_party 除外）
 make vet
+make verify-vendor   # 同梱ランタイムが「固定した上流＋third_party/patches」であることの検査
 ```
+
+同梱の stable-diffusion.cpp は、固定した上流のコミットに `third_party/patches/` のパッチを
+当ててビルドする（[ADR-0011](docs/ja/adr/0011-vendored-patch-fp8-metal.ja.md)）。
 
 **util-series** の一員。構造と注意点は [AGENTS.md](AGENTS.md)、カタログへのモデル追加は
 [docs/ja/adding-a-model.ja.md](docs/ja/adding-a-model.ja.md)、設計全体は

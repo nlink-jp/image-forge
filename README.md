@@ -432,7 +432,11 @@ make build          # scaffold binary (no runtime)
 make build-engine   # full binary with the sd.cpp runtime
 make test           # go test (third_party excluded)
 make vet
+make verify-vendor   # the vendored runtime is the pinned upstream plus third_party/patches
 ```
+
+The bundled stable-diffusion.cpp is built from a pinned upstream commit plus the
+patches in `third_party/patches/` ([ADR-0011](docs/en/adr/0011-vendored-patch-fp8-metal.md)).
 
 Part of **util-series**. See [AGENTS.md](AGENTS.md) for structure and gotchas,
 [docs/en/adding-a-model.md](docs/en/adding-a-model.md) to add a catalog model, and

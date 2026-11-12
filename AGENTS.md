@@ -32,6 +32,7 @@ make build         # scaffold binary (no engine) → dist/image-forge
 make build-engine  # full binary w/ sd.cpp runtime (needs cmake + Metal Toolchain)
 make test          # go test ./...
 make vet           # go vet ./...
+make verify-vendor # vendored tree == pinned upstream + third_party/patches (ADR-0011)
 make verify-release  # gate: .notarized marker + freshness (run before upload)
 ```
 
@@ -143,20 +144,25 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   point (Open / Upscale / Quantize) and forwards WARN+ERROR to **stderr**;
   `IMAGE_FORGE_SDCPP_LOG=verbose` forwards everything. Start any "it just
   crashes" investigation there.
-- **FP8 safetensors on Metal abort without `fp8.go`.** Vendored sd.cpp
+- **The vendored ggml carries one local patch (ADR-0011).** sd.cpp
   (master-1090) keeps F8_E4M3/E5M2 tensors at one byte; ggml's Metal
-  `supports_op` says yes to `mul_mat` with an FP8 weight but there is no
-  `kernel_mul_mm_f8_*`, so sd.cpp's own cast fallback never runs. `fp8TypeRules`
-  reads each component's safetensors header and, for FP8 files only, passes
-  per-component `tensor_type_rules` (`^text_encoders\.t5xxl\.=f16`, …) so the
-  weights are converted at load. Per component on purpose: a catch-all rule would
-  expand the quantized GGUF DiT loaded beside it. When bumping sd.cpp, render
-  `flux1-schnell` and `sd35-medium` — if upstream has fixed the backend, this
-  can go.
+  `supports_op` said yes to `mul_mat` with an FP8 weight though there is no
+  kernel for it, so every FLUX / SD3.5 render (`t5xxl_fp8_e4m3fn`) and every
+  imported FP8 checkpoint aborted. `third_party/patches/0001-…` makes it
+  decline, and sd.cpp's own per-call cast runs. Patches live in
+  `third_party/patches/` with a `series` file; `make deps` applies them and
+  `make verify-vendor` (run by every `build-engine`) fails unless the vendored
+  tree is exactly the pin plus the patches — never edit the vendored tree by
+  hand. **To move the sd.cpp pin: `scripts/vendor-patches.sh revert`, move it,
+  `make deps`**; if the patch no longer applies, render `flux1-schnell` without
+  it before deciding. A conversion through `tensor_type_rules` was tried first
+  and is not enough: sd.cpp exempts input/output layers and embedders from any
+  rule. The submodule is `ignore = dirty` in `.gitmodules` for this reason.
 - **Build sd.cpp with `-DSD_METAL=ON`, not `-DGGML_METAL=ON`.** Only the former
   compiles sd.cpp's own Metal extensions (`src/core/metal`, INT8 kernels). The
-  Makefile's `deps` only rebuilds when the static lib is missing; after moving
-  the submodule, re-run the two cmake commands of that target by hand.
+  Makefile's `deps` rebuilds when the static lib is missing or a vendored patch
+  changed — not when the submodule moved; after moving it, re-run the two cmake
+  commands of that target by hand.
 - **sd.cpp's C API changed at master-1090**: `generate_image` and `upscale`
   return one `sd_image_generation_result_t*` that owns the pixels, freed with
   `free_sd_image_generation_result` (no per-image `free`).

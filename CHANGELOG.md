@@ -35,12 +35,14 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **FLUX and SD3.5 keep working on the updated runtime.** The new sd.cpp holds
+- **FP8 weights keep working on the updated runtime.** The new sd.cpp holds
   FP8 safetensors weights at one byte each, and the Metal backend it ships
   claims to multiply them but has no kernel for it, so every render that used
-  `t5xxl_fp8_e4m3fn` — all of FLUX and SD3.5 — aborted the process. FP8
-  components are now converted to F16 as they are read, which is what sd.cpp
-  did before; memory use is unchanged from v0.30.0.
+  `t5xxl_fp8_e4m3fn` — all of FLUX and SD3.5 — and every imported FP8
+  checkpoint aborted the process. The bundled ggml now carries a one-function
+  patch that makes Metal decline the operation, so sd.cpp casts the weight
+  instead (ADR-0011). FP8 weights are no longer expanded at load, which lowers
+  peak memory for FLUX and SD3.5.
 
 ## [0.30.0] - 2026-11-04
 

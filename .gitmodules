@@ -1,3 +1,7 @@
 [submodule "third_party/stable-diffusion.cpp"]
 	path = third_party/stable-diffusion.cpp
 	url = https://github.com/leejet/stable-diffusion.cpp
+	# The tree carries the local patches of third_party/patches (ADR-0011), so
+	# its working copy always differs from the pinned commit; the pin itself is
+	# still tracked.
+	ignore = dirty

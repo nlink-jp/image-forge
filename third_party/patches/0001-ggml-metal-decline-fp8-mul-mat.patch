@@ -1,0 +1,19 @@
+diff --git a/src/ggml-metal/ggml-metal-device.m b/src/ggml-metal/ggml-metal-device.m
+index 44519903..e6f7fbf4 100644
+--- a/src/ggml-metal/ggml-metal-device.m
++++ b/src/ggml-metal/ggml-metal-device.m
+@@ -1521,6 +1521,14 @@ static bool ggml_metal_supports_mul_mat_op(
+         return false;
+     }
+ 
++    // image-forge: there is no mul_mv / mul_mm kernel for an FP8 weight, so
++    // claiming the op aborts the process when the pipeline is looked up.
++    // Declining it lets the caller cast the weight (Metal has that copy kernel).
++    if (op->src[0]->type == GGML_TYPE_F8_E4M3 ||
++        op->src[0]->type == GGML_TYPE_F8_E5M2) {
++        return false;
++    }
++
+     if (op->src[1]->type != GGML_TYPE_F16) {
+         return true;
+     }

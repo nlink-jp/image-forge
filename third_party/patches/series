@@ -1,0 +1,5 @@
+# Local patches to the vendored sources, applied in this order by
+# scripts/vendor-patches.sh. One line per patch: <patch file> <directory it
+# applies in, relative to the repository root>. One patch = one decision; the
+# decision is the ADR named beside it.
+0001-ggml-metal-decline-fp8-mul-mat.patch third_party/stable-diffusion.cpp/ggml   # ADR-0011

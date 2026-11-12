@@ -180,8 +180,6 @@ func Open(p OpenParams) (Session, error) {
 	cp.llm_path = set(p.LLM)
 	cp.vae_path = set(p.VAEPath)
 	cp.control_net_path = set(p.ControlNet)
-	// FP8 components are converted to F16 on read: see fp8.go.
-	cp.tensor_type_rules = set(fp8TypeRules(p, fileHasFP8))
 
 	// Empty prediction leaves the init default (PREDICTION_COUNT = auto-detect);
 	// "v" forces v-prediction for models sd.cpp can't auto-detect.
