@@ -767,6 +767,22 @@ func Default() []Entry {
 			TriggerWords: []string{"@411llust0j1s4n,"},
 			Notes:        "AIイラストおじさん / Uncle AI illustration style (Anima). NSFW-capable.",
 		},
+		{
+			// A LoRA on Qwen-Image-2.1 is a derivative of it: the repo ships the
+			// Qwen Research License verbatim as its LICENSE, with the NOTICE the
+			// licence asks for. The repo also carries a Turbo-only adapter (a
+			// preview, for a base this catalog does not ship) and a 17.5 GB
+			// "Heretic" text encoder the author trained against; neither is pulled.
+			Name: "anime-fusal-qwen-image-2.1", Kind: KindLoRA, Arch: profile.ArchQwenImage21,
+			Rating: profile.RatingExplicit, License: "Qwen Research License Agreement (the LoRA is a derivative of Qwen-Image-2.1): non-commercial — research or evaluation — use only; the attribution notice and a copy of the licence must travel with any redistributed copy",
+			LicenseSource: "MicksHF/Qwen-Image-2.1-Anime-Fusal LICENSE + NOTICE (the Qwen Research License, verbatim)",
+			LicenseFlags:  []string{LicenseNonCommercial, LicenseAttribution},
+			Attribution:   "Qwen is licensed under the Qwen RESEARCH LICENSE AGREEMENT, Copyright (c) 2026 Hangzhou Tongyi Laboratory Technology Co., Ltd. All Rights Reserved. Built with Qwen. FUSAL Anime LoRA by MicksHF.",
+			MinRAMGB:      16, RecRAMGB: 32,
+			Source:       Source{HF: "MicksHF/Qwen-Image-2.1-Anime-Fusal/fusal-qwen-image-2.1-v2-exact-r80.safetensors"},
+			TriggerWords: []string{"fusal style."},
+			Notes:        "FUSAL anime style for qwen-image-2.1 (rank 80; made for the base model, not Turbo). Verified with the stock text encoder: strength 0.7 shifts the style clearly, 1.0 overpowers the scene and the background breaks down — stay around 0.6-0.8. The author's settings are `--cfg 1 --steps 25` and a structured prompt that opens with the trigger; CFG 1 also takes about a third of the time of the base defaults. NSFW-capable: roughly 30% of its training set is adult material.",
+		},
 	}
 }
 

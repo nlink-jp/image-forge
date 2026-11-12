@@ -431,3 +431,39 @@ func TestQwenImage21Entry(t *testing.T) {
 		t.Errorf("profile cfg/steps/negative = %v/%d/%v, want 6/40/true", p.CFG, p.Steps, p.NegativeOK)
 	}
 }
+
+// The Anime-Fusal LoRA is a derivative of Qwen-Image-2.1: it must be offered
+// only for that architecture, carry the same research-only terms, sit behind
+// the NSFW opt-in its training set calls for, and pull the adapter made for the
+// base model — the repo's other adapter is for Turbo, which the catalog lacks.
+func TestAnimeFusalQwenImage21Entry(t *testing.T) {
+	e, ok := Find("anime-fusal-qwen-image-2.1")
+	if !ok {
+		t.Fatal("anime-fusal-qwen-image-2.1 is not in the catalog")
+	}
+	if e.Kind != KindLoRA || e.Arch != profile.ArchQwenImage21 {
+		t.Errorf("kind/arch = %q/%q, want lora/qwenimage21", e.Kind, e.Arch)
+	}
+	if e.Rating != profile.RatingExplicit {
+		t.Errorf("rating = %q, want explicit", e.Rating)
+	}
+	flags := strings.Join(e.LicenseFlags, ",")
+	if !strings.Contains(flags, LicenseNonCommercial) || !strings.Contains(flags, LicenseAttribution) {
+		t.Errorf("license flags = %v, want non-commercial + attribution", e.LicenseFlags)
+	}
+	if e.Attribution == "" {
+		t.Error("attribution text is empty though the licence requires the notice")
+	}
+	if !strings.HasSuffix(e.Source.HF, "fusal-qwen-image-2.1-v2-exact-r80.safetensors") {
+		t.Errorf("source = %q, want the base-model adapter", e.Source.HF)
+	}
+	if strings.Contains(strings.ToLower(e.Source.HF), "turbo") {
+		t.Errorf("source = %q is the Turbo adapter", e.Source.HF)
+	}
+	if len(e.TriggerWords) != 1 || e.TriggerWords[0] != "fusal style." {
+		t.Errorf("trigger words = %q", e.TriggerWords)
+	}
+	if _, ok := Find("qwen-image-2.1"); !ok {
+		t.Error("the LoRA is listed without its base model")
+	}
+}

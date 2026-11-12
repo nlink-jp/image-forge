@@ -277,7 +277,8 @@ Makefile                    build/build-engine/deps/test/vet/clean/build-all
   size. "no vision weights
   detected" on stderr is expected — the text encoder GGUF has no vision tower,
   which only editing needs. Not wired: Turbo (it needs `custom_sigmas`) and
-  editing (reference images + `llm_vision_path`).
+  editing (reference images + `llm_vision_path`). A diffusers-format LoRA with
+  no alpha keys (`anime-fusal-qwen-image-2.1`) loads and applies as is.
 - **Flow/DiT guidance knobs (`Request.Guidance`/`FlowShift`/`SLGScale`/`ImgCFG`).**
   Map to `g.sample_params.guidance.distilled_guidance` / `.flow_shift` / `.slg` /
   `.img_cfg`. Each 0 keeps sd.cpp's default; sd.cpp ignores knobs that don't apply to

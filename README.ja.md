@@ -343,6 +343,16 @@ image-forge gen -m qwen-image-2.1 -o cat.png \
   1024x1024 と 1280x1280 は正しく生成できる。1536x1536 と 2048x2048 は、
   35 分・51 分かけた末に、ぼやけて縞の入った、プロンプトを無視した絵になる。
   これらのサイズを指定しても止められはしない。
+- **アニメ調**: `anime-fusal-qwen-image-2.1` はこのモデル用の LoRA（取得には
+  `--allow-nsfw` が要る。条項は同じく研究目的限定）。強度は 0.6〜0.8、作者の
+  指定どおり `--cfg 1 --steps 25` で使う。この設定なら 1 枚およそ 7 分になる:
+
+  ```sh
+  image-forge models pull anime-fusal-qwen-image-2.1 --allow-nsfw
+  image-forge gen -m qwen-image-2.1 --lora anime-fusal-qwen-image-2.1:0.7 \
+    --cfg 1 --steps 25 -o girl.png \
+    -p "fusal style. A girl with long silver hair on a seaside road at dusk, anime illustration"
+  ```
 
 ## 設定
 

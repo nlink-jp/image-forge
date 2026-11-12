@@ -373,6 +373,17 @@ image-forge gen -m qwen-image-2.1 -o cat.png \
   multiples of 32. 1024x1024 and 1280x1280 render correctly; 1536x1536 and
   2048x2048 come out broken — a blurred, banded image that ignores the prompt,
   after 35 and 51 minutes. Nothing stops you from asking for those sizes.
+- **Anime style**: `anime-fusal-qwen-image-2.1` is a LoRA for this model
+  (`--allow-nsfw` to pull; same research-only terms). Use it at strength
+  0.6-0.8 with the author's `--cfg 1 --steps 25`, which also brings a render
+  down to about 7 minutes:
+
+  ```sh
+  image-forge models pull anime-fusal-qwen-image-2.1 --allow-nsfw
+  image-forge gen -m qwen-image-2.1 --lora anime-fusal-qwen-image-2.1:0.7 \
+    --cfg 1 --steps 25 -o girl.png \
+    -p "fusal style. A girl with long silver hair on a seaside road at dusk, anime illustration"
+  ```
 
 ## Configuration
 

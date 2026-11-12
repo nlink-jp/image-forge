@@ -63,6 +63,7 @@ var licenceSources = map[string]string{
 	"s1-dramatic-lighting-anima":       "civitai:3037397 listing",
 	"pov-on-couch-anima":               "civitai:3101268 listing",
 	"ai-illust-ojisan-anima":           "civitai:3038551 listing",
+	"anime-fusal-qwen-image-2.1":       "MicksHF/Qwen-Image-2.1-Anime-Fusal LICENSE + NOTICE (the Qwen Research License, verbatim)",
 	// The two entries that pair a Civitai DiT with the Qwen components re-hosted
 	// in the Anima repo: those files are Apache-2.0 by Qwen, not CircleStone's
 	// weights, so their terms are not the DiT's and not CircleStone's either.

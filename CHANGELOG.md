@@ -15,6 +15,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   render takes about 20 minutes on an M2 Max. The weights are under the Qwen
   Research License — research and evaluation only. Turbo and image editing are
   not supported yet.
+- **`anime-fusal-qwen-image-2.1`** — an anime-style LoRA for Qwen-Image-2.1,
+  under the same research-only terms and behind `--allow-nsfw`.
 
 ### Changed
 
