@@ -4,7 +4,7 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.31.0] - 2026-11-13
 
 ### Added
 
@@ -41,8 +41,8 @@ project adheres to [Semantic Versioning](https://semver.org/).
   `t5xxl_fp8_e4m3fn` — all of FLUX and SD3.5 — and every imported FP8
   checkpoint aborted the process. The bundled ggml now carries a one-function
   patch that makes Metal decline the operation, so sd.cpp casts the weight
-  instead (ADR-0011). FP8 weights are no longer expanded at load, which lowers
-  peak memory for FLUX and SD3.5.
+  instead (ADR-0011). FP8 weights are no longer expanded at load: peak
+  memory for a FLUX render went from 17.6 GB to 13.6 GB.
 
 ## [0.30.0] - 2026-11-04
 
