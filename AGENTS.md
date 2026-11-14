@@ -33,6 +33,7 @@ make build-engine  # full binary w/ sd.cpp runtime (needs cmake + Metal Toolchai
 make test          # go test ./...
 make vet           # go vet ./...
 make verify-vendor # vendored tree == pinned upstream + third_party/patches (ADR-0011)
+make vuln            # govulncheck over the build; `make package` runs it first and stops on a finding
 make verify-release  # gate: .notarized marker + freshness (run before upload)
 ```
 

@@ -4,6 +4,14 @@ All notable changes to image-forge are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/), and the
 project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- `make package` runs govulncheck first (`make vuln`) and stops on a finding,
+  so a release cannot be built past one. It scans the release build — the
+  packages `make test` covers, under the `cgo_sdcpp` tag.
+
 ## [0.31.0] - 2026-11-13
 
 ### Added

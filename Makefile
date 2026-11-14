@@ -23,7 +23,7 @@ PKGS := $(shell go list ./... 2>/dev/null | grep -v '/third_party/')
 CODESIGN_IDENTITY ?= Developer ID Application
 NOTARY_PROFILE    ?= nlink-jp-notary
 
-.PHONY: build build-engine build-all package verify-release verify-vendor deps test fmt vet clean clean-deps
+.PHONY: build build-engine build-all package verify-release verify-vendor deps test fmt vet clean clean-deps vuln
 
 ## build: scaffold binary (no diffusion runtime)
 build:
@@ -58,10 +58,19 @@ verify-vendor:
 build-all: build-engine
 	@scripts/codesign-darwin.sh $(DIST)/$(BINARY) "$(CODESIGN_IDENTITY)" "$(BINARY)"
 
+## vuln: known vulnerabilities in the modules and the standard library this
+## build uses (govulncheck). `package` depends on it, so a release cannot be
+## built past a finding. It needs the network, and its database changes under
+## an unchanged tree: a finding can appear without a commit. It scans what the
+## release links: the packages `make test` covers, under the engine's build tag.
+## That needs the sd.cpp headers from the submodule, not the built libraries.
+vuln:
+	govulncheck -tags cgo_sdcpp $(PKGS)
+
 ## package: signed + notarized release zip
 ## (image-forge-v<version>-darwin-arm64.zip; canonical binary + README.md
 ## + LICENSE inside, per the org Release Archive Standard).
-package: build-all
+package: vuln build-all
 	@cd $(DIST) && cp ../README.md ../LICENSE . \
 		&& zip -j $(BINARY)-$(VERSION)-darwin-arm64.zip $(BINARY) README.md LICENSE \
 		&& rm -f README.md LICENSE
